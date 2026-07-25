@@ -25,7 +25,7 @@ type EditorAction =
   | { type: "DELETE_NODE"; payload: { nodeId: string } }
   | { type: "SET_EDGES"; payload: EditorEdge[] }
   | { type: "SELECT_ELEMENT"; payload: EditorNode | null }
-  | { type: "SET_CONTEXT"; payload: WorkflowContext }
+  | { type: "SET_CONTEXT"; payload: WorkflowContext | ((prev: WorkflowContext) => WorkflowContext) }
   | { type: "UNDO" }
   | { type: "REDO" };
 
@@ -47,7 +47,7 @@ interface EditorContextType {
   selectNode: (node: EditorNode | null) => void;
   sidebarTab: SidebarTab;
   setSidebarTab: (tab: SidebarTab) => void;
-  setContext: (ctx: WorkflowContext) => void;
+  setContext: (ctx: WorkflowContext | ((prev: WorkflowContext) => WorkflowContext)) => void;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -73,10 +73,30 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
     case "ADD_NODE": {
       const elements = [...state.elements, action.payload];
-      return { ...state, elements, context: buildContextSkeleton(elements) };
+      const existingCtx = state.context;
+      const newCtx: WorkflowContext = {};
+      for (const node of elements) {
+        newCtx[node.id] = existingCtx[node.id] ?? {
+          name: node.data.title,
+          output: null,
+          success: false,
+          error: null,
+        };
+      }
+      return { ...state, elements, context: newCtx };
     }
     case "DELETE_NODE": {
       const elements = state.elements.filter((el) => el.id !== action.payload.nodeId);
+      const existingCtx = state.context;
+      const newCtx: WorkflowContext = {};
+      for (const node of elements) {
+        newCtx[node.id] = existingCtx[node.id] ?? {
+          name: node.data.title,
+          output: null,
+          success: false,
+          error: null,
+        };
+      }
       return {
         ...state,
         elements,
@@ -84,7 +104,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           (e) => e.source !== action.payload.nodeId && e.target !== action.payload.nodeId,
         ),
         selectedNode: state.selectedNode?.id === action.payload.nodeId ? null : state.selectedNode,
-        context: buildContextSkeleton(elements),
+        context: newCtx,
       };
     }
     case "UPDATE_NODE":
@@ -108,7 +128,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case "SELECT_ELEMENT":
       return { ...state, selectedNode: action.payload };
     case "SET_CONTEXT":
-      return { ...state, context: action.payload };
+      return { ...state, context: typeof action.payload === "function" ? action.payload(state.context) : action.payload };
     default:
       return state;
   }
@@ -180,8 +200,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setContext = useCallback(
-    (ctx: WorkflowContext) => {
-      dispatch({ type: "SET_CONTEXT", payload: ctx });
+    (ctx: WorkflowContext | ((prev: WorkflowContext) => WorkflowContext)) => {
+      if (typeof ctx === "function") {
+        dispatch({ type: "SET_CONTEXT", payload: ctx });
+      } else {
+        dispatch({ type: "SET_CONTEXT", payload: ctx });
+      }
     },
     [dispatch],
   );

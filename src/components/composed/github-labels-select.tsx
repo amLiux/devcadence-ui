@@ -11,7 +11,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { Tag, CheckIcon } from "lucide-react";
+import { Tag, CheckIcon, Loader2 } from "lucide-react";
 
 interface GitHubLabel {
   name: string;
@@ -62,6 +62,7 @@ export function GitHubLabelsSelect({
   const [labels, setLabels] = useState<GitHubLabel[]>([]);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
+  const currentRepoRef = useRef(repo);
 
   const [owner, repoName] = repo.split("/") || [];
 
@@ -72,6 +73,14 @@ export function GitHubLabelsSelect({
     setLabels(data);
     setLoading(false);
   }, [owner, repoName]);
+
+  useEffect(() => {
+    if (currentRepoRef.current !== repo) {
+      currentRepoRef.current = repo;
+      loadedRef.current = false;
+      setLabels([]);
+    }
+  }, [repo]);
 
   useEffect(() => {
     if (!open || !owner || !repoName) return;
@@ -98,6 +107,8 @@ export function GitHubLabelsSelect({
     }
   };
 
+  const disabled = !repo || loading;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -106,11 +117,17 @@ export function GitHubLabelsSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className="w-full justify-between h-8 text-sm font-normal"
           />
         }
       >
-        {selectedSet.size > 0 ? (
+        {loading ? (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading...
+          </span>
+        ) : selectedSet.size > 0 ? (
           <span className="flex items-center gap-1 truncate text-sm">
             <Tag className="h-3 w-3 shrink-0" />
             {multi
@@ -135,7 +152,7 @@ export function GitHubLabelsSelect({
             <CommandGroup>
               {labels.map((label) => (
                 <CommandItem
-                  key={label.name}
+                  key={`${owner}/${repoName}/${label.name}`}
                   value={label.name}
                   onSelect={() => toggle(label.name)}
                 >

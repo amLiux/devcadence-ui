@@ -1,15 +1,16 @@
 ---
-description: Structured dev workflow with DevCadence protocol (standup/pair/review/checkout)
+description: DevCadence workflow with devdock SME for repo-aware collaboration
 agent: build
 ---
 
 skill({ name: "devcadence" })
+skill({ name: "devdock-sme" })
 
-Activate DevCadence protocol for current project.
+Activate DevCadence protocol for devdock with repo-specific context.
 
 ## Usage
 
-/devcadence <mode> [args]
+/devdock-devcadence <mode> [args]
 
 Modes:
 - standup — define today's tasks, create ticket
@@ -23,8 +24,6 @@ Utilities (outside chain, no log):
 - new-extension — scaffold a new sibling command with domain SME
 
 ## Per-Project Config
-
-Add a `# Project Config` block to this file to set log dir, progress path, ticket format, and custom modes. If absent, AI prompts with a setup form on first standup.
 
 # Project Config
 # - Log dir: ~/docs/devdock/

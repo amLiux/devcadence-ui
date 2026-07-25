@@ -116,23 +116,23 @@ export function EditorCanvas({ workflow }: Props) {
           body: JSON.stringify({
             node,
             edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
-            allNodes: editor.elements,
+            context: editor.context,
           }),
         });
         const result = await res.json();
         setDebugSteps([result]);
 
-        // Update context with single node output
+        // Update context with single node output (functional update avoids stale closure)
         if (result.data !== undefined) {
-          setContext({
-            ...editor.context,
+          setContext((prev) => ({
+            ...prev,
             [nodeId]: {
               name: node.data.title,
               output: result.data,
               success: result.success,
               error: result.success ? null : result.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null,
             },
-          });
+          }));
         }
       } catch {
         setDebugSteps([
@@ -222,6 +222,17 @@ export function EditorCanvas({ workflow }: Props) {
     setDebugTitle(`Test: ${workflow.name}`);
     setDebugSteps([]);
     setDebugOpen(true);
+
+    // Clear context so the run starts fresh
+    setContext((prev) => {
+      const fresh: WorkflowContext = {};
+      for (const node of editor.elements) {
+        fresh[node.id] = prev[node.id]
+          ? { ...prev[node.id], output: null, success: false, error: null }
+          : { name: node.data.title, output: null, success: false, error: null };
+      }
+      return fresh;
+    });
 
     try {
       const res = await fetch("/api/workflows/test-workflow", {
