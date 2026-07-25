@@ -11,7 +11,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { User, CheckIcon } from "lucide-react";
+import { User, CheckIcon, Loader2 } from "lucide-react";
 
 interface GitHubContributor {
   login: string;
@@ -62,6 +62,7 @@ export function GitHubAssigneesSelect({
   const [contributors, setContributors] = useState<GitHubContributor[]>([]);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
+  const currentRepoRef = useRef(repo);
 
   const [owner, repoName] = repo.split("/") || [];
 
@@ -72,6 +73,14 @@ export function GitHubAssigneesSelect({
     setContributors(data);
     setLoading(false);
   }, [owner, repoName]);
+
+  useEffect(() => {
+    if (currentRepoRef.current !== repo) {
+      currentRepoRef.current = repo;
+      loadedRef.current = false;
+      setContributors([]);
+    }
+  }, [repo]);
 
   useEffect(() => {
     if (!open || !owner || !repoName) return;
@@ -98,6 +107,8 @@ export function GitHubAssigneesSelect({
     }
   };
 
+  const disabled = !repo || loading;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -106,11 +117,17 @@ export function GitHubAssigneesSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className="w-full justify-between h-8 text-sm font-normal"
           />
         }
       >
-        {selectedSet.size > 0 ? (
+        {loading ? (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading...
+          </span>
+        ) : selectedSet.size > 0 ? (
           <span className="flex items-center gap-1 truncate text-sm">
             <User className="h-3 w-3 shrink-0" />
             {multi
@@ -134,7 +151,11 @@ export function GitHubAssigneesSelect({
             </CommandEmpty>
             <CommandGroup>
               {contributors.map((c) => (
-                <CommandItem key={c.login} value={c.login} onSelect={() => toggle(c.login)}>
+                <CommandItem
+                  key={`${owner}/${repoName}/${c.login}`}
+                  value={c.login}
+                  onSelect={() => toggle(c.login)}
+                >
                   <span className="flex items-center gap-2 truncate">
                     <img
                       src={c.avatar_url}

@@ -11,7 +11,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { GitPullRequest, CircleDot } from "lucide-react";
+import { GitPullRequest, CircleDot, Loader2 } from "lucide-react";
 
 interface GitHubIssue {
   number: number;
@@ -46,10 +46,15 @@ async function fetchIssues(owner: string, repo: string): Promise<GitHubIssue[]> 
     const issues = issuesJson.data || issuesJson;
     const pulls = pullsJson.data || pullsJson;
 
-    const items: GitHubIssue[] = [
-      ...issues.map((i: GitHubIssue) => ({ ...i, pull_request: undefined })),
-      ...pulls.map((p: GitHubIssue) => ({ ...p, pull_request: true })),
-    ].sort((a: GitHubIssue, b: GitHubIssue) => b.number - a.number);
+    // Deduplicate by number — PRs are also returned by issues endpoint
+    const byNumber = new Map<number, GitHubIssue>();
+    for (const i of issues) {
+      byNumber.set(i.number, { ...i, pull_request: undefined });
+    }
+    for (const p of pulls) {
+      byNumber.set(p.number, { ...p, pull_request: true });
+    }
+    const items = Array.from(byNumber.values()).sort((a, b) => b.number - a.number);
 
     issueCache.set(key, { items, timestamp: Date.now() });
     return items;
@@ -70,6 +75,7 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
   const [items, setItems] = useState<GitHubIssue[]>([]);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);
+  const currentRepoRef = useRef(repo);
 
   const [owner, repoName] = repo.split("/") || [];
 
@@ -80,6 +86,14 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
     setItems(data);
     setLoading(false);
   }, [owner, repoName]);
+
+  useEffect(() => {
+    if (currentRepoRef.current !== repo) {
+      currentRepoRef.current = repo;
+      loadedRef.current = false;
+      setItems([]);
+    }
+  }, [repo]);
 
   useEffect(() => {
     if (!open || !owner || !repoName) return;
@@ -97,6 +111,8 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
 
   const selectedItem = items.find((i) => String(i.number) === value);
 
+  const disabled = !repo || loading;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -105,11 +121,17 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className="w-full justify-between h-8 text-sm font-normal"
           />
         }
       >
-        {selectedItem ? (
+        {loading ? (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading...
+          </span>
+        ) : selectedItem ? (
           <span className="flex items-center gap-1.5 truncate text-sm">
             {selectedItem.pull_request ? (
               <GitPullRequest className="h-3 w-3 shrink-0 text-green-500" />
@@ -136,7 +158,7 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
             <CommandGroup>
               {filtered.map((item) => (
                 <CommandItem
-                  key={item.number}
+                  key={`${owner}/${repoName}/${item.number}`}
                   value={`${item.number} ${item.title}`}
                   onSelect={() => {
                     onChange(String(item.number));

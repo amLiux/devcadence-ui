@@ -1,0 +1,68 @@
+"use client";
+
+import React from "react";
+import { Input } from "@/components/ui/input";
+import type { NodeSettingsProps } from "./types";
+import {
+  TransformDataSettings,
+  ConditionalSettings,
+} from "./expression-nodes";
+import { HttpRequestSettings } from "./http-request";
+import {
+  ListenCommitsSettings,
+  ListenPRsSettings,
+  ListenIssuesSettings,
+  ListenCommentsSettings,
+  ListenReleasesSettings,
+} from "./github-triggers";
+import {
+  CreateIssueSettings,
+  AddCommentSettings,
+  AddLabelSettings,
+  RequestReviewSettings,
+} from "./github-actions";
+
+function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium">Webhook URL</label>
+        <Input className="h-8 text-xs" placeholder="https://..." value={meta.webhookUrl || ""} onChange={(e) => handleChange("webhookUrl", e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium">Secret</label>
+        <Input className="h-8 text-xs" placeholder="(optional)" value={meta.secret || ""} onChange={(e) => handleChange("secret", e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium">Cron Expression</label>
+        <Input className="h-8 text-xs" placeholder="*/5 * * * *" value={meta.cron || ""} onChange={(e) => handleChange("cron", e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }>> = {
+  Webhook: WebhookSettings,
+  Schedule: ScheduleSettings,
+  "Listen Commits": ListenCommitsSettings,
+  "Listen Pull Requests": ListenPRsSettings,
+  "Listen Issues": ListenIssuesSettings,
+  "Listen Comments": ListenCommentsSettings,
+  "Listen Releases": ListenReleasesSettings,
+  "Create Issue": CreateIssueSettings,
+  "Add Comment": AddCommentSettings,
+  "Add Label": AddLabelSettings,
+  "Request Review": RequestReviewSettings,
+  "HTTP Request": HttpRequestSettings,
+  "Transform Data": TransformDataSettings,
+  Conditional: ConditionalSettings,
+};
+
+export { SETTINGS_REGISTRY };

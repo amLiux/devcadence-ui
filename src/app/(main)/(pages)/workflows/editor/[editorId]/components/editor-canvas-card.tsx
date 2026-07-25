@@ -1,9 +1,12 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
 import { GitBranch, Zap, Settings, Trash2, Pencil, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useEditor } from "@/providers/editor-provider";
+import { buildParentMap } from "@/lib/workflow-context";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const iconMap: Record<string, React.ReactNode> = {
   Trigger: <Zap className="h-5 w-5 text-yellow-500" />,
@@ -20,12 +23,39 @@ interface CardData {
 }
 
 function EditorCanvasCardInner({ data, id }: NodeProps) {
-  const { title, description, type, completed, current } = data as CardData;
+  const { title, description, type } = data as CardData;
+  const { editor } = useEditor();
   const isConditional = title === "Conditional";
+
+  const parentMap = useMemo(() => buildParentMap(editor.edges), [editor.edges]);
+  const parentIds = useMemo(() => parentMap.get(id) || [], [parentMap, id]);
+
+  const allParentsTested =
+    parentIds.length === 0 ||
+    parentIds.every((pid) => {
+      const ctx = editor.context[pid];
+      return ctx && ctx.output !== null && ctx.success;
+    });
+
+  const nodeCtx = editor.context[id];
+  const isTested = nodeCtx ? nodeCtx.output !== null : false;
+  const testSuccess = isTested && (nodeCtx?.success ?? false);
+  const testFailed = isTested && !(nodeCtx?.success ?? false);
+
+  const parentNames = useMemo(
+    () => parentIds.map((pid) => editor.context[pid]?.name ?? pid).join(", "),
+    [parentIds, editor.context],
+  );
+
+  let borderClass = "border-border";
+  if (testSuccess) borderClass = "border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.3)]";
+  else if (testFailed) borderClass = "border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)]";
+  else if (isConditional) borderClass = "border-amber-500/60";
+
+  const canTest = allParentsTested;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Dispatch a custom event that the canvas listens to
     window.dispatchEvent(new CustomEvent("node:edit", { detail: { nodeId: id } }));
   };
 
@@ -47,29 +77,36 @@ function EditorCanvasCardInner({ data, id }: NodeProps) {
         className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background"
       />
       <div
-        className={`rounded-lg border bg-background p-3 shadow-sm min-w-[200px] ${
-          isConditional
-            ? "border-amber-500/60"
-            : completed
-              ? "border-green-500"
-              : current
-                ? "border-primary"
-                : "border-border"
-        }`}
+        className={`rounded-lg border bg-background p-3 shadow-sm w-fit min-w-[220px] max-w-[300px] transition-all duration-200 ${borderClass}`}
       >
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            {iconMap[type] || <Settings className="h-5 w-5 text-muted-foreground" />}
-            <span className="font-medium text-sm">{title}</span>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div className="flex items-center gap-2 min-w-0">
+            {iconMap[type] || <Settings className="h-5 w-5 text-muted-foreground shrink-0" />}
+            <span className="font-medium text-sm truncate">{title}</span>
           </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleTest}
-              className="p-1 rounded hover:bg-green-500/10 text-muted-foreground hover:text-green-600 transition-colors"
-              title="Test node"
-            >
-              <Play className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    onClick={handleTest}
+                    disabled={!canTest}
+                    className={`p-1 rounded transition-colors ${
+                      canTest
+                        ? "hover:bg-green-500/10 text-muted-foreground hover:text-green-600"
+                        : "text-muted-foreground/30 cursor-not-allowed"
+                    }`}
+                  />
+                }
+              >
+                <Play className="h-3 w-3" />
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">
+                  {canTest ? "Test node" : `Run "${parentNames}" first to test this node`}
+                </p>
+              </TooltipContent>
+            </Tooltip>
             <button
               onClick={handleEdit}
               className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -94,8 +131,8 @@ function EditorCanvasCardInner({ data, id }: NodeProps) {
             {type}
           </Badge>
           <div className="flex items-center gap-1">
-            {completed && <div className="h-2 w-2 rounded-full bg-green-500" />}
-            {current && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
+            {testSuccess && <div className="h-2 w-2 rounded-full bg-green-500" />}
+            {testFailed && <div className="h-2 w-2 rounded-full bg-red-500" />}
             <span className="text-[10px] text-muted-foreground font-mono">{id}</span>
           </div>
         </div>
