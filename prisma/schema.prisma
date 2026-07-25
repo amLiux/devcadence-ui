@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Repository {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  url         String
+  branch      String   @default("main")
+  patToken    String
+  status      String   @default("active")
+  lastSync    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  settings    RepoSetting[]
+}
+
+model RepoSetting {
+  id     String     @id @default(uuid())
+  repo   Repository @relation(fields: [repoId], references: [id])
+  repoId String
+  key    String
+  value  String
+  @@unique([repoId, key])
+}
+
+model Workflow {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @default("")
+  nodes       String?
+  edges       String?
+  flowPath    String?
+  publish     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
