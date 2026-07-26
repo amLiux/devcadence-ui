@@ -46,7 +46,7 @@ async function executeNode(
     } else if (title === "Transform Data") {
       result = await handleTransformData(meta, ancestorChain);
     } else if (title === "HTTP Request") {
-      result = await handleHttpRequest(meta);
+      result = await handleHttpRequest(meta, ancestorChain);
     } else if (type === "GitHub" && title.startsWith("Listen")) {
       result = await handleGithubTrigger(title, meta);
     } else if (title === "PostgreSQL Query") {
@@ -58,7 +58,7 @@ async function executeNode(
     } else if (title === "PostgreSQL Delete") {
       result = await handlePostgresDelete(meta, ancestorChain);
     } else {
-      result = await handleGithubAction(title, meta);
+      result = await handleGithubAction(title, meta, ancestorChain);
     }
 
     logs.push({
