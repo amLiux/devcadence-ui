@@ -3,14 +3,23 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
 
-export function HttpRequestSettings({ meta, handleChange }: NodeSettingsProps) {
+export function HttpRequestSettings({ meta, handleChange, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   return (
     <div className="space-y-3">
+      {hasParentEdge && (
+        parentOutput
+          ? <InheritedDataPanel output={parentOutput} />
+          : <InheritedDataPanelDisabled />
+      )}
+      <p className="text-[10px] text-muted-foreground">
+        Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> to reference data from previous steps. E.g. <code className="bg-muted px-1 rounded">{"{{previousStep.id}}"}</code> or <code className="bg-muted px-1 rounded">{"{{step1.token}}"}</code>.
+      </p>
       <div className="space-y-1.5">
         <Label className="text-xs">URL</Label>
-        <Input className="h-8 text-xs" placeholder="https://..." value={meta.url || ""} onChange={(e) => handleChange("url", e.target.value)} />
+        <Input className="h-8 text-xs font-mono" placeholder="https://api.example.com/{{previousStep.id}}" value={meta.url || ""} onChange={(e) => handleChange("url", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Method</Label>
@@ -28,11 +37,11 @@ export function HttpRequestSettings({ meta, handleChange }: NodeSettingsProps) {
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Headers (JSON)</Label>
-        <Textarea className="min-h-[80px] text-xs font-mono" placeholder='{"Authorization": "Bearer ..."}' value={meta.headers || ""} onChange={(e) => handleChange("headers", e.target.value)} />
+        <Textarea className="min-h-[80px] text-xs font-mono" placeholder='{"Authorization": "Bearer {{previousStep.token}}"}' value={meta.headers || ""} onChange={(e) => handleChange("headers", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Body (JSON)</Label>
-        <Textarea className="min-h-[80px] text-xs font-mono" placeholder='{"key": "value"}' value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
+        <Textarea className="min-h-[80px] text-xs font-mono" placeholder='{"key": "{{previousStep.value}}"}' value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
       </div>
     </div>
   );

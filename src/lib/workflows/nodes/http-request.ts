@@ -1,11 +1,15 @@
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { resolveTemplates } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
 /** Handles HTTP Request nodes — fetches a URL with caching for GET requests. */
 export async function handleHttpRequest(
   meta: Record<string, string>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ancestorChain?: any,
 ): Promise<NodeHandlerResult> {
-  if (!meta.url) {
+  const url = resolveTemplates(meta.url || "", ancestorChain);
+  if (!url) {
     return { success: false, message: "URL is required" };
   }
 
@@ -13,7 +17,8 @@ export async function handleHttpRequest(
   let headers: Record<string, string> = {};
   if (meta.headers) {
     try {
-      headers = JSON.parse(meta.headers);
+      const resolved = resolveTemplates(meta.headers, ancestorChain);
+      headers = JSON.parse(resolved);
     } catch {
       return { success: false, message: "Invalid headers JSON" };
     }
@@ -21,17 +26,17 @@ export async function handleHttpRequest(
 
   // Cache GET requests for 5 minutes
   if (method === "GET") {
-    const cacheKeyStr = cacheKey(["http", meta.url, JSON.stringify(headers)]);
+    const cacheKeyStr = cacheKey(["http", url, JSON.stringify(headers)]);
     const cached = cacheGet(cacheKeyStr);
     if (cached) {
       return {
         success: true,
-        message: `${method} ${meta.url} → 200 (cached)`,
+        message: `${method} ${url} → 200 (cached)`,
         data: cached.data,
       };
     }
 
-    const res = await fetch(meta.url, { method, headers });
+    const res = await fetch(url, { method, headers });
     let responseBody: unknown;
     const contentType = res.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -50,13 +55,13 @@ export async function handleHttpRequest(
     }
     return {
       success: res.ok,
-      message: `${method} ${meta.url} → ${res.status}`,
+      message: `${method} ${url} → ${res.status}`,
       data: wrappedResponse,
     };
   }
 
   // Non-GET: no caching
-  const res = await fetch(meta.url, { method, headers });
+  const res = await fetch(url, { method, headers });
   let responseBody: unknown;
   const ct = res.headers.get("content-type") || "";
   if (ct.includes("application/json")) {
@@ -70,7 +75,7 @@ export async function handleHttpRequest(
   }
   return {
     success: res.ok,
-    message: `${method} ${meta.url} → ${res.status}`,
+    message: `${method} ${url} → ${res.status}`,
     data: { status: res.status, body: responseBody },
   };
 }

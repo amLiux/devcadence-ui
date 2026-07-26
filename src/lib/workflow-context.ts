@@ -101,6 +101,36 @@ export function evaluateExpression(expression: string, input: any): any {
 }
 
 /**
+ * Resolve {{expression}} template variables in a string.
+ * Uses the same expression engine as Transform Data / Conditional nodes.
+ * e.g. "Hello {{previousStep.name}}" → "Hello World"
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function resolveTemplateVariables(text: string, input: any): string {
+  if (!text || !text.includes("{{")) return text;
+  return text.replace(/\{\{(.*?)\}\}/g, (_, expr: string) => {
+    try {
+      const result = evaluateExpression(expr.trim(), input);
+      return result === undefined || result === null ? "" : String(result);
+    } catch {
+      return `{{${expr}}}`;
+    }
+  });
+}
+
+/**
+ * Resolve template variables using an ancestor chain.
+ * Convenience wrapper for handlers that receive ancestorChain.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function resolveTemplates(text: string, ancestorChain: any, body?: Record<string, unknown>): string {
+  const input = ancestorChain
+    ? buildExpressionChain(ancestorChain)
+    : { previousStep: body ?? {} };
+  return resolveTemplateVariables(text, input);
+}
+
+/**
  * Wrap a Transform Data result with an output name if provided.
  * If outputName is set, returns { [outputName]: result }.
  * Otherwise returns the raw result.

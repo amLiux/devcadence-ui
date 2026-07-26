@@ -6,6 +6,7 @@ import { GitHubRepoSelect } from "@/components/composed/github-repo-select";
 import { GitHubLabelsSelect } from "@/components/composed/github-labels-select";
 import { GitHubAssigneesSelect } from "@/components/composed/github-assignees-select";
 import { GitHubIssueSelect } from "@/components/composed/github-issue-select";
+import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
 
 function RepoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -17,17 +18,25 @@ function RepoField({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-export function CreateIssueSettings({ meta, handleChange }: NodeSettingsProps) {
+export function CreateIssueSettings({ meta, handleChange, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   return (
     <div className="space-y-3">
+      {hasParentEdge && (
+        parentOutput
+          ? <InheritedDataPanel output={parentOutput} />
+          : <InheritedDataPanelDisabled />
+      )}
+      <p className="text-[10px] text-muted-foreground">
+        Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> for dynamic values. E.g. <code className="bg-muted px-1 rounded">{"Issue for {{previousStep.title}}"}</code>.
+      </p>
       <RepoField value={meta.repo || ""} onChange={(v) => handleChange("repo", v)} />
       <div className="space-y-1.5">
         <Label className="text-xs">Issue Title</Label>
-        <Input className="h-8 text-xs" placeholder="New issue from workflow" value={meta.title || ""} onChange={(e) => handleChange("title", e.target.value)} />
+        <Input className="h-8 text-xs font-mono" placeholder="{{previousStep.title}}" value={meta.title || ""} onChange={(e) => handleChange("title", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Body</Label>
-        <Input className="h-8 text-xs" placeholder="Description..." value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
+        <Input className="h-8 text-xs font-mono" placeholder="{{previousStep.description}}" value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Labels</Label>
@@ -41,9 +50,17 @@ export function CreateIssueSettings({ meta, handleChange }: NodeSettingsProps) {
   );
 }
 
-export function AddCommentSettings({ meta, handleChange }: NodeSettingsProps) {
+export function AddCommentSettings({ meta, handleChange, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   return (
     <div className="space-y-3">
+      {hasParentEdge && (
+        parentOutput
+          ? <InheritedDataPanel output={parentOutput} />
+          : <InheritedDataPanelDisabled />
+      )}
+      <p className="text-[10px] text-muted-foreground">
+        Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> for dynamic values.
+      </p>
       <RepoField value={meta.repo || ""} onChange={(v) => handleChange("repo", v)} />
       <div className="space-y-1.5">
         <Label className="text-xs">Issue or Pull Request</Label>
@@ -51,7 +68,7 @@ export function AddCommentSettings({ meta, handleChange }: NodeSettingsProps) {
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Comment</Label>
-        <Input className="h-8 text-xs" placeholder="Thanks for the feedback!" value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
+        <Input className="h-8 text-xs font-mono" placeholder="{{previousStep.comment}}" value={meta.body || ""} onChange={(e) => handleChange("body", e.target.value)} />
       </div>
     </div>
   );

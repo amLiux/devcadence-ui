@@ -1,15 +1,20 @@
 import { githubFetch, getGitHubToken } from "@/lib/github";
+import { resolveTemplates } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
 /** Handles GitHub action nodes — creates issues, comments, labels, and review requests. */
 export async function handleGithubAction(
   title: string,
   meta: Record<string, string>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ancestorChain?: any,
 ): Promise<NodeHandlerResult> {
   const token = await getGitHubToken();
   if (!token) {
     return { success: false, message: "No GitHub connection found. Add a GitHub connection in Settings." };
   }
+
+  const resolve = (v: string) => resolveTemplates(v, ancestorChain);
 
   switch (title) {
     case "Create Issue": {
@@ -18,9 +23,8 @@ export async function handleGithubAction(
       const issue = await githubFetch(`/repos/${meta.repo}/issues`, token, {
         method: "POST",
         body: JSON.stringify({
-          title: meta.title,
-          body:
-            meta.body || `[Test] Created by devdock workflow at ${new Date().toISOString()}`,
+          title: resolve(meta.title),
+          body: resolve(meta.body || `[Test] Created by devdock workflow at ${new Date().toISOString()}`),
           labels: meta.labels ? meta.labels.split(",").map((l) => l.trim()) : [],
           assignees: meta.assignees ? meta.assignees.split(",").map((a) => a.trim()) : [],
         }),
@@ -42,7 +46,7 @@ export async function handleGithubAction(
         {
           method: "POST",
           body: JSON.stringify({
-            body: `${meta.body}\n\n---\n🧪 *Test comment by devdock at ${new Date().toISOString()}`,
+            body: resolve(`${meta.body}\n\n---\n🧪 *Test comment by devdock at ${new Date().toISOString()}`),
           }),
         },
       );

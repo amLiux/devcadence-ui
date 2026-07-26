@@ -1,4 +1,5 @@
 import { query } from "@/lib/postgresql";
+import { resolveTemplates } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
 export async function handlePostgresQuery(
@@ -6,15 +7,11 @@ export async function handlePostgresQuery(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ancestorChain: any,
 ): Promise<NodeHandlerResult> {
-  const { connectionId, sql, expression } = meta;
+  const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "PostgreSQL connection is required" };
-  if (!sql) return { success: false, message: "SQL query is required" };
+  if (!meta.sql) return { success: false, message: "SQL query is required" };
 
-  // Resolve expression params from ancestor chain
-  let resolvedSql = sql;
-  if (expression && ancestorChain) {
-    resolvedSql = resolveParams(sql, expression, ancestorChain);
-  }
+  const resolvedSql = resolveTemplates(meta.sql, ancestorChain);
 
   const result = await query(connectionId, resolvedSql);
   return {
@@ -33,28 +30,33 @@ export async function handlePostgresInsert(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ancestorChain: any,
 ): Promise<NodeHandlerResult> {
-  const { connectionId, table, columns, values, expression } = meta;
+  const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "PostgreSQL connection is required" };
-  if (!table) return { success: false, message: "Table name is required" };
-  if (!columns || !values) return { success: false, message: "Columns and values are required" };
+  if (!meta.table) return { success: false, message: "Table name is required" };
+  if (!meta.columns || !meta.values) return { success: false, message: "Columns and values are required" };
 
-  const cols = columns.split(",").map((c) => c.trim());
-  const vals = values.split(",").map((v) => v.trim());
+  const cols = meta.columns.split(",").map((c) => c.trim());
+  const rawVals = meta.values.split(",").map((v) => v.trim());
+  const vals = rawVals.map((v) => resolveTemplates(v, ancestorChain));
 
   if (cols.length !== vals.length) {
     return { success: false, message: `Columns (${cols.length}) and values (${vals.length}) count mismatch` };
   }
 
-  // Resolve expression params
-  let resolvedVals: unknown[] = vals.map((v) => v);
-  if (expression && ancestorChain) {
-    resolvedVals = vals.map((v) => resolveParamValue(v, expression, ancestorChain));
-  }
-
   const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
-  const sql = `INSERT INTO "${table}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${placeholders}) RETURNING *`;
+  const sql = `INSERT INTO "${resolveTemplates(meta.table, ancestorChain)}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${placeholders}) RETURNING *`;
 
-  const result = await query(connectionId, sql, resolvedVals);
+  // Try to parse values as their natural types
+  const typedVals: unknown[] = vals.map((v) => {
+    if (v === "true") return true;
+    if (v === "false") return false;
+    if (v === "null") return null;
+    const num = Number(v);
+    if (!isNaN(num) && v !== "") return num;
+    return v;
+  });
+
+  const result = await query(connectionId, sql, typedVals);
   return {
     success: true,
     message: `Inserted ${result.rowCount} row(s)`,
@@ -67,25 +69,20 @@ export async function handlePostgresUpdate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ancestorChain: any,
 ): Promise<NodeHandlerResult> {
-  const { connectionId, table, setClause, whereClause, expression } = meta;
+  const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "PostgreSQL connection is required" };
-  if (!table) return { success: false, message: "Table name is required" };
-  if (!setClause) return { success: false, message: "SET clause is required" };
+  if (!meta.table) return { success: false, message: "Table name is required" };
+  if (!meta.setClause) return { success: false, message: "SET clause is required" };
 
-  let sql = `UPDATE "${table}" SET ${setClause}`;
-  const params: unknown[] = [];
+  let sql = `UPDATE "${resolveTemplates(meta.table, ancestorChain)}" SET ${resolveTemplates(meta.setClause, ancestorChain)}`;
 
-  if (whereClause) {
-    let resolvedWhere = whereClause;
-    if (expression && ancestorChain) {
-      resolvedWhere = resolveParams(whereClause, expression, ancestorChain);
-    }
-    sql += ` WHERE ${resolvedWhere}`;
+  if (meta.whereClause) {
+    sql += ` WHERE ${resolveTemplates(meta.whereClause, ancestorChain)}`;
   }
 
   sql += " RETURNING *";
 
-  const result = await query(connectionId, sql, params.length > 0 ? params : undefined);
+  const result = await query(connectionId, sql);
   return {
     success: true,
     message: `Updated ${result.rowCount} row(s)`,
@@ -98,49 +95,22 @@ export async function handlePostgresDelete(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ancestorChain: any,
 ): Promise<NodeHandlerResult> {
-  const { connectionId, table, whereClause, expression } = meta;
+  const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "PostgreSQL connection is required" };
-  if (!table) return { success: false, message: "Table name is required" };
+  if (!meta.table) return { success: false, message: "Table name is required" };
 
-  let sql = `DELETE FROM "${table}"`;
-  const params: unknown[] = [];
+  let sql = `DELETE FROM "${resolveTemplates(meta.table, ancestorChain)}"`;
 
-  if (whereClause) {
-    let resolvedWhere = whereClause;
-    if (expression && ancestorChain) {
-      resolvedWhere = resolveParams(whereClause, expression, ancestorChain);
-    }
-    sql += ` WHERE ${resolvedWhere}`;
+  if (meta.whereClause) {
+    sql += ` WHERE ${resolveTemplates(meta.whereClause, ancestorChain)}`;
   }
 
   sql += " RETURNING *";
 
-  const result = await query(connectionId, sql, params.length > 0 ? params : undefined);
+  const result = await query(connectionId, sql);
   return {
     success: true,
     message: `Deleted ${result.rowCount} row(s)`,
     data: { rows: result.rows, rowCount: result.rowCount },
   };
-}
-
-function resolveParams(sql: string, expression: string, ancestorChain: unknown): string {
-  // Simple param resolution: replace $paramName with values from ancestor chain
-  return sql.replace(/\$(\w+)/g, (match, key) => {
-    const value = getNestedValue(ancestorChain, key);
-    if (value === undefined) return match;
-    return typeof value === "string" ? `'${value.replace(/'/g, "''")}'` : String(value);
-  });
-}
-
-function resolveParamValue(value: string, expression: string, ancestorChain: unknown): unknown {
-  if (value.startsWith("$")) {
-    const key = value.slice(1);
-    return getNestedValue(ancestorChain, key) ?? value;
-  }
-  return value;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getNestedValue(obj: any, path: string): unknown {
-  return path.split(".").reduce((current, key) => current?.[key], obj);
 }
