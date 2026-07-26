@@ -29,3 +29,40 @@ model Workflow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model AIPersona {
+  id           String   @id @default(uuid())
+  name         String
+  systemPrompt String
+  tone         String   @default("")
+  description  String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AIPrompt {
+  id          String   @id @default(uuid())
+  name        String
+  template    String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AIContext {
+  id          String   @id @default(uuid())
+  name        String
+  content     String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AIMemory {
+  id          String   @id @default(uuid())
+  name        String
+  content     String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
