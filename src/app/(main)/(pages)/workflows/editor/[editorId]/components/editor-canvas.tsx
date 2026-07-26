@@ -19,10 +19,9 @@ import { EditorCanvasSidebar } from "./editor-canvas-sidebar";
 import { EditorCanvasCard } from "./editor-canvas-card";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
-import { Save, Send, Play, Braces } from "lucide-react";
+import { Save, Send, Play } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
-import { ContextViewer } from "@/components/composed/context-viewer";
 import type { Workflow, NodeDebugLog, WorkflowContext } from "@/lib/types";
 
 const nodeTypes = { cardNode: EditorCanvasCard };
@@ -44,7 +43,6 @@ export function EditorCanvas({ workflow }: Props) {
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugTitle, setDebugTitle] = useState("");
   const [debugSteps, setDebugSteps] = useState<NodeDebugLog[]>([]);
-  const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
     if (workflow.nodes) {
@@ -344,15 +342,6 @@ export function EditorCanvas({ workflow }: Props) {
                 <Play className="h-3.5 w-3.5 mr-1" />
                 {testingWorkflow ? "Testing..." : "Test"}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setContextOpen(true)}
-                disabled={editor.elements.length === 0}
-              >
-                <Braces className="h-3.5 w-3.5 mr-1" />
-                Context
-              </Button>
             </div>
             <div className="flex-1 overflow-auto">
               <EditorCanvasSidebar />
@@ -366,11 +355,6 @@ export function EditorCanvas({ workflow }: Props) {
         title={debugTitle}
         steps={debugSteps}
         running={testingWorkflow}
-      />
-      <ContextViewer
-        open={contextOpen}
-        onOpenChange={setContextOpen}
-        context={editor.context}
       />
     </>
   );
