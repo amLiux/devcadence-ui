@@ -68,16 +68,16 @@ export default function ConnectionsPage() {
         </Card>
       )}
 
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {connections.map((conn) => (
-          <Card key={conn.id} size="sm" className="relative group overflow-hidden">
-            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
-              <div className="h-8 w-8 flex items-center justify-center overflow-hidden shrink-0">
+          <Card key={conn.id} className="relative group overflow-hidden hover:border-primary/50 transition-colors h-full">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
+              <div className="h-10 w-10 flex items-center justify-center overflow-hidden shrink-0">
                 <Image
                   src={connectionIcons[conn.type as ConnectionType] ?? "/github.png"}
                   alt={conn.type}
-                  width={28}
-                  height={28}
+                  width={32}
+                  height={32}
                   className="object-contain"
                 />
               </div>

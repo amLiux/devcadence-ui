@@ -49,7 +49,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {connections.map((conn) => (
-          <Card key={conn.id} className="hover:border-primary/50 transition-colors">
+          <Card key={conn.id} className="hover:border-primary/50 transition-colors h-full">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
               <div className="h-10 w-10 flex items-center justify-center overflow-hidden shrink-0">
                 <Image
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {conn.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2">{conn.description}</p>
               )}
