@@ -52,7 +52,7 @@ export default function ConnectionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Connections</h1>
-          <p className="text-muted-foreground">Connect your repos, services, and tools.</p>
+          <p className="text-muted-foreground">Connect your services and tools.</p>
         </div>
         <Button onClick={openNewConnection}>
           <Plug className="mr-2 h-4 w-4" />
@@ -63,7 +63,7 @@ export default function ConnectionsPage() {
       {connections.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No connections yet. Add your first repo or service.
+            No connections yet. Add your first service.
           </CardContent>
         </Card>
       )}
@@ -88,7 +88,7 @@ export default function ConnectionsPage() {
                     {conn.type}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(conn.lastUpdate).toLocaleDateString()}
+                    {new Date(conn.updatedAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>

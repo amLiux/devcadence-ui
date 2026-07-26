@@ -1,39 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import type { ConnectionResponse } from "@/lib/types";
+import type { Connection } from "@/lib/types";
 
 interface PutRequestBody {
-  data: Record<string, string>;
-}
-
-const SENSITIVE_KEYS = [
-  "personalAccessToken",
-  "botToken",
-  "apiKey",
-  "accessToken",
-  "credentialsJson",
-];
-
-const RESERVED_KEYS = [...SENSITIVE_KEYS, "name", "description"];
-
-function getTokenFromData(data: Record<string, string>): string {
-  for (const key of SENSITIVE_KEYS) {
-    if (data[key]) return data[key];
-  }
-  return "";
-}
-
-function buildSettings(data: Record<string, string>) {
-  return Object.entries(data)
-    .filter(([key]) => !RESERVED_KEYS.includes(key))
-    .map(([key, value]) => ({ key, value: String(value) }));
+  name?: string;
+  description?: string;
+  config?: Record<string, string>;
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.repoSetting.deleteMany({ where: { repoId: id } });
-    await prisma.repository.delete({ where: { id } });
+    await prisma.connection.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/connections error:", error);
@@ -45,30 +23,24 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = (await req.json()) as PutRequestBody;
-    const { data } = body;
 
-    const repo = await prisma.repository.update({
+    const connection = await prisma.connection.update({
       where: { id },
       data: {
-        name: data.name || undefined,
-        description: data.description || undefined,
-        url: data.repoUrl ?? "",
-        patToken: getTokenFromData(data),
-        settings: {
-          deleteMany: {},
-          create: buildSettings(data),
-        },
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(body.config !== undefined && { config: body.config }),
       },
-      include: { settings: true },
     });
 
-    const response: ConnectionResponse = {
-      id: repo.id,
-      name: repo.name,
-      description: repo.description,
-      type: "GitHub",
-      formData: { repoUrl: repo.url, branch: repo.branch },
-      lastUpdate: repo.updatedAt.toISOString(),
+    const response: Connection = {
+      id: connection.id,
+      type: connection.type as Connection["type"],
+      name: connection.name,
+      description: connection.description,
+      config: connection.config as Record<string, string>,
+      createdAt: connection.createdAt.toISOString(),
+      updatedAt: connection.updatedAt.toISOString(),
     };
 
     return NextResponse.json(response);

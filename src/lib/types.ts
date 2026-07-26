@@ -1,12 +1,13 @@
-export type ConnectionType = "GitHub" | "Slack" | "Discord" | "OpenAI" | "Notion" | "Google Drive";
+export type ConnectionType = "GitHub" | "PostgreSQL" | "Slack" | "Discord" | "OpenAI" | "Notion" | "Google Drive";
 
 export interface Connection {
   id: string;
+  type: ConnectionType;
   name: string;
   description: string;
-  formData: Record<string, string | boolean>;
-  type: ConnectionType;
-  lastUpdate: string;
+  config: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RequestOptions {
@@ -23,23 +24,17 @@ export interface FormData {
 }
 
 export interface ConnectionData {
-  data: FormData;
-  connectionType: ConnectionType;
-  id?: string;
-}
-
-export interface ConnectionResponse {
-  id: string;
+  type: ConnectionType;
   name: string;
-  description: string;
-  type: string;
-  formData: Record<string, string>;
-  lastUpdate: string;
+  description?: string;
+  config: Record<string, string>;
 }
 
 export interface InputConfig {
   key: string;
   type: "text" | "password";
+  label?: string;
+  defaultValue?: string;
 }
 
 export interface CheckboxConfig {

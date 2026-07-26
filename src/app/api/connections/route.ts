@@ -1,59 +1,31 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import type { ConnectionResponse } from "@/lib/types";
+import type { Connection } from "@/lib/types";
 
 interface ConnectionRequestBody {
-  connectionType: string;
-  data: Record<string, string>;
-}
-
-const SENSITIVE_KEYS = [
-  "personalAccessToken",
-  "botToken",
-  "apiKey",
-  "accessToken",
-  "credentialsJson",
-];
-
-const RESERVED_KEYS = [...SENSITIVE_KEYS, "name", "description"];
-
-function getTokenFromData(data: Record<string, string>): string {
-  for (const key of SENSITIVE_KEYS) {
-    if (data[key]) return data[key];
-  }
-  return "";
-}
-
-function buildSettings(data: Record<string, string>) {
-  return Object.entries(data)
-    .filter(([key]) => !RESERVED_KEYS.includes(key))
-    .map(([key, value]) => ({ key, value: String(value) }));
-}
-
-function simplifyConnection(repo: {
-  id: string;
+  type: string;
   name: string;
-  description: string;
-  url: string;
-  branch: string;
-  updatedAt: Date;
-}): ConnectionResponse {
-  return {
-    id: repo.id,
-    name: repo.name,
-    description: repo.description,
-    type: "GitHub",
-    formData: { repoUrl: repo.url, branch: repo.branch },
-    lastUpdate: repo.updatedAt.toISOString(),
-  };
+  description?: string;
+  config: Record<string, string>;
 }
 
 export async function GET() {
   try {
-    const connections = await prisma.repository.findMany({
+    const connections = await prisma.connection.findMany({
       orderBy: { updatedAt: "desc" },
     });
-    return NextResponse.json(connections.map(simplifyConnection));
+
+    const response: Connection[] = connections.map((c) => ({
+      id: c.id,
+      type: c.type as Connection["type"],
+      name: c.name,
+      description: c.description,
+      config: c.config as Record<string, string>,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+    }));
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("GET /api/connections error:", error);
     return NextResponse.json({ error: "Failed to fetch connections" }, { status: 500 });
@@ -63,29 +35,29 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as ConnectionRequestBody;
-    const { connectionType, data } = body;
+    const { type, name, description, config } = body;
 
-    const repo = await prisma.repository.create({
+    if (!type || !name) {
+      return NextResponse.json({ error: "type and name are required" }, { status: 400 });
+    }
+
+    const connection = await prisma.connection.create({
       data: {
-        name: data.name || "untitled",
-        description: data.description || "",
-        url: data.repoUrl ?? "",
-        patToken: getTokenFromData(data),
-        branch: "main",
-        settings: {
-          create: buildSettings(data),
-        },
+        type,
+        name,
+        description: description || "",
+        config: config || {},
       },
-      include: { settings: true },
     });
 
-    const response: ConnectionResponse = {
-      id: repo.id,
-      name: repo.name,
-      description: repo.description,
-      type: connectionType,
-      formData: { repoUrl: repo.url, branch: repo.branch },
-      lastUpdate: repo.updatedAt.toISOString(),
+    const response: Connection = {
+      id: connection.id,
+      type: connection.type as Connection["type"],
+      name: connection.name,
+      description: connection.description,
+      config: connection.config as Record<string, string>,
+      createdAt: connection.createdAt.toISOString(),
+      updatedAt: connection.updatedAt.toISOString(),
     };
 
     return NextResponse.json(response, { status: 201 });
