@@ -86,11 +86,17 @@ export function outputsFromContext(context: WorkflowContext): Map<string, NodeOu
 
 /**
  * Evaluate an expression with previousStep as the input.
+ * Also destructures any named outputs (from Output Name) as top-level variables.
  * Used by Transform Data and Conditional nodes.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function evaluateExpression(expression: string, input: any): any {
-  const fn = new Function("previousStep", `return (${expression})`);
+  if (!input || typeof input !== "object") {
+    const fn = new Function("previousStep", `return (${expression})`);
+    return fn(input);
+  }
+  const keys = Object.keys(input);
+  const fn = new Function(`const {${keys.join(", ")}} = arguments[0]; return (${expression})`);
   return fn(input);
 }
 
@@ -123,7 +129,9 @@ function buildExpressionChain(chain: ContextStep | undefined, flat?: Record<stri
   // Collect named outputs into flat object
   if (!flat) flat = {};
   if (chain.outputName && chain.output && typeof chain.output === "object") {
-    flat[chain.outputName] = chain.output;
+    // Unwrap: if output is { step1: 45 }, extract just 45
+    const wrapped = chain.output[chain.outputName];
+    flat[chain.outputName] = wrapped !== undefined ? wrapped : chain.output;
   }
 
   // Recurse to grandparent first, so flat collects all ancestors
@@ -147,7 +155,8 @@ export function resolveExpressionInput(meta: Record<string, string>, ancestorCha
   if (ancestorChain) {
     return buildExpressionChain(ancestorChain);
   }
-  return meta.body ? JSON.parse(meta.body) : {};
+  const body = meta.body ? JSON.parse(meta.body) : {};
+  return { previousStep: body };
 }
 
 /**

@@ -22,7 +22,7 @@ import { useApi } from "@/hooks/use-api";
 import { Save, Send, Play } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
-import type { Workflow, NodeDebugLog, WorkflowContext } from "@/lib/types";
+import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode } from "@/lib/types";
 
 const nodeTypes = { cardNode: EditorCanvasCard };
 
@@ -113,6 +113,7 @@ export function EditorCanvas({ workflow }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             node,
+            nodes: editor.elements as EditorNode[],
             edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
             context: editor.context,
           }),
