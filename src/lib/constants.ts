@@ -17,6 +17,12 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     ],
     checkboxes: [],
   },
+  Webhook: {
+    inputs: [
+      { key: "secret", type: "password", label: "Secret (optional, for HMAC verification)", defaultValue: "" },
+    ],
+    checkboxes: [],
+  },
   Slack: {
     inputs: [],
     checkboxes: [],
@@ -47,6 +53,7 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
 export const connectionIcons: Record<ConnectionType, string> = {
   GitHub: "/github.png",
   PostgreSQL: "/postgresql.svg",
+  Webhook: "/webhook.svg",
   Slack: "/slack.png",
   Discord: "/discord.png",
   OpenAI: "/openai.png",

@@ -17,6 +17,7 @@ import {
   handlePostgresInsert,
   handlePostgresUpdate,
   handlePostgresDelete,
+  handleWebhookTrigger,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -47,6 +48,8 @@ async function executeNode(
       result = await handleTransformData(meta, ancestorChain);
     } else if (title === "HTTP Request") {
       result = await handleHttpRequest(meta, ancestorChain);
+    } else if (type === "Trigger" && title === "Webhook") {
+      result = handleWebhookTrigger(meta);
     } else if (type === "GitHub" && title.startsWith("Listen")) {
       result = await handleGithubTrigger(title, meta);
     } else if (title === "PostgreSQL Query") {

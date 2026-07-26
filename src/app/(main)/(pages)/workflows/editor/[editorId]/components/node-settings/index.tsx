@@ -27,21 +27,7 @@ import {
   PostgresUpdateSettings,
   PostgresDeleteSettings,
 } from "./postgresql";
-
-function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium">Webhook URL</label>
-        <Input className="h-8 text-xs" placeholder="https://..." value={meta.webhookUrl || ""} onChange={(e) => handleChange("webhookUrl", e.target.value)} />
-      </div>
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium">Secret</label>
-        <Input className="h-8 text-xs" placeholder="(optional)" value={meta.secret || ""} onChange={(e) => handleChange("secret", e.target.value)} />
-      </div>
-    </div>
-  );
-}
+import { WebhookSettings } from "./webhook-trigger";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   return (

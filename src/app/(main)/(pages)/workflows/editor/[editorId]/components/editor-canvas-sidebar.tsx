@@ -16,7 +16,7 @@ interface NodeCardDef {
 }
 
 const triggerNodes: NodeCardDef[] = [
-  { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event" },
+  { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event", requiresConnection: "Webhook" },
   { type: "Trigger", title: "Schedule", description: "Trigger on a cron schedule" },
   { type: "GitHub", title: "Listen Commits", description: "Trigger on new pushes to a repo", requiresConnection: "GitHub" },
   {
