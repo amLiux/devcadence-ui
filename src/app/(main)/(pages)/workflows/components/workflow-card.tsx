@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { GitBranch, Webhook, Clock, Hand, Play } from "lucide-react";
+import { GitBranch, Webhook, Clock, Hand, Play, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
       <Link href={`/workflows/editor/${workflow.id}`}>
         <Card className="relative group overflow-hidden hover:border-primary/50 transition-colors cursor-pointer h-full">
           <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
               <span className={triggerColors[triggerType]}>{triggerIcons[triggerType]}</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -113,37 +113,36 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
                 </span>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {workflow.description && (
-              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                {workflow.description}
-              </p>
-            )}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-green-600 h-8 px-2 text-xs"
+                className="text-green-600 h-7 w-7 px-0"
                 disabled={testing}
                 onClick={handleTest}
               >
-                <Play className="h-3 w-3 mr-1" />
-                {testing ? "Testing..." : "Test"}
+                <Play className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-destructive h-8 px-2 text-xs"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 px-0"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onDelete(workflow.id);
                 }}
               >
-                Delete
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {workflow.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {workflow.description}
+              </p>
+            )}
           </CardContent>
         </Card>
       </Link>
