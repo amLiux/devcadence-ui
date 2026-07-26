@@ -151,6 +151,7 @@ export type WorkflowContext = Record<string, ContextEntry>;
 // For Transform Data (linked list)
 export interface ContextStep {
   name: string;
+  outputName?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   output: any;
   success: boolean;
