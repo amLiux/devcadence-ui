@@ -1,12 +1,16 @@
-import { githubFetch } from "@/lib/github";
+import { githubFetch, getGitHubToken } from "@/lib/github";
 import type { NodeHandlerResult } from "./types";
 
 /** Handles GitHub trigger nodes — fetches data from GitHub to simulate webhook events. */
 export async function handleGithubTrigger(
   title: string,
   meta: Record<string, string>,
-  token: string,
 ): Promise<NodeHandlerResult> {
+  const token = await getGitHubToken();
+  if (!token) {
+    return { success: false, message: "No GitHub connection found. Add a GitHub connection in Settings." };
+  }
+
   const repo = meta.repo;
   if (!repo) {
     return { success: false, message: "Repository is required" };

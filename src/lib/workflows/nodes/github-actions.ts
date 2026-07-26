@@ -1,12 +1,16 @@
-import { githubFetch } from "@/lib/github";
+import { githubFetch, getGitHubToken } from "@/lib/github";
 import type { NodeHandlerResult } from "./types";
 
 /** Handles GitHub action nodes — creates issues, comments, labels, and review requests. */
 export async function handleGithubAction(
   title: string,
   meta: Record<string, string>,
-  token: string,
 ): Promise<NodeHandlerResult> {
+  const token = await getGitHubToken();
+  if (!token) {
+    return { success: false, message: "No GitHub connection found. Add a GitHub connection in Settings." };
+  }
+
   switch (title) {
     case "Create Issue": {
       if (!meta.repo) return { success: false, message: "Repository is required" };

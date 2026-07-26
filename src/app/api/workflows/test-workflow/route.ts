@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getGitHubToken } from "@/lib/github";
 import {
   buildParentMap,
   buildForwardMap,
@@ -30,7 +29,6 @@ interface TestWorkflowRequest {
 
 async function executeNode(
   node: EditorNode,
-  token: string,
   ancestorChain: import("@/lib/workflow-context").ContextStep | undefined,
 ): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
   const meta = (node.data.metadata || {}) as Record<string, string>;
@@ -50,7 +48,7 @@ async function executeNode(
     } else if (title === "HTTP Request") {
       result = await handleHttpRequest(meta);
     } else if (type === "GitHub" && title.startsWith("Listen")) {
-      result = await handleGithubTrigger(title, meta, token);
+      result = await handleGithubTrigger(title, meta);
     } else if (title === "PostgreSQL Query") {
       result = await handlePostgresQuery(meta, ancestorChain);
     } else if (title === "PostgreSQL Insert") {
@@ -60,7 +58,7 @@ async function executeNode(
     } else if (title === "PostgreSQL Delete") {
       result = await handlePostgresDelete(meta, ancestorChain);
     } else {
-      result = await handleGithubAction(title, meta, token);
+      result = await handleGithubAction(title, meta);
     }
 
     logs.push({
@@ -99,12 +97,6 @@ export async function POST(req: Request) {
       edges: clientEdges,
     } = (await req.json()) as TestWorkflowRequest;
 
-    const token = await getGitHubToken();
-    if (!token) {
-      return NextResponse.json({ error: "No GitHub connection found" }, { status: 404 });
-    }
-    const ghToken: string = token;
-
     let nodes: EditorNode[];
     let edges: EditorEdge[];
 
@@ -140,7 +132,7 @@ export async function POST(req: Request) {
       if (!node) return;
 
       const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
-      const { debugLog, data } = await executeNode(node, ghToken, chain);
+      const { debugLog, data } = await executeNode(node, chain);
       results.push(debugLog);
 
       nodeOutputs.set(nodeId, {
