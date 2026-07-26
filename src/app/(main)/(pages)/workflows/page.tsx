@@ -6,14 +6,15 @@ import { Workflows } from "./components/index";
 
 export default function WorkflowsPage() {
   return (
-    <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-[10] bg-background/50 backdrop-blur-lg border-b px-6 py-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Workflows</h1>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Workflows</h1>
+          <p className="text-muted-foreground">Build and manage your automation workflows.</p>
+        </div>
         <WorkflowButton />
       </div>
-      <div className="flex-1 overflow-auto p-6">
-        <Workflows />
-      </div>
+      <Workflows />
     </div>
   );
 }
