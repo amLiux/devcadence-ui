@@ -61,7 +61,7 @@ export function ConnectionForm({ onSubmit }: Props) {
                 setStep("providerConfig");
               }}
             >
-              <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              <div className="h-8 w-8 flex items-center justify-center overflow-hidden shrink-0">
                 <Image
                   src={connectionIcons[type]}
                   alt={type}
@@ -85,7 +85,7 @@ export function ConnectionForm({ onSubmit }: Props) {
     <div className="space-y-4 px-4">
       <div className="flex items-center gap-3">
         {selectedType && (
-          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+          <div className="h-10 w-10 flex items-center justify-center overflow-hidden">
             <Image
               src={connectionIcons[selectedType]}
               alt={selectedType}
@@ -144,7 +144,7 @@ export function ConnectionForm({ onSubmit }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && !defaultValue)}
+            disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && defaultValue === undefined)}
           >
             {submitting ? "Connecting..." : "Connect"}
           </Button>
