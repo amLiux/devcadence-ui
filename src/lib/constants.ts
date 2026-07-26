@@ -33,10 +33,13 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     checkboxes: [],
     comingSoon: true,
   },
-  OpenAI: {
-    inputs: [],
+  AI: {
+    inputs: [
+      { key: "provider", type: "text", label: "Provider (opencode, claude, openai)" },
+      { key: "apiKey", type: "password", label: "API Key" },
+      { key: "model", type: "text", label: "Model (optional)" },
+    ],
     checkboxes: [],
-    comingSoon: true,
   },
   Notion: {
     inputs: [],
@@ -56,7 +59,7 @@ export const connectionIcons: Record<ConnectionType, string> = {
   Webhook: "/webhook.svg",
   Slack: "/slack.png",
   Discord: "/discord.png",
-  OpenAI: "/openai.png",
+  AI: "/openai.png",
   Notion: "/notion.png",
   "Google Drive": "/googleDrive.png",
 };
