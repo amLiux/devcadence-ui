@@ -14,6 +14,10 @@ import {
   handleHttpRequest,
   handleGithubTrigger,
   handleGithubAction,
+  handlePostgresQuery,
+  handlePostgresInsert,
+  handlePostgresUpdate,
+  handlePostgresDelete,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -47,6 +51,14 @@ async function executeNode(
       result = await handleHttpRequest(meta);
     } else if (type === "GitHub" && title.startsWith("Listen")) {
       result = await handleGithubTrigger(title, meta, token);
+    } else if (title === "PostgreSQL Query") {
+      result = await handlePostgresQuery(meta, ancestorChain);
+    } else if (title === "PostgreSQL Insert") {
+      result = await handlePostgresInsert(meta, ancestorChain);
+    } else if (title === "PostgreSQL Update") {
+      result = await handlePostgresUpdate(meta, ancestorChain);
+    } else if (title === "PostgreSQL Delete") {
+      result = await handlePostgresDelete(meta, ancestorChain);
     } else {
       result = await handleGithubAction(title, meta, token);
     }

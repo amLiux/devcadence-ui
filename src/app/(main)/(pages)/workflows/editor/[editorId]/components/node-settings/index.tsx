@@ -21,6 +21,12 @@ import {
   AddLabelSettings,
   RequestReviewSettings,
 } from "./github-actions";
+import {
+  PostgresQuerySettings,
+  PostgresInsertSettings,
+  PostgresUpdateSettings,
+  PostgresDeleteSettings,
+} from "./postgresql";
 
 function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
   return (
@@ -63,6 +69,10 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "HTTP Request": HttpRequestSettings,
   "Transform Data": TransformDataSettings,
   Conditional: ConditionalSettings,
+  "PostgreSQL Query": PostgresQuerySettings,
+  "PostgreSQL Insert": PostgresInsertSettings,
+  "PostgreSQL Update": PostgresUpdateSettings,
+  "PostgreSQL Delete": PostgresDeleteSettings,
 };
 
 export { SETTINGS_REGISTRY };
