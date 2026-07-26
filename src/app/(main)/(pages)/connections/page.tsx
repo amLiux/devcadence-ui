@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { Plug } from "lucide-react";
+import { Plug, Trash2, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,45 +68,50 @@ export default function ConnectionsPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
         {connections.map((conn) => (
-          <Card key={conn.id} className="relative group overflow-hidden">
-            <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-              <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden shrink-0">
+          <Card key={conn.id} size="sm" className="relative group overflow-hidden">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0">
+              <div className="h-8 w-8 flex items-center justify-center overflow-hidden shrink-0">
                 <Image
                   src={connectionIcons[conn.type as ConnectionType] ?? "/github.png"}
                   alt={conn.type}
-                  width={40}
-                  height={40}
+                  width={28}
+                  height={28}
                   className="object-contain"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-base truncate">{conn.name}</CardTitle>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {conn.type}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(conn.updatedAt).toLocaleDateString()}
-                  </span>
-                </div>
+                <CardTitle>{conn.name}</CardTitle>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-0.5">
+                  {conn.type}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled
+                  className="text-muted-foreground h-7 w-7 px-0"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 px-0"
+                  onClick={() => handleDelete(conn.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
               {conn.description && (
-                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                <p className="text-xs text-muted-foreground line-clamp-1">
                   {conn.description}
                 </p>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2 text-xs"
-                onClick={() => handleDelete(conn.id)}
-              >
-                Remove
-              </Button>
             </CardContent>
           </Card>
         ))}

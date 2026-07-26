@@ -51,7 +51,7 @@ export default function DashboardPage() {
         {connections.map((conn) => (
           <Card key={conn.id} className="hover:border-primary/50 transition-colors">
             <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              <div className="h-10 w-10 flex items-center justify-center overflow-hidden shrink-0">
                 <Image
                   src={connectionIcons[conn.type as ConnectionType] ?? "/github.png"}
                   alt={conn.type}
