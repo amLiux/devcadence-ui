@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getGitHubToken } from "@/lib/github";
 import {
   buildParentMap,
   buildAncestorChain,
@@ -29,14 +28,6 @@ interface TestNodeRequest {
 export async function POST(req: Request) {
   try {
     const { node, edges, context } = (await req.json()) as TestNodeRequest;
-    const token = await getGitHubToken();
-
-    if (!token) {
-      return NextResponse.json(
-        { success: false, action: node.data.title, message: "No GitHub connection found" },
-        { status: 404 },
-      );
-    }
 
     const meta = (node.data.metadata || {}) as Record<string, string>;
     const { title, type } = node.data;
@@ -68,7 +59,7 @@ export async function POST(req: Request) {
       } else if (title === "HTTP Request") {
         result = await handleHttpRequest(meta);
       } else if (type === "GitHub" && title.startsWith("Listen")) {
-        result = await handleGithubTrigger(title, meta, token);
+        result = await handleGithubTrigger(title, meta);
       } else if (title === "PostgreSQL Query") {
         result = await handlePostgresQuery(meta, ancestorChain);
       } else if (title === "PostgreSQL Insert") {
@@ -78,7 +69,7 @@ export async function POST(req: Request) {
       } else if (title === "PostgreSQL Delete") {
         result = await handlePostgresDelete(meta, ancestorChain);
       } else {
-        result = await handleGithubAction(title, meta, token);
+        result = await handleGithubAction(title, meta);
       }
     } catch (err) {
       result = {
