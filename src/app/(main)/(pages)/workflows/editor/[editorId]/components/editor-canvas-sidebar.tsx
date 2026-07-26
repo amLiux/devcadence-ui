@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -44,6 +44,10 @@ const actionNodes: NodeCardDef[] = [
   { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API" },
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
+  { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query" },
+  { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table" },
+  { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table" },
+  { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table" },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -51,6 +55,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Action: <Settings className="h-3 w-3 text-blue-500" />,
   GitHub: <GitBranch className="h-3 w-3 text-foreground" />,
   Conditional: <GitFork className="h-3 w-3 text-orange-500" />,
+  PostgreSQL: <Database className="h-3 w-3 text-blue-600" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {
