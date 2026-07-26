@@ -46,7 +46,7 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
 
 export const connectionIcons: Record<ConnectionType, string> = {
   GitHub: "/github.png",
-  PostgreSQL: "/postgresql.png",
+  PostgreSQL: "/postgresql.svg",
   Slack: "/slack.png",
   Discord: "/discord.png",
   OpenAI: "/openai.png",
