@@ -3,11 +3,13 @@ import { prisma } from "@/lib/db";
 const GITHUB_API = "https://api.github.com";
 
 export async function getGitHubToken(): Promise<string | null> {
-  const repo = await prisma.repository.findFirst({
-    where: { name: { not: "" } },
+  const conn = await prisma.connection.findFirst({
+    where: { type: "GitHub" },
     orderBy: { updatedAt: "desc" },
   });
-  return repo?.patToken || null;
+  if (!conn) return null;
+  const config = conn.config as Record<string, string>;
+  return config.patToken || null;
 }
 
 interface FetchOptions {

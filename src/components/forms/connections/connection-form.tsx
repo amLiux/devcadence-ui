@@ -15,28 +15,27 @@ interface Props {
 
 type Step = "selectProvider" | "providerConfig";
 
-const formatLabel = (key: string): string =>
-  key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-
 export function ConnectionForm({ onSubmit }: Props) {
   const [step, setStep] = useState<Step>("selectProvider");
   const [selectedType, setSelectedType] = useState<ConnectionType | "">("");
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [config, setConfig] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const { setClose } = useModal();
 
-  const config = selectedType ? integrationConfigs[selectedType] : undefined;
-  const inputs = config?.inputs ?? [];
+  const config_ = selectedType ? integrationConfigs[selectedType] : undefined;
+  const inputs = config_?.inputs ?? [];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleInputChange = (key: string, value: string) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async () => {
-    if (!selectedType) return;
+    if (!selectedType || !name) return;
     setSubmitting(true);
     try {
-      await onSubmit({ connectionType: selectedType, data: formData });
+      await onSubmit({ type: selectedType, name, description, config });
     } finally {
       setSubmitting(false);
     }
@@ -106,36 +105,31 @@ export function ConnectionForm({ onSubmit }: Props) {
           <Label htmlFor="name">Name</Label>
           <Input
             id="name"
-            name="name"
             type="text"
-            value={formData.name || ""}
-            onChange={handleInputChange}
-            placeholder="My Repository"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Connection"
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
           <Input
             id="description"
-            name="description"
             type="text"
-            value={formData.description || ""}
-            onChange={handleInputChange}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description"
           />
         </div>
-        {inputs.map(({ key, type }) => (
+        {inputs.map(({ key, type, label, defaultValue }) => (
           <div key={key} className="space-y-2">
-            <Label htmlFor={key}>{formatLabel(key)}</Label>
+            <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
             <Input
               id={key}
-              name={key}
               type={type}
-              value={formData[key] || ""}
-              onChange={handleInputChange}
-              placeholder={
-                type === "password" ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : ""
-              }
+              value={config[key] || defaultValue || ""}
+              onChange={(e) => handleInputChange(key, e.target.value)}
+              placeholder={type === "password" ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : ""}
             />
           </div>
         ))}
@@ -150,7 +144,7 @@ export function ConnectionForm({ onSubmit }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || inputs.some(({ key }) => !formData[key])}
+            disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && !defaultValue)}
           >
             {submitting ? "Connecting..." : "Connect"}
           </Button>

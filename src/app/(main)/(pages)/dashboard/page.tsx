@@ -1,28 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GitBranch, ExternalLink, RefreshCw } from "lucide-react";
+import { Plug } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
-
-type Repo = {
-  id: string;
-  name: string;
-  url: string;
-  branch: string;
-  status: string;
-  lastSync: string | null;
-};
+import { connectionIcons } from "@/lib/constants";
+import type { Connection, ConnectionType } from "@/lib/types";
 
 export default function DashboardPage() {
   const { request, loading } = useApi();
-  const [repos, setRepos] = useState<Repo[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
 
   useEffect(() => {
-    request<Repo[]>({ endpoint: "/api/repos" }).then((data) => {
-      if (data) setRepos(data);
+    request<Connection[]>({ endpoint: "/api/connections" }).then((data) => {
+      if (data) setConnections(data);
     });
   }, [request]);
 
@@ -31,57 +25,52 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Your repos at a glance.</p>
+          <p className="text-muted-foreground">Your connections at a glance.</p>
         </div>
-        <Button variant="outline" size="sm">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Sync All
-        </Button>
+        <a href="/connections">
+          <Button variant="outline" size="sm">
+            <Plug className="mr-2 h-4 w-4" />
+            Manage Connections
+          </Button>
+        </a>
       </div>
 
-      {repos.length === 0 && !loading && (
+      {connections.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No repos yet. Go to{" "}
+            No connections yet. Go to{" "}
             <a href="/connections" className="text-primary underline">
               Connections
             </a>{" "}
-            to add your first repo.
+            to add your first service.
           </CardContent>
         </Card>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {repos.map((repo) => (
-          <Card key={repo.id} className="hover:border-primary/50 transition-colors">
-            <CardHeader className="space-y-1">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{repo.name}</CardTitle>
-                <Badge variant={repo.status === "active" ? "default" : "secondary"}>
-                  {repo.status}
+        {connections.map((conn) => (
+          <Card key={conn.id} className="hover:border-primary/50 transition-colors">
+            <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                <Image
+                  src={connectionIcons[conn.type as ConnectionType] ?? "/github.png"}
+                  alt={conn.type}
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base truncate">{conn.name}</CardTitle>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-0.5">
+                  {conn.type}
                 </Badge>
               </div>
-              <CardDescription className="flex items-center gap-1 text-xs font-mono">
-                <GitBranch className="h-3 w-3" />
-                {repo.branch}
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {repo.lastSync
-                    ? `Synced ${new Date(repo.lastSync).toLocaleDateString()}`
-                    : "Never synced"}
-                </span>
-                <a
-                  href={repo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
+              {conn.description && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{conn.description}</p>
+              )}
             </CardContent>
           </Card>
         ))}

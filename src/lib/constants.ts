@@ -3,8 +3,17 @@ import type { ConnectionType, IntegrationConfig } from "./types";
 export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
   GitHub: {
     inputs: [
-      { key: "personalAccessToken", type: "password" },
-      { key: "repoUrl", type: "text" },
+      { key: "patToken", type: "password", label: "Personal Access Token" },
+    ],
+    checkboxes: [],
+  },
+  PostgreSQL: {
+    inputs: [
+      { key: "host", type: "text", label: "Host" },
+      { key: "port", type: "text", label: "Port", defaultValue: "5432" },
+      { key: "database", type: "text", label: "Database" },
+      { key: "user", type: "text", label: "User" },
+      { key: "password", type: "password", label: "Password" },
     ],
     checkboxes: [],
   },
@@ -37,6 +46,7 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
 
 export const connectionIcons: Record<ConnectionType, string> = {
   GitHub: "/github.png",
+  PostgreSQL: "/postgresql.png",
   Slack: "/slack.png",
   Discord: "/discord.png",
   OpenAI: "/openai.png",
