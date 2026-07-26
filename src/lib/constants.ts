@@ -41,6 +41,11 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     ],
     checkboxes: [],
   },
+  SMTP: {
+    inputs: [],
+    checkboxes: [],
+    comingSoon: true,
+  },
   Notion: {
     inputs: [],
     checkboxes: [],
@@ -59,7 +64,8 @@ export const connectionIcons: Record<ConnectionType, string> = {
   Webhook: "/webhook.svg",
   Slack: "/slack.png",
   Discord: "/discord.png",
-  AI: "/openai.png",
+  AI: "/dd-logo.svg",
+  SMTP: "/dd-logo.svg",
   Notion: "/notion.png",
   "Google Drive": "/googleDrive.png",
 };
