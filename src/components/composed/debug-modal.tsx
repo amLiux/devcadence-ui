@@ -62,7 +62,7 @@ export function DebugModal({ open, onOpenChange, title, steps, running }: DebugM
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-6xl max-h-[80vh] p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Terminal className="h-4 w-4" />
