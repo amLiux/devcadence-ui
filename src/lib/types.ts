@@ -1,4 +1,4 @@
-export type ConnectionType = "GitHub" | "PostgreSQL" | "Slack" | "Discord" | "OpenAI" | "Notion" | "Google Drive";
+export type ConnectionType = "GitHub" | "PostgreSQL" | "Webhook" | "Slack" | "Discord" | "OpenAI" | "Notion" | "Google Drive";
 
 export interface Connection {
   id: string;
