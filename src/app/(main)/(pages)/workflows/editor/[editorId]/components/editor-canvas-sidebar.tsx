@@ -1,35 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { GitBranch, Zap, Settings, GripVertical, GitFork, Database } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
-import type { EditorNodeData } from "@/lib/types";
+import type { EditorNodeData, Connection } from "@/lib/types";
 import { SETTINGS_REGISTRY } from "./node-settings";
 
 interface NodeCardDef {
   type: EditorNodeData["type"];
   title: string;
   description: string;
+  requiresConnection?: Connection["type"];
 }
 
 const triggerNodes: NodeCardDef[] = [
   { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event" },
   { type: "Trigger", title: "Schedule", description: "Trigger on a cron schedule" },
-  { type: "GitHub", title: "Listen Commits", description: "Trigger on new pushes to a repo" },
+  { type: "GitHub", title: "Listen Commits", description: "Trigger on new pushes to a repo", requiresConnection: "GitHub" },
   {
     type: "GitHub",
     title: "Listen Pull Requests",
     description: "Trigger on PR events (open, close, merge)",
+    requiresConnection: "GitHub",
   },
   {
     type: "GitHub",
     title: "Listen Issues",
     description: "Trigger on issue events (open, close, label)",
+    requiresConnection: "GitHub",
   },
-  { type: "GitHub", title: "Listen Comments", description: "Trigger on comments on issues or PRs" },
-  { type: "GitHub", title: "Listen Releases", description: "Trigger when a release is published" },
+  { type: "GitHub", title: "Listen Comments", description: "Trigger on comments on issues or PRs", requiresConnection: "GitHub" },
+  { type: "GitHub", title: "Listen Releases", description: "Trigger when a release is published", requiresConnection: "GitHub" },
 ];
 
 const actionNodes: NodeCardDef[] = [
@@ -37,17 +40,18 @@ const actionNodes: NodeCardDef[] = [
     type: "GitHub",
     title: "Create Issue",
     description: "Create a new issue with labels and assignees",
+    requiresConnection: "GitHub",
   },
-  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR" },
-  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR" },
-  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request" },
+  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR", requiresConnection: "GitHub" },
+  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR", requiresConnection: "GitHub" },
+  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub" },
   { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API" },
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
-  { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query" },
-  { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table" },
-  { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table" },
-  { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table" },
+  { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query", requiresConnection: "PostgreSQL" },
+  { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table", requiresConnection: "PostgreSQL" },
+  { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table", requiresConnection: "PostgreSQL" },
+  { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table", requiresConnection: "PostgreSQL" },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -120,9 +124,23 @@ function NodeSettingsForm() {
 export function EditorCanvasSidebar() {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
   const hasNodes = editor.elements.length > 0;
+  const [configuredTypes, setConfiguredTypes] = useState<Set<Connection["type"]>>(new Set());
 
-  const availableTriggerNodes = hasNodes ? [] : triggerNodes;
-  const availableActionNodes = actionNodes;
+  useEffect(() => {
+    fetch("/api/connections")
+      .then((r) => r.json())
+      .then((conns: Connection[]) => {
+        const types = new Set(conns.map((c) => c.type));
+        setConfiguredTypes(types);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isAvailable = (node: NodeCardDef) =>
+    !node.requiresConnection || configuredTypes.has(node.requiresConnection);
+
+  const availableTriggerNodes = hasNodes ? [] : triggerNodes.filter(isAvailable);
+  const availableActionNodes = actionNodes.filter(isAvailable);
 
   return (
     <div className="h-full flex flex-col">
