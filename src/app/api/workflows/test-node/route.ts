@@ -22,12 +22,13 @@ import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowContext } 
 interface TestNodeRequest {
   node: EditorNode;
   edges?: EditorEdge[];
+  nodes?: EditorNode[];
   context?: WorkflowContext;
 }
 
 export async function POST(req: Request) {
   try {
-    const { node, edges, context } = (await req.json()) as TestNodeRequest;
+    const { node, edges, nodes: clientNodes, context } = (await req.json()) as TestNodeRequest;
 
     const meta = (node.data.metadata || {}) as Record<string, string>;
     const { title, type } = node.data;
@@ -37,12 +38,13 @@ export async function POST(req: Request) {
     if (edges && context && edges.length > 0) {
       const parents = buildParentMap(edges);
       const contextOutputs = outputsFromContext(context);
-      ancestorChain = buildAncestorChain(node.id, parents, contextOutputs, [
+      const allNodes = clientNodes ?? [
         ...Object.entries(context).map(([id, entry]) => ({
           id,
           data: { title: entry.name },
         })),
-      ] as EditorNode[]);
+      ] as EditorNode[];
+      ancestorChain = buildAncestorChain(node.id, parents, contextOutputs, allNodes);
     }
 
     const now = () => new Date().toISOString();
