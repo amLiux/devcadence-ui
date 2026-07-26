@@ -199,7 +199,7 @@ export function EditorCanvas({ workflow }: Props) {
         endpoint: `/api/workflows/${workflow.id}`,
         method: "PUT",
         data: {
-          nodes: JSON.stringify(nodes),
+          nodes: JSON.stringify(editor.elements),
           edges: JSON.stringify(edges),
         },
       });
