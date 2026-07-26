@@ -121,7 +121,7 @@ export function TransformDataSettings({ meta, handleChange, parentOutput, hasPar
         <Input className="h-8 text-xs" placeholder="myOutput" value={meta.outputName || ""} onChange={(e) => handleChange("outputName", e.target.value)} />
       </div>
       <p className="text-[10px] text-muted-foreground">
-        Name this output so downstream nodes see <code className="bg-muted px-1 rounded">{"{ myOutput: value }"}</code> instead of a bare value.
+        Name this output to reference it directly in downstream nodes. If you name it <code className="bg-muted px-1 rounded">step1</code>, downstream nodes can use <code className="bg-muted px-1 rounded">step1.field</code> instead of chaining <code className="bg-muted px-1 rounded">previousStep.previousStep.field</code>.
       </p>
       <div className="space-y-1.5">
         <Label className="text-xs">Sample Input (JSON, for standalone test)</Label>

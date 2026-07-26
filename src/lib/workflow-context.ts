@@ -57,6 +57,7 @@ export function buildAncestorChain(
 
   const step: ContextStep = {
     name: parentNode?.data.title ?? "Unknown",
+    outputName: (parentNode?.data.metadata as Record<string, string>)?.outputName || undefined,
     output: parentOutput.data ?? null,
     success: parentOutput.success,
     error: parentOutput.error,
@@ -109,12 +110,44 @@ export function wrapTransformOutput(outputName: string | undefined, result: any)
 /**
  * Resolve the input for an expression node (Transform Data / Conditional).
  * Uses the ancestor chain output if available, otherwise falls back to meta.body.
+ *
+ * Builds a flat object where:
+ * - `previousStep` = immediate parent's output (quick access)
+ * - Named outputs (from Output Name) are top-level keys (no chaining needed)
+ *   e.g. if ancestor has outputName "step1", then `step1.test` works directly
  */
-export function resolveExpressionInput(
-  meta: Record<string, string>,
-  ancestorChain: ContextStep | undefined,
-): unknown {
-  return ancestorChain?.output ?? (meta.body ? JSON.parse(meta.body) : {});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildExpressionChain(chain: ContextStep | undefined, flat?: Record<string, any>): any {
+  if (!chain) return {};
+
+  // Collect named outputs into flat object
+  if (!flat) flat = {};
+  if (chain.outputName && chain.output && typeof chain.output === "object") {
+    flat[chain.outputName] = chain.output;
+  }
+
+  // Recurse to grandparent first, so flat collects all ancestors
+  if (chain.previousStep) {
+    buildExpressionChain(chain.previousStep, flat);
+  }
+
+  // Build the immediate parent object with previousStep pointing to grandparent's output
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parentOutput: any = chain.output && typeof chain.output === "object" ? { ...chain.output } : {};
+  if (chain.previousStep) {
+    parentOutput.previousStep = chain.previousStep.output ?? {};
+  }
+
+  // Merge: named outputs at top level, previousStep for quick parent access
+  return { ...flat, previousStep: parentOutput };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function resolveExpressionInput(meta: Record<string, string>, ancestorChain: ContextStep | undefined): any {
+  if (ancestorChain) {
+    return buildExpressionChain(ancestorChain);
+  }
+  return meta.body ? JSON.parse(meta.body) : {};
 }
 
 /**
