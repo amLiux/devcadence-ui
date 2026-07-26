@@ -103,6 +103,13 @@ export function GitHubIssueSelect({ value, onChange, repo, type = "all" }: GitHu
     }
   }, [open, owner, repoName, loadIssues]);
 
+  useEffect(() => {
+    if (value && owner && repoName && !loadedRef.current) {
+      loadedRef.current = true;
+      loadIssues();
+    }
+  }, [value, owner, repoName, loadIssues]);
+
   const filtered = items.filter((item) => {
     if (type === "issues") return !item.pull_request;
     if (type === "pulls") return !!item.pull_request;
