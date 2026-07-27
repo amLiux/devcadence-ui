@@ -2,6 +2,68 @@ import { prisma } from "@/lib/db";
 import { resolveTemplates } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
+// --- 4-layer system prompt assembly ---
+
+const NODE_INSTRUCTIONS: Record<string, string> = {
+  prompt: "",
+  classify: "",
+  extract: "",
+};
+
+export async function buildSystemPrompt(
+  meta: Record<string, string>,
+  nodeType: "prompt" | "classify" | "extract",
+): Promise<string> {
+  const parts: string[] = [];
+
+  // 1. Persona
+  if (meta.personaId) {
+    const persona = await prisma.aIPersona.findUnique({ where: { id: meta.personaId } });
+    if (persona) {
+      parts.push(`# Identity\nYou are ${persona.name}.\n\n${persona.systemPrompt}`);
+      if (persona.tone) parts.push(`Tone: ${persona.tone}`);
+    }
+  }
+
+  // 2. Context
+  if (meta.contextIds) {
+    const ids = meta.contextIds.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length) {
+      const contexts = await prisma.aIContext.findMany({ where: { id: { in: ids } } });
+      if (contexts.length) {
+        const block = contexts.map((c) => `## ${c.name}\n${c.content}`).join("\n\n");
+        parts.push(`# Context\n${block}`);
+      }
+    }
+  }
+
+  // 3. Memory
+  if (meta.memoryIds) {
+    const ids = meta.memoryIds.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length) {
+      const memories = await prisma.aIMemory.findMany({ where: { id: { in: ids } } });
+      if (memories.length) {
+        const block = memories.map((m) => `## ${m.name}\n${m.content}`).join("\n\n");
+        parts.push(`# Memory\n${block}`);
+      }
+    }
+  }
+
+  // 4. Node-specific instructions
+  if (nodeType === "classify") {
+    const categories = meta.categories?.split(",").map((c) => c.trim()).filter(Boolean) || [];
+    parts.push(`Classify the following text into exactly one of these categories: ${categories.join(", ")}.\nRespond with ONLY the category name, nothing else.`);
+  } else if (nodeType === "extract") {
+    const fields = meta.fields?.split(",").map((f) => f.trim()).filter(Boolean) || [];
+    parts.push(`Extract the following fields from the text: ${fields.join(", ")}.\nRespond with a valid JSON object where each key is a field name and the value is the extracted content.\nIf a field is not found, use null.\nDo NOT include any markdown formatting, just the raw JSON.`);
+  } else {
+    // prompt node — use explicit systemPrompt or default
+    parts.push(meta.systemPrompt || "You are a helpful assistant.");
+  }
+
+  return parts.join("\n\n---\n\n");
+}
+
 interface AIProviderConfig {
   provider: string;
   apiKey: string;
@@ -108,9 +170,8 @@ export async function handlePrompt(
 
   const config = await getAIConfig(connectionId);
   const resolvedPrompt = resolveTemplates(meta.prompt, ancestorChain);
-  const resolvedSystemPrompt = meta.systemPrompt
-    ? resolveTemplates(meta.systemPrompt, ancestorChain)
-    : "You are a helpful assistant.";
+  const baseSystemPrompt = await buildSystemPrompt(meta, "prompt");
+  const resolvedSystemPrompt = resolveTemplates(baseSystemPrompt, ancestorChain);
 
   const response = await callAI(config, resolvedSystemPrompt, resolvedPrompt);
   return {
@@ -134,9 +195,7 @@ export async function handleClassify(
   const config = await getAIConfig(connectionId);
   const resolvedText = resolveTemplates(meta.text, ancestorChain);
   const categories = meta.categories.split(",").map((c) => c.trim());
-
-  const systemPrompt = `Classify the following text into exactly one of these categories: ${categories.join(", ")}.
-Respond with ONLY the category name, nothing else.`;
+  const systemPrompt = await buildSystemPrompt(meta, "classify");
 
   const response = await callAI(config, systemPrompt, resolvedText);
   const classification = response.trim();
@@ -162,11 +221,7 @@ export async function handleExtract(
   const config = await getAIConfig(connectionId);
   const resolvedText = resolveTemplates(meta.text, ancestorChain);
   const fields = meta.fields.split(",").map((f) => f.trim());
-
-  const systemPrompt = `Extract the following fields from the text: ${fields.join(", ")}.
-Respond with a valid JSON object where each key is a field name and the value is the extracted content.
-If a field is not found, use null.
-Do NOT include any markdown formatting, just the raw JSON.`;
+  const systemPrompt = await buildSystemPrompt(meta, "extract");
 
   const response = await callAI(config, systemPrompt, resolvedText);
 
