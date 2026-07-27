@@ -28,6 +28,7 @@ import {
   PostgresDeleteSettings,
 } from "./postgresql";
 import { WebhookSettings } from "./webhook-trigger";
+import { PromptSettings, ClassifySettings, ExtractSettings } from "./ai";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   return (
@@ -59,6 +60,9 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "PostgreSQL Insert": PostgresInsertSettings,
   "PostgreSQL Update": PostgresUpdateSettings,
   "PostgreSQL Delete": PostgresDeleteSettings,
+  Prompt: PromptSettings,
+  Classify: ClassifySettings,
+  Extract: ExtractSettings,
 };
 
 export { SETTINGS_REGISTRY };

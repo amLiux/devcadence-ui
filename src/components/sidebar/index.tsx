@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plug, LayoutDashboard, Settings, LogOut, GitBranch } from "lucide-react";
+import { Plug, LayoutDashboard, Settings, LogOut, GitBranch, Sparkles, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 
@@ -10,6 +10,8 @@ const menuOptions = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { name: "Workflows", icon: GitBranch, href: "/workflows" },
   { name: "Connections", icon: Plug, href: "/connections" },
+  { name: "AI", icon: Sparkles, href: "/ai" },
+  { name: "Docs", icon: BookOpen, href: "/docs" },
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -31,7 +33,9 @@ export default function Sidebar() {
                   path === item.href ||
                   (item.href === "/workflows" && path.startsWith("/workflows"))
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    : item.name === "AI"
+                      ? "text-purple-500 hover:text-purple-400 hover:bg-purple-500/10"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               />
             }

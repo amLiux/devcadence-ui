@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -52,6 +52,9 @@ const actionNodes: NodeCardDef[] = [
   { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table", requiresConnection: "PostgreSQL" },
   { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table", requiresConnection: "PostgreSQL" },
   { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table", requiresConnection: "PostgreSQL" },
+  { type: "AI", title: "Prompt", description: "Send a prompt to AI and get a response", requiresConnection: "AI" },
+  { type: "AI", title: "Classify", description: "Classify text into categories using AI", requiresConnection: "AI" },
+  { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI" },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -60,6 +63,7 @@ const iconMap: Record<string, React.ReactNode> = {
   GitHub: <GitBranch className="h-3 w-3 text-foreground" />,
   Conditional: <GitFork className="h-3 w-3 text-orange-500" />,
   PostgreSQL: <Database className="h-3 w-3 text-blue-600" />,
+  AI: <Sparkles className="h-3 w-3 text-purple-500" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {

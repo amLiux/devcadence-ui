@@ -17,6 +17,9 @@ import {
   handlePostgresInsert,
   handlePostgresUpdate,
   handlePostgresDelete,
+  handlePrompt,
+  handleClassify,
+  handleExtract,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowTriggerType } from "@/lib/types";
@@ -57,6 +60,12 @@ async function executeNode(
       result = await handlePostgresUpdate(meta, ancestorChain);
     } else if (title === "PostgreSQL Delete") {
       result = await handlePostgresDelete(meta, ancestorChain);
+    } else if (title === "Prompt") {
+      result = await handlePrompt(meta, ancestorChain);
+    } else if (title === "Classify") {
+      result = await handleClassify(meta, ancestorChain);
+    } else if (title === "Extract") {
+      result = await handleExtract(meta, ancestorChain);
     } else {
       result = await handleGithubAction(title, meta, ancestorChain);
     }

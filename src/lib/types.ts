@@ -1,4 +1,4 @@
-export type ConnectionType = "GitHub" | "PostgreSQL" | "Webhook" | "Slack" | "Discord" | "AI" | "SMTP" | "Notion" | "Google Drive";
+export type ConnectionType = "GitHub" | "PostgreSQL" | "Webhook" | "Slack" | "Discord" | "AI" | "SMTP" | "SSH" | "Gmail" | "Notion" | "Google Drive";
 
 export interface Connection {
   id: string;
@@ -32,9 +32,10 @@ export interface ConnectionData {
 
 export interface InputConfig {
   key: string;
-  type: "text" | "password";
+  type: "text" | "password" | "select";
   label?: string;
   defaultValue?: string;
+  options?: { value: string; label: string }[];
 }
 
 export interface CheckboxConfig {
@@ -47,6 +48,8 @@ export interface IntegrationConfig {
   inputs: InputConfig[];
   checkboxes: CheckboxConfig[];
   comingSoon?: boolean;
+  description?: string;
+  features?: string[];
 }
 
 export interface Workflow {
@@ -79,7 +82,7 @@ export interface EditorNodeData {
   completed: boolean;
   current: boolean;
   metadata: Record<string, unknown>;
-  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL";
+  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL" | "AI";
 }
 
 export interface EditorEdge {
