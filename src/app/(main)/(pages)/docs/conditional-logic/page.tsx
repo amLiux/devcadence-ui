@@ -235,8 +235,8 @@ export default function ConditionalLogicPage() {
         <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/5 px-4 py-2.5">
           <Check className="h-4 w-4 text-green-500 shrink-0" />
           <span className="text-sm text-green-600 font-medium">You completed all conditional logic questions!</span>
-          <Link href="/docs/nodes" className="ml-auto text-xs text-primary hover:underline flex items-center gap-1">
-            Next: Node Types <ArrowRight className="h-3 w-3" />
+          <Link href="/docs/reusable-workflows" className="ml-auto text-xs text-primary hover:underline flex items-center gap-1">
+            Next: Reusable Workflows <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
       )}
@@ -402,8 +402,8 @@ export default function ConditionalLogicPage() {
           <ArrowRight className="h-3 w-3 rotate-180" />
           Previous: Template Variables
         </Link>
-        <Link href="/docs/nodes" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-          Next: Node Types
+        <Link href="/docs/reusable-workflows" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          Next: Reusable Workflows
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>

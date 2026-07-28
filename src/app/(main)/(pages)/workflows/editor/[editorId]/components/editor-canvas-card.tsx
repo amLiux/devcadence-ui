@@ -25,6 +25,7 @@ interface CardData {
 function EditorCanvasCardInner({ data, id }: NodeProps) {
   const { title, description, type } = data as CardData;
   const { editor } = useEditor();
+  const isTrigger = type === "Trigger";
   const isConditional = title === "Conditional";
 
   const parentMap = useMemo(() => buildParentMap(editor.edges), [editor.edges]);
@@ -71,11 +72,13 @@ function EditorCanvasCardInner({ data, id }: NodeProps) {
 
   return (
     <div className="relative group">
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background"
-      />
+      {!isTrigger && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background"
+        />
+      )}
       <div
         className={`rounded-lg border bg-background p-3 shadow-sm w-fit min-w-[220px] max-w-[300px] transition-all duration-200 ${borderClass}`}
       >

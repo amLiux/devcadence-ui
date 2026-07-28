@@ -5,6 +5,7 @@ import type { Workflow } from "@/lib/types";
 interface UpdateWorkflowBody {
   name?: string;
   description?: string;
+  type?: string;
   nodes?: string;
   edges?: string;
   flowPath?: string;
@@ -15,6 +16,7 @@ function simplifyWorkflow(w: {
   id: string;
   name: string;
   description: string;
+  type: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
@@ -26,6 +28,7 @@ function simplifyWorkflow(w: {
     id: w.id,
     name: w.name,
     description: w.description,
+    type: w.type,
     nodes: w.nodes,
     edges: w.edges,
     flowPath: w.flowPath,
@@ -58,10 +61,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
+        ...(body.type !== undefined && { type: body.type }),
         ...(body.nodes !== undefined && { nodes: body.nodes }),
         ...(body.edges !== undefined && { edges: body.edges }),
         ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
-        ...(body.publish !== undefined && { publish: body.publish }),
+        ...(body.publish !== undefined && {
+          publish: body.publish,
+          status: body.publish ? "active" : "draft",
+        }),
       },
     });
     return NextResponse.json(simplifyWorkflow(workflow));

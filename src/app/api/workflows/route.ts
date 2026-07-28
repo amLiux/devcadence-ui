@@ -5,12 +5,14 @@ import type { Workflow } from "@/lib/types";
 interface CreateWorkflowBody {
   name: string;
   description?: string;
+  type?: string;
 }
 
 function simplifyWorkflow(w: {
   id: string;
   name: string;
   description: string;
+  type: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
@@ -22,6 +24,7 @@ function simplifyWorkflow(w: {
     id: w.id,
     name: w.name,
     description: w.description,
+    type: w.type,
     nodes: w.nodes,
     edges: w.edges,
     flowPath: w.flowPath,
@@ -31,12 +34,18 @@ function simplifyWorkflow(w: {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const type = searchParams.get("type");
+
+    const where = type ? { type } : undefined;
+
     const workflows = await prisma.workflow.findMany({
+      where,
       orderBy: { updatedAt: "desc" },
     });
-    return NextResponse.json(workflows.map(simplifyWorkflow));
+    return NextResponse.json({ workflows: workflows.map(simplifyWorkflow) });
   } catch (error) {
     console.error("GET /api/workflows error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Failed to fetch workflows" }, { status: 500 });
@@ -50,6 +59,7 @@ export async function POST(req: Request) {
       data: {
         name: body.name || "Untitled Workflow",
         description: body.description || "",
+        type: body.type || "workflow",
       },
     });
     return NextResponse.json(simplifyWorkflow(workflow), { status: 201 });

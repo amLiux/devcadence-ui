@@ -21,7 +21,6 @@ import {
   handlePrompt,
   handleClassify,
   handleExtract,
-  handleCallWorkflow,
   handleInput,
   handleReturn,
   handleBuildJson,
@@ -29,10 +28,9 @@ import {
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry } from "@/lib/types";
 
-interface TestWorkflowRequest {
+interface ExecuteSubWorkflowRequest {
   workflowId: string;
-  nodes?: EditorNode[];
-  edges?: EditorEdge[];
+  input: Record<string, unknown>;
 }
 
 async function executeNode(
@@ -75,8 +73,6 @@ async function executeNode(
       result = await handleClassify(meta, ancestorChain);
     } else if (title === "Extract") {
       result = await handleExtract(meta, ancestorChain);
-    } else if (title === "Call Workflow") {
-      result = await handleCallWorkflow(meta, ancestorChain);
     } else if (title === "Input") {
       result = await handleInput(meta, ancestorChain);
     } else if (title === "Return") {
@@ -115,104 +111,113 @@ async function executeNode(
 
 export async function POST(req: Request) {
   try {
-    const {
-      workflowId,
-      nodes: clientNodes,
-      edges: clientEdges,
-    } = (await req.json()) as TestWorkflowRequest;
+    const { workflowId, input } = (await req.json()) as ExecuteSubWorkflowRequest;
 
-    let nodes: EditorNode[];
-    let edges: EditorEdge[];
+    const workflow = await prisma.workflow.findUnique({
+      where: { id: workflowId },
+    });
 
-    if (clientNodes && clientNodes.length > 0) {
-      nodes = clientNodes;
-      edges = clientEdges || [];
-    } else {
-      const workflow = await prisma.workflow.findUnique({ where: { id: workflowId } });
-      if (!workflow) {
-        return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
-      }
-      nodes = workflow.nodes ? JSON.parse(workflow.nodes) : [];
-      edges = workflow.edges ? JSON.parse(workflow.edges) : [];
+    if (!workflow) {
+      return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
     }
+
+    if (workflow.type !== "sub-workflow") {
+      return NextResponse.json({ error: "Workflow is not a reusable sub-workflow" }, { status: 400 });
+    }
+
+    const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
+    const edges: EditorEdge[] = workflow.edges ? JSON.parse(workflow.edges) : [];
 
     if (nodes.length === 0) {
       return NextResponse.json({ error: "Workflow has no nodes" }, { status: 400 });
     }
 
-    const parents = buildParentMap(edges);
-    const forward = buildForwardMap(edges);
-    const roots = findRoots(nodes, edges);
+    // Inject input data into the Input node's metadata
+    const inputNode = nodes.find((n) => n.data.title === "Input");
+    if (inputNode) {
+      const inputMeta = (inputNode.data.metadata || {}) as Record<string, string>;
+      const inputValues = Object.values(input);
+      
+      // Match input values by position to input_1, input_2, input_3
+      for (let i = 0; i < inputValues.length; i++) {
+        const key = `input_${i + 1}`;
+        const value = inputValues[i];
+        inputMeta[key] = typeof value === "string" ? value : JSON.stringify(value);
+      }
+      
+      inputNode.data.metadata = inputMeta;
+    }
 
-    const nodeOutputs = new Map<string, NodeOutput>();
-    const results: NodeDebugLog[] = [];
+    // Build execution order
+    const parentMap = buildParentMap(edges);
+    const forwardMap = buildForwardMap(edges);
+    const rootNodes = findRoots(nodes, edges);
+    const executionOrder = rootNodes.map((n) => n.id);
+
+    if (executionOrder.length === 0) {
+      return NextResponse.json({ error: "No root nodes found" }, { status: 400 });
+    }
+
+    // Execute nodes in order
+    const context: Record<string, NodeOutput> = {};
+    const debugLogs: NodeDebugLog[] = [];
+    let lastResult: unknown = undefined;
+
     const visited = new Set<string>();
+    const queue = [...executionOrder];
 
-    async function walk(nodeId: string) {
-      if (visited.has(nodeId)) return;
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      if (visited.has(nodeId)) continue;
       visited.add(nodeId);
 
-      const node = nodes.find((n: EditorNode) => n.id === nodeId) as EditorNode | undefined;
-      if (!node) return;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) continue;
 
-      const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
-      const { debugLog, data } = await executeNode(node, chain);
-      results.push(debugLog);
+      // Check if all parents are processed
+      const parents = parentMap.get(nodeId) || [];
+      if (parents.some((p) => !visited.has(p))) {
+        // Re-queue this node
+        queue.push(nodeId);
+        continue;
+      }
 
-      nodeOutputs.set(nodeId, {
-        data: data ?? null,
-        success: debugLog.success,
-        error: debugLog.success ? null : debugLog.logs.find((l) => l.type === "error")?.message ?? "Unknown error",
-      });
+      const ancestorChain = buildAncestorChain(nodeId, parentMap, new Map(Object.entries(context)), nodes);
+      const { debugLog, data } = await executeNode(node, ancestorChain);
 
-      const children = forward.get(nodeId) || [];
+      debugLogs.push(debugLog);
+      context[nodeId] = { data, success: true, error: null };
+      lastResult = data;
 
-      if (node.data.title === "Conditional" && data && typeof data === "object" && "condition" in data) {
-        const condition = (data as { condition: boolean }).condition;
-        const targetHandle = condition ? "success" : "failure";
-        const matching = children.find((c) => c.sourceHandle === targetHandle);
-        if (matching) {
-          await walk(matching.targetId);
-        }
-      } else {
-        for (const child of children) {
-          await walk(child.targetId);
+      // Add children to queue
+      const children = forwardMap.get(nodeId) || [];
+      for (const child of children) {
+        if (!visited.has(child.targetId)) {
+          queue.push(child.targetId);
         }
       }
     }
 
-    for (const root of roots) {
-      await walk(root.id);
+    // Find Return node output
+    const returnNode = nodes.find((n) => n.data.title === "Return");
+    let output = lastResult;
+    if (returnNode) {
+      const returnContext = context[returnNode.id];
+      if (returnContext?.data) {
+        output = returnContext.data;
+      }
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const fullContext: Record<string, any> = {};
-    for (const [nodeId, output] of nodeOutputs) {
-      const node = nodes.find((n: EditorNode) => n.id === nodeId) as EditorNode | undefined;
-      fullContext[nodeId] = {
-        name: node?.data.title ?? "Unknown",
-        ...output,
-      };
-    }
-
-    const allPassed = results.every((r) => r.success);
 
     return NextResponse.json({
-      success: allPassed,
-      steps: results,
-      context: fullContext,
-      message: allPassed
-        ? `All ${results.length} node(s) passed`
-        : `${results.filter((r) => r.success).length}/${results.length} nodes passed`,
+      success: true,
+      output,
+      debugLogs,
     });
   } catch (error) {
-    console.error(
-      "POST /api/workflows/test-workflow error:",
-      error instanceof Error ? error.message : error,
-    );
+    console.error("Sub-workflow execution error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Workflow test failed" },
-      { status: 500 },
+      { error: error instanceof Error ? error.message : "Execution failed" },
+      { status: 500 }
     );
   }
 }

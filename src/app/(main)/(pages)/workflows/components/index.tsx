@@ -12,8 +12,8 @@ export function Workflows() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
-    request<Workflow[]>({ endpoint: "/api/workflows" }).then((data) => {
-      if (data) setWorkflows(data);
+    request<{ workflows: Workflow[] }>({ endpoint: "/api/workflows" }).then((data) => {
+      if (data?.workflows) setWorkflows(data.workflows);
     });
   }, [request]);
 

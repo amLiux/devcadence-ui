@@ -48,24 +48,28 @@ export function buildAncestorChain(
   const parentIds = parents.get(nodeId);
   if (!parentIds || parentIds.length === 0) return undefined;
 
-  const parentId = parentIds[0];
-  const parentOutput = outputs.get(parentId);
-  if (!parentOutput) return undefined;
+  // Try all parents, use the first one with available output
+  for (const parentId of parentIds) {
+    const parentOutput = outputs.get(parentId);
+    if (!parentOutput) continue;
 
-  const parentNode = nodes.find((n) => n.id === parentId);
-  const grandparentChain = buildAncestorChain(parentId, parents, outputs, nodes);
+    const parentNode = nodes.find((n) => n.id === parentId);
+    const grandparentChain = buildAncestorChain(parentId, parents, outputs, nodes);
 
-  const step: ContextStep = {
-    name: parentNode?.data.title ?? "Unknown",
-    outputName: (parentNode?.data.metadata as Record<string, string>)?.outputName || undefined,
-    output: parentOutput.data ?? null,
-    success: parentOutput.success,
-    error: parentOutput.error,
-  };
-  if (grandparentChain) {
-    step.previousStep = grandparentChain;
+    const step: ContextStep = {
+      name: parentNode?.data.title ?? "Unknown",
+      outputName: (parentNode?.data.metadata as Record<string, string>)?.outputName || undefined,
+      output: parentOutput.data ?? null,
+      success: parentOutput.success,
+      error: parentOutput.error,
+    };
+    if (grandparentChain) {
+      step.previousStep = grandparentChain;
+    }
+    return step;
   }
-  return step;
+
+  return undefined;
 }
 
 /**
@@ -162,6 +166,11 @@ function buildExpressionChain(chain: ContextStep | undefined, flat?: Record<stri
     // Unwrap: if output is { step1: 45 }, extract just 45
     const wrapped = chain.output[chain.outputName];
     flat[chain.outputName] = wrapped !== undefined ? wrapped : chain.output;
+  }
+
+  // Special case: Input node output is accessible as "input"
+  if (chain.name === "Input" && chain.output && typeof chain.output === "object") {
+    flat["input"] = chain.output;
   }
 
   // Recurse to grandparent first, so flat collects all ancestors

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useApi } from "@/hooks/use-api";
 import { useModal } from "@/providers/modal-provider";
 import type { Workflow } from "@/lib/types";
@@ -15,6 +16,7 @@ export function WorkflowForm() {
   const { setClose } = useModal();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [reusable, setReusable] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -24,7 +26,7 @@ export function WorkflowForm() {
       const workflow = await request<Workflow>({
         endpoint: "/api/workflows",
         method: "POST",
-        data: { name: name.trim(), description: description.trim() },
+        data: { name: name.trim(), description: description.trim(), type: reusable ? "sub-workflow" : "workflow" },
       });
       if (workflow) {
         setClose();
@@ -53,6 +55,19 @@ export function WorkflowForm() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="What does this workflow do?"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label htmlFor="workflow-reusable">Reusable</Label>
+          <p className="text-[10px] text-muted-foreground">
+            Allow this workflow to be called by other workflows
+          </p>
+        </div>
+        <Switch
+          id="workflow-reusable"
+          checked={reusable}
+          onCheckedChange={setReusable}
         />
       </div>
       <div className="flex justify-end">

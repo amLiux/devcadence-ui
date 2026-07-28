@@ -56,6 +56,7 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
+  type: string;  // "workflow" | "sub-workflow"
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
@@ -92,11 +93,12 @@ export interface EditorEdge {
   sourceHandle?: string | null;
 }
 
-export type WorkflowTriggerType = "webhook" | "schedule" | "github" | "manual";
+export type WorkflowTriggerType = "webhook" | "schedule" | "github" | "sub-workflow" | "manual";
 
 const TRIGGER_TITLE_MAP: Record<string, WorkflowTriggerType> = {
   Webhook: "webhook",
   Schedule: "schedule",
+  Input: "sub-workflow",
   "Listen Commits": "github",
   "Listen Pull Requests": "github",
   "Listen Issues": "github",
@@ -104,7 +106,8 @@ const TRIGGER_TITLE_MAP: Record<string, WorkflowTriggerType> = {
   "Listen Releases": "github",
 };
 
-export function inferTriggerType(nodesJson: string | null): WorkflowTriggerType {
+export function inferTriggerType(nodesJson: string | null, workflowType?: string): WorkflowTriggerType {
+  if (workflowType === "sub-workflow") return "sub-workflow";
   if (!nodesJson) return "manual";
   try {
     const nodes = JSON.parse(nodesJson) as EditorNode[];
@@ -122,8 +125,27 @@ export const TRIGGER_TYPE_LABELS: Record<WorkflowTriggerType, string> = {
   webhook: "Webhook",
   schedule: "Scheduled",
   github: "GitHub Events",
+  "sub-workflow": "Reusable",
   manual: "Manual",
 };
+
+export function createDefaultSubWorkflowNodes() {
+  const now = Date.now();
+  return {
+    inputNode: {
+      id: `Trigger-${now}`,
+      type: "cardNode",
+      position: { x: 350, y: 100 },
+      data: { title: "Input", description: "Receive data from parent workflow", type: "Trigger", completed: false, current: false, metadata: {} },
+    },
+    returnNode: {
+      id: `Action-${now + 1}`,
+      type: "cardNode",
+      position: { x: 350, y: 350 },
+      data: { title: "Return", description: "Export values back to parent workflow", type: "Action", completed: false, current: false, metadata: {} },
+    },
+  };
+}
 
 export type LogLevel = "info" | "success" | "error" | "warning";
 

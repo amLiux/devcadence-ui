@@ -1,12 +1,13 @@
 import {
   evaluateExpression,
   resolveExpressionInput,
+  resolveTemplateVariables,
   wrapTransformOutput,
   type ContextStep,
 } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
-/** Handles Transform Data nodes — evaluates an expression against parent output. */
+/** Handles Transform Data nodes — resolves templates then evaluates expression against parent output. */
 export async function handleTransformData(
   meta: Record<string, string>,
   ancestorChain: ContextStep | undefined,
@@ -16,7 +17,9 @@ export async function handleTransformData(
   }
   try {
     const input = resolveExpressionInput(meta, ancestorChain);
-    const result = evaluateExpression(meta.expression, input);
+    // Resolve {{template}} variables first, then evaluate as JS expression
+    const resolvedExpr = resolveTemplateVariables(meta.expression, input);
+    const result = evaluateExpression(resolvedExpr, input);
     return {
       success: true,
       message: "Transform applied successfully",

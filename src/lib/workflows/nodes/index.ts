@@ -6,4 +6,8 @@ export { handleGithubAction } from "./github-actions";
 export { handlePostgresQuery, handlePostgresInsert, handlePostgresUpdate, handlePostgresDelete } from "./postgresql";
 export { handleWebhookTrigger } from "./webhook";
 export { handlePrompt, handleClassify, handleExtract } from "./ai";
+export { handleCallWorkflow } from "./call-workflow";
+export { handleBuildJson } from "./build-json";
+export { handleInput } from "./input";
+export { handleReturn } from "./return";
 export type { NodeHandlerResult, NodeHandlerContext } from "./types";

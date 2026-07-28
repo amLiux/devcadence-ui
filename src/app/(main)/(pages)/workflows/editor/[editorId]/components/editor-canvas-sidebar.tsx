@@ -48,6 +48,7 @@ const actionNodes: NodeCardDef[] = [
   { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub" },
   { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API" },
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
+  { type: "Action", title: "Build JSON", description: "Build a JSON object from fields" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
   { type: "Action", title: "Call Workflow", description: "Call a reusable sub-workflow" },
   { type: "Action", title: "Return", description: "Export values back to parent workflow (sub-workflows only)" },

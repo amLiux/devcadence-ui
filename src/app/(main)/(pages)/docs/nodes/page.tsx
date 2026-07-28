@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal, ArrowRightLeft, LogIn, LogOut } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface NodeDoc {
@@ -144,6 +144,54 @@ const NODE_DOCS: NodeDoc[] = [
       "POST to /api/webhooks/:connectionId with JSON body",
     ],
   },
+  {
+    title: "Call Workflow",
+    icon: <ArrowRightLeft className="h-4 w-4 text-emerald-500" />,
+    color: "border-emerald-500/30",
+    description: "Calls a reusable sub-workflow. Pass input, get output. Synchronous execution.",
+    requires: "At least one workflow marked as 'Reusable'",
+    settings: [
+      { key: "workflowId", desc: "Select a reusable workflow from the dropdown." },
+      { key: "input", desc: "JSON object passed to the sub-workflow's Input node." },
+    ],
+    examples: [
+      '{"credentials": "{{webhook.body.credentials}}"}',
+      '{"userId": "{{previousStep.userId}}", "apiKey": "{{previousStep.apiKey}}"}',
+    ],
+  },
+  {
+    title: "Input",
+    icon: <LogIn className="h-4 w-4 text-cyan-500" />,
+    color: "border-cyan-500/30",
+    description: "Receives data from a parent workflow's Call Workflow node. Only used in sub-workflows.",
+    requires: "Sub-workflow (marked as 'Reusable')",
+    settings: [
+      { key: "input_1", desc: "Field name — accessed as {{input.fieldName}}" },
+      { key: "input_2", desc: "Optional second field" },
+      { key: "input_3", desc: "Optional third field" },
+    ],
+    examples: [
+      "input_1: data — accessed as {{input.data}}",
+      "input_1: token, input_2: userId — accessed as {{input.token}}, {{input.userId}}",
+    ],
+  },
+  {
+    title: "Return",
+    icon: <LogOut className="h-4 w-4 text-amber-500" />,
+    color: "border-amber-500/30",
+    description: "Exports values back to the parent workflow. Only used in sub-workflows.",
+    requires: "Sub-workflow (marked as 'Reusable')",
+    settings: [
+      { key: "return_name_1", desc: "Export name — parent accesses as {{callWorkflow.name}}" },
+      { key: "return_value_1", desc: "Value to export (supports {{expression}})" },
+      { key: "return_name_2", desc: "Optional second export" },
+      { key: "return_value_2", desc: "Optional second value" },
+    ],
+    examples: [
+      "name: token, value: {{http.response.access_token}}",
+      "name: result, value: {{previousStep}}",
+    ],
+  },
 ];
 
 function NodeDocCard({ doc }: { doc: NodeDoc }) {
@@ -221,9 +269,17 @@ export default function NodesDocsPage() {
           <strong>Template variables:</strong> Most fields support <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> syntax.
           Reference data from previous steps with <code className="bg-muted px-1 rounded">previousStep.fieldName</code>.
         </p>
-        <Link href="/docs/workflow" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-          Back to Interactive Workflow
+      </div>
+
+      {/* Navigation */}
+      <div className="flex gap-4">
+        <Link href="/docs/reusable-workflows" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
           <ArrowRight className="h-3 w-3 rotate-180" />
+          Previous: Reusable Workflows
+        </Link>
+        <Link href="/docs/connections" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          Next: Connections & Triggers
+          <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </div>

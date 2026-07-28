@@ -66,8 +66,10 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
             type: "LOAD_DATA",
             payload: { elements: [inputNode, returnNode] as never[], edges: [] },
           });
-          // Defer markClean so snapshot is stored AFTER setNodes commits
-          setTimeout(() => markClean([inputNode, returnNode], []), 0);
+          setTimeout(() => {
+            markClean([inputNode, returnNode], []);
+            reactFlowInstance?.fitView({ padding: 0.2 });
+          }, 0);
         } else {
           setNodes(savedNodes);
           setEdges(savedEdges);
@@ -75,8 +77,10 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
             type: "LOAD_DATA",
             payload: { elements: savedNodes as never[], edges: savedEdges as never[] },
           });
-          // Defer markClean so snapshot is stored AFTER setNodes commits
-          setTimeout(() => markClean(savedNodes, savedEdges), 0);
+          setTimeout(() => {
+            markClean(savedNodes, savedEdges);
+            reactFlowInstance?.fitView({ padding: 0.2 });
+          }, 0);
         }
       } catch {
         // Invalid JSON, start fresh
@@ -89,9 +93,12 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
         type: "LOAD_DATA",
         payload: { elements: [inputNode, returnNode] as never[], edges: [] },
       });
-      setTimeout(() => markClean([inputNode, returnNode], []), 0);
+      setTimeout(() => {
+        markClean([inputNode, returnNode], []);
+        reactFlowInstance?.fitView({ padding: 0.2 });
+      }, 0);
     }
-  }, [workflow.nodes, workflow.edges, workflow.type, setNodes, setEdges, dispatch, markClean]);
+  }, [workflow.nodes, workflow.edges, workflow.type, setNodes, setEdges, dispatch, markClean, reactFlowInstance]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -371,7 +378,6 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               nodeTypes={nodeTypes}
-              fitView
               deleteKeyCode="Delete"
               className="bg-background"
             >

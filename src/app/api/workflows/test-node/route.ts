@@ -19,6 +19,10 @@ import {
   handlePrompt,
   handleClassify,
   handleExtract,
+  handleCallWorkflow,
+  handleInput,
+  handleReturn,
+  handleBuildJson,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowContext } from "@/lib/types";
@@ -62,6 +66,8 @@ export async function POST(req: Request) {
         result = await handleConditional(meta, ancestorChain);
       } else if (title === "Transform Data") {
         result = await handleTransformData(meta, ancestorChain);
+      } else if (title === "Build JSON") {
+        result = await handleBuildJson(meta, ancestorChain);
       } else if (title === "HTTP Request") {
         result = await handleHttpRequest(meta, ancestorChain);
       } else if (type === "Trigger" && title === "Webhook") {
@@ -82,6 +88,12 @@ export async function POST(req: Request) {
         result = await handleClassify(meta, ancestorChain);
       } else if (title === "Extract") {
         result = await handleExtract(meta, ancestorChain);
+      } else if (title === "Call Workflow") {
+        result = await handleCallWorkflow(meta, ancestorChain);
+      } else if (title === "Input") {
+        result = await handleInput(meta, ancestorChain);
+      } else if (title === "Return") {
+        result = await handleReturn(meta, ancestorChain);
       } else {
         result = await handleGithubAction(title, meta, ancestorChain);
       }

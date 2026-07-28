@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork } from "lucide-react";
+import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft } from "lucide-react";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
 const topics: { title: string; description: string; href: string; icon: React.ReactNode; tag: string; tagColor?: string; page: DocsPage }[] = [
@@ -49,6 +49,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     page: "conditional-logic",
   },
   {
+    title: "Reusable Workflows",
+    description: "Use workflows as nodes. Write auth once, call from any workflow.",
+    href: "/docs/reusable-workflows",
+    icon: <ArrowRightLeft className="h-5 w-5" />,
+    tag: "New",
+    tagColor: "text-emerald-500",
+    page: "reusable-workflows",
+  },
+  {
     title: "Node Types",
     description: "HTTP Request, Transform, AI, Conditional, PostgreSQL — settings and examples for each.",
     href: "/docs/nodes",
@@ -74,6 +83,7 @@ const iconColors: Record<string, string> = {
   nodes: "text-purple-500",
   "template-variables": "text-cyan-500",
   "conditional-logic": "text-amber-500",
+  "reusable-workflows": "text-emerald-500",
 };
 
 export default function DocsPage() {

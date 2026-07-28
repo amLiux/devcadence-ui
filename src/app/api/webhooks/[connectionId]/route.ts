@@ -20,6 +20,10 @@ import {
   handlePrompt,
   handleClassify,
   handleExtract,
+  handleCallWorkflow,
+  handleInput,
+  handleReturn,
+  handleBuildJson,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowTriggerType } from "@/lib/types";
@@ -48,6 +52,8 @@ async function executeNode(
       result = await handleConditional(meta, ancestorChain);
     } else if (title === "Transform Data") {
       result = await handleTransformData(meta, ancestorChain);
+    } else if (title === "Build JSON") {
+      result = await handleBuildJson(meta, ancestorChain);
     } else if (title === "HTTP Request") {
       result = await handleHttpRequest(meta, ancestorChain);
     } else if (type === "Trigger" && title === "Webhook") {
@@ -66,6 +72,12 @@ async function executeNode(
       result = await handleClassify(meta, ancestorChain);
     } else if (title === "Extract") {
       result = await handleExtract(meta, ancestorChain);
+    } else if (title === "Call Workflow") {
+      result = await handleCallWorkflow(meta, ancestorChain);
+    } else if (title === "Input") {
+      result = await handleInput(meta, ancestorChain);
+    } else if (title === "Return") {
+      result = await handleReturn(meta, ancestorChain);
     } else {
       result = await handleGithubAction(title, meta, ancestorChain);
     }
@@ -152,7 +164,7 @@ async function executeWebhook(
   req: Request,
 ) {
   const workflows = await prisma.workflow.findMany({
-    where: { status: "active" },
+    where: { OR: [{ status: "active" }, { publish: true }] },
   });
 
   const matchingWorkflows = workflows.filter((workflow) => {
@@ -202,12 +214,23 @@ async function executeWebhook(
       });
     }
 
-    async function walk(nodeId: string) {
-      if (visited.has(nodeId)) return;
-      visited.add(nodeId);
+    // Queue-based traversal: ensure all parents execute before any child
+    const queue = roots.map((r) => r.id);
 
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      if (visited.has(nodeId)) continue;
+
+      // Defer if not all parents are done
+      const nodeParents = parents.get(nodeId) || [];
+      if (nodeParents.some((p) => !visited.has(p))) {
+        queue.push(nodeId);
+        continue;
+      }
+
+      visited.add(nodeId);
       const node = nodes.find((n) => n.id === nodeId);
-      if (!node) return;
+      if (!node) continue;
 
       const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
       const { debugLog, data } = await executeNode(node, chain);
@@ -235,17 +258,13 @@ async function executeWebhook(
         const targetHandle = condition ? "success" : "failure";
         const matching = children.find((c) => c.sourceHandle === targetHandle);
         if (matching) {
-          await walk(matching.targetId);
+          queue.push(matching.targetId);
         }
       } else {
         for (const child of children) {
-          await walk(child.targetId);
+          queue.push(child.targetId);
         }
       }
-    }
-
-    for (const root of roots) {
-      await walk(root.id);
     }
 
     const allPassed = stepResults.every((r) => r.success);

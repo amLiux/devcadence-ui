@@ -268,9 +268,16 @@ export default function ConnectionsDocsPage() {
       </div>
 
       <div className="mt-8 rounded-lg border border-dashed border-border/60 p-4 space-y-2">
+        <p className="text-xs text-muted-foreground">
+          <strong>Tip:</strong> Connections are configured once and reused across workflows. Each connection type unlocks specific nodes in the palette.
+        </p>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex gap-4">
         <Link href="/docs/nodes" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-          Next: Node Types
-          <ArrowRight className="h-3 w-3" />
+          <ArrowRight className="h-3 w-3 rotate-180" />
+          Previous: Node Types
         </Link>
       </div>
     </div>

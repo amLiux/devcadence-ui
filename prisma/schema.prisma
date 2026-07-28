@@ -21,6 +21,7 @@ model Workflow {
   id          String   @id @default(uuid())
   name        String
   description String   @default("")
+  type        String   @default("workflow")  // "workflow" | "sub-workflow"
   nodes       String?
   edges       String?
   flowPath    String?
