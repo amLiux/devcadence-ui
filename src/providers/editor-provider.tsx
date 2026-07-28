@@ -48,6 +48,9 @@ interface EditorContextType {
   sidebarTab: SidebarTab;
   setSidebarTab: (tab: SidebarTab) => void;
   setContext: (ctx: WorkflowContext | ((prev: WorkflowContext) => WorkflowContext)) => void;
+  dirty: boolean;
+  markDirty: () => void;
+  setDirty: (v: boolean) => void;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -150,7 +153,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [editor, dispatch] = useReducer(editorReducer, initialEditorState);
   const [history, setHistory] = useState<HistoryState>(initialHistoryState);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("actions");
+  const [dirty, setDirty] = useState(false);
   const isUndoRedo = useRef(false);
+
+  const markDirty = useCallback(() => {
+    setDirty(true);
+  }, []);
 
   useEffect(() => {
     if (isUndoRedo.current) {
@@ -224,6 +232,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         sidebarTab,
         setSidebarTab,
         setContext,
+        dirty,
+        markDirty,
+        setDirty,
       }}
     >
       {children}

@@ -19,10 +19,12 @@ import { EditorCanvasSidebar } from "./editor-canvas-sidebar";
 import { EditorCanvasCard } from "./editor-canvas-card";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
-import { Save, Send, Play } from "lucide-react";
+import { useWorkflowDirty } from "@/hooks/use-workflow-dirty";
+import { Save, Send, Play, Download } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
 import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode } from "@/lib/types";
+import { createDefaultSubWorkflowNodes } from "@/lib/types";
 
 const nodeTypes = { cardNode: EditorCanvasCard };
 
@@ -30,9 +32,10 @@ const minimapStyle = { height: 120, width: 200 };
 
 interface Props {
   workflow: Workflow;
+  onSaveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
-export function EditorCanvas({ workflow }: Props) {
+export function EditorCanvas({ workflow, onSaveRef }: Props) {
   const { editor, dispatch, setEdges: setEditorEdges, selectNode, setSidebarTab, setContext } = useEditor();
   const { request } = useApi();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -44,22 +47,51 @@ export function EditorCanvas({ workflow }: Props) {
   const [debugTitle, setDebugTitle] = useState("");
   const [debugSteps, setDebugSteps] = useState<NodeDebugLog[]>([]);
 
+  const { dirty, markClean, markCleanAfterSave } = useWorkflowDirty({
+    nodes,
+    edges,
+  });
+
   useEffect(() => {
     if (workflow.nodes) {
       try {
         const savedNodes = JSON.parse(workflow.nodes) as Node[];
         const savedEdges = JSON.parse(workflow.edges || "[]") as Edge[];
-        setNodes(savedNodes);
-        setEdges(savedEdges);
-        dispatch({
-          type: "LOAD_DATA",
-          payload: { elements: savedNodes as never[], edges: savedEdges as never[] },
-        });
+        
+        // For new reusable workflows with no nodes yet, add defaults
+        if (savedNodes.length === 0 && workflow.type === "sub-workflow") {
+          const { inputNode, returnNode } = createDefaultSubWorkflowNodes();
+          setNodes([inputNode, returnNode]);
+          dispatch({
+            type: "LOAD_DATA",
+            payload: { elements: [inputNode, returnNode] as never[], edges: [] },
+          });
+          // Defer markClean so snapshot is stored AFTER setNodes commits
+          setTimeout(() => markClean([inputNode, returnNode], []), 0);
+        } else {
+          setNodes(savedNodes);
+          setEdges(savedEdges);
+          dispatch({
+            type: "LOAD_DATA",
+            payload: { elements: savedNodes as never[], edges: savedEdges as never[] },
+          });
+          // Defer markClean so snapshot is stored AFTER setNodes commits
+          setTimeout(() => markClean(savedNodes, savedEdges), 0);
+        }
       } catch {
         // Invalid JSON, start fresh
       }
+    } else if (workflow.type === "sub-workflow") {
+      // nodes is null — brand new reusable workflow, add defaults
+      const { inputNode, returnNode } = createDefaultSubWorkflowNodes();
+      setNodes([inputNode, returnNode]);
+      dispatch({
+        type: "LOAD_DATA",
+        payload: { elements: [inputNode, returnNode] as never[], edges: [] },
+      });
+      setTimeout(() => markClean([inputNode, returnNode], []), 0);
     }
-  }, [workflow.nodes, workflow.edges, setNodes, setEdges, dispatch]);
+  }, [workflow.nodes, workflow.edges, workflow.type, setNodes, setEdges, dispatch, markClean]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -195,18 +227,30 @@ export function EditorCanvas({ workflow }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const merged = nodes.map((n) => {
+        const el = editor.elements.find((e) => e.id === n.id);
+        return { ...n, data: el?.data ?? n.data };
+      });
       await request({
         endpoint: `/api/workflows/${workflow.id}`,
         method: "PUT",
         data: {
-          nodes: JSON.stringify(editor.elements),
+          nodes: JSON.stringify(merged),
           edges: JSON.stringify(edges),
         },
       });
+      markCleanAfterSave();
     } finally {
       setSaving(false);
     }
   };
+
+  // Expose save function to parent via ref
+  useEffect(() => {
+    if (onSaveRef) {
+      onSaveRef.current = handleSave;
+    }
+  }, [handleSave, onSaveRef]);
 
   const handlePublish = async () => {
     await request({
@@ -214,6 +258,30 @@ export function EditorCanvas({ workflow }: Props) {
       method: "PUT",
       data: { publish: !workflow.publish },
     });
+  };
+
+  const handleExport = () => {
+    const merged = nodes.map((n) => {
+      const el = editor.elements.find((e) => e.id === n.id);
+      return { ...n, data: el?.data ?? n.data };
+    });
+    const exportData = {
+      workflow: {
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+        type: workflow.type,
+      },
+      nodes: merged,
+      edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${workflow.name.replace(/\s+/g, "-").toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleTestWorkflow = async () => {
@@ -342,6 +410,15 @@ export function EditorCanvas({ workflow }: Props) {
               >
                 <Play className="h-3.5 w-3.5 mr-1" />
                 {testingWorkflow ? "Testing..." : "Test"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExport}
+                disabled={nodes.length === 0}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export
               </Button>
             </div>
             <div className="flex-1 overflow-auto">

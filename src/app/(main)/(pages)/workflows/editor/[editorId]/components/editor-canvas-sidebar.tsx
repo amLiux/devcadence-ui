@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -18,6 +18,7 @@ interface NodeCardDef {
 const triggerNodes: NodeCardDef[] = [
   { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event", requiresConnection: "Webhook" },
   { type: "Trigger", title: "Schedule", description: "Trigger on a cron schedule" },
+  { type: "Trigger", title: "Input", description: "Receive data from parent workflow (sub-workflows only)" },
   { type: "GitHub", title: "Listen Commits", description: "Trigger on new pushes to a repo", requiresConnection: "GitHub" },
   {
     type: "GitHub",
@@ -48,6 +49,8 @@ const actionNodes: NodeCardDef[] = [
   { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API" },
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
+  { type: "Action", title: "Call Workflow", description: "Call a reusable sub-workflow" },
+  { type: "Action", title: "Return", description: "Export values back to parent workflow (sub-workflows only)" },
   { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query", requiresConnection: "PostgreSQL" },
   { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table", requiresConnection: "PostgreSQL" },
   { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table", requiresConnection: "PostgreSQL" },
@@ -64,6 +67,9 @@ const iconMap: Record<string, React.ReactNode> = {
   Conditional: <GitFork className="h-3 w-3 text-orange-500" />,
   PostgreSQL: <Database className="h-3 w-3 text-blue-600" />,
   AI: <Sparkles className="h-3 w-3 text-purple-500" />,
+  "Call Workflow": <ArrowRightLeft className="h-3 w-3 text-emerald-500" />,
+  Input: <LogIn className="h-3 w-3 text-cyan-500" />,
+  Return: <LogOut className="h-3 w-3 text-amber-500" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {
@@ -87,7 +93,7 @@ function DraggableCard({ node }: { node: NodeCardDef }) {
             <CardContent className="px-2 py-0 flex items-center gap-1.5">
               <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
               <div className="h-5 w-5 rounded bg-muted flex items-center justify-center shrink-0">
-                {iconMap[node.type]}
+                {iconMap[node.title] || iconMap[node.type]}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-medium leading-tight truncate">{node.title}</p>
@@ -104,7 +110,7 @@ function DraggableCard({ node }: { node: NodeCardDef }) {
 }
 
 function NodeSettingsForm() {
-  const { editor, updateNode } = useEditor();
+  const { editor, updateNode, markDirty } = useEditor();
   const node = editor.selectedNode;
   if (!node) return null;
 
@@ -115,6 +121,7 @@ function NodeSettingsForm() {
 
   const handleChange = (key: string, value: string) => {
     updateNode(node.id, { metadata: { ...meta, [key]: value } });
+    markDirty();
   };
 
   const SettingsComponent = SETTINGS_REGISTRY[title];
