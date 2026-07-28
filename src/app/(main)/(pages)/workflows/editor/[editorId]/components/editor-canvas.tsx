@@ -19,7 +19,7 @@ import { EditorCanvasSidebar } from "./editor-canvas-sidebar";
 import { EditorCanvasCard } from "./editor-canvas-card";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
-import { Save, Send, Play } from "lucide-react";
+import { Save, Send, Play, Download } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
 import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode } from "@/lib/types";
@@ -216,6 +216,25 @@ export function EditorCanvas({ workflow }: Props) {
     });
   };
 
+  const handleExport = () => {
+    const exportData = {
+      workflow: {
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+      },
+      nodes: editor.elements,
+      edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${workflow.name.replace(/\s+/g, "-").toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleTestWorkflow = async () => {
     setTestingWorkflow(true);
     setDebugTitle(`Test: ${workflow.name}`);
@@ -342,6 +361,15 @@ export function EditorCanvas({ workflow }: Props) {
               >
                 <Play className="h-3.5 w-3.5 mr-1" />
                 {testingWorkflow ? "Testing..." : "Test"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExport}
+                disabled={nodes.length === 0}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Export
               </Button>
             </div>
             <div className="flex-1 overflow-auto">
