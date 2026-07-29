@@ -43,8 +43,6 @@ async function executeNode(
   const now = () => new Date().toISOString();
   const logs: LogEntry[] = [];
 
-  logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
-
   try {
     let result: NodeHandlerResult;
 
@@ -83,6 +81,15 @@ async function executeNode(
     } else {
       result = await handleGithubAction(title, meta, ancestorChain);
     }
+
+    if (result.logs) {
+      return {
+        debugLog: { nodeId: node.id, title, success: result.success, logs: result.logs },
+        data: result.data,
+      };
+    }
+
+    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
 
     logs.push({
       type: result.success ? "success" : "error",

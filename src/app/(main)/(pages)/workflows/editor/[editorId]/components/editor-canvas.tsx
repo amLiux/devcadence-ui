@@ -23,7 +23,7 @@ import { useWorkflowDirty } from "@/hooks/use-workflow-dirty";
 import { Save, Send, Play, Download } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
-import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode } from "@/lib/types";
+import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode, LogEntry } from "@/lib/types";
 import { createDefaultSubWorkflowNodes } from "@/lib/types";
 
 const nodeTypes = { cardNode: EditorCanvasCard };
@@ -157,20 +157,60 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
             context: editor.context,
           }),
         });
-        const result = await res.json();
-        setDebugSteps([result]);
 
-        // Update context with single node output (functional update avoids stale closure)
-        if (result.data !== undefined) {
-          setContext((prev) => ({
-            ...prev,
-            [nodeId]: {
-              name: node.data.title,
-              output: result.data,
-              success: result.success,
-              error: result.success ? null : result.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null,
-            },
-          }));
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("event-stream")) {
+          const entries: LogEntry[] = [];
+          const reader = res.body?.getReader();
+          const decoder = new TextDecoder();
+          if (!reader) throw new Error("No reader");
+          let buf = "";
+          for (;;) {
+            const { done, value } = await reader.read();
+            buf += decoder.decode(value || new Uint8Array(), { stream: !done });
+            const lines = buf.split("\n");
+            buf = lines.pop() || "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed.startsWith(":")) continue;
+              const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
+              try {
+                const msg = JSON.parse(data);
+                if (msg.type === "log") {
+                  entries.push(msg.entry);
+                  setDebugSteps([{ nodeId: node.id, title: node.data.title, success: false, logs: [...entries] }]);
+                } else if (msg.type === "result") {
+                  setDebugSteps([{ nodeId: msg.nodeId, title: msg.title, success: msg.success, logs: msg.logs || entries }]);
+                  if (msg.data !== undefined) {
+                    setContext((prev) => ({
+                      ...prev,
+                      [nodeId]: {
+                        name: node.data.title,
+                        output: msg.data,
+                        success: msg.success,
+                        error: msg.success ? null : (msg.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null),
+                      },
+                    }));
+                  }
+                }
+              } catch { /* skip malformed */ }
+            }
+            if (done) break;
+          }
+        } else {
+          const result = await res.json();
+          setDebugSteps([result]);
+          if (result.data !== undefined) {
+            setContext((prev) => ({
+              ...prev,
+              [nodeId]: {
+                name: node.data.title,
+                output: result.data,
+                success: result.success,
+                error: result.success ? null : result.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null,
+              },
+            }));
+          }
         }
       } catch {
         setDebugSteps([

@@ -1,17 +1,17 @@
 import { resolveTemplates, evaluateExpression, type ContextStep } from "@/lib/workflow-context";
-import type { NodeHandlerResult } from "./types";
+import type { NodeHandlerResult, LogEntry } from "./types";
 
 /** Handles Retry Loop nodes — makes an HTTP request, retries until condition is met or max attempts exhausted. */
 export async function handleRetryLoop(
   meta: Record<string, string>,
   ancestorChain?: ContextStep,
+  onLog?: (entry: LogEntry) => void,
 ): Promise<NodeHandlerResult> {
   const maxRetries = Math.min(Math.max(parseInt(meta.maxRetries || "3", 10), 1), 10);
   const delayMs = Math.min(Math.max(parseInt(meta.delay || "2", 10), 1), 30) * 1000;
   const condition = meta.condition || "";
-  const onFailure = meta.onFailure || "error"; // "error" | "skip" | "abort"
+  const onFailure = meta.onFailure || "error";
 
-  // Resolve URL
   const url = resolveTemplates(meta.url || "", ancestorChain);
   if (!url) {
     return { success: false, message: "URL is required" };
@@ -19,7 +19,6 @@ export async function handleRetryLoop(
 
   const method = (meta.method || "GET").toUpperCase();
 
-  // Resolve headers
   let headers: Record<string, string> = {};
   if (meta.headers) {
     try {
@@ -30,10 +29,24 @@ export async function handleRetryLoop(
     }
   }
 
-  // Resolve body
   let body: string | undefined;
   if (meta.body) {
     body = resolveTemplates(meta.body, ancestorChain);
+  }
+
+  const now = () => new Date().toISOString();
+  const logs: LogEntry[] = [];
+  const attempts: { attempt: number; status: number | null; body: unknown; error: string | null; delayMs: number }[] = [];
+
+  const log = (type: LogEntry["type"], message: string) => {
+    const entry: LogEntry = { type, message, timestamp: now() };
+    logs.push(entry);
+    onLog?.(entry);
+  };
+
+  log("info", `Starting Retry Loop — ${method} ${url} (max ${maxRetries} retries)`);
+  if (condition) {
+    log("info", `Condition: ${condition}`);
   }
 
   let lastResponse: { status: number; body: unknown } | null = null;
@@ -46,7 +59,10 @@ export async function handleRetryLoop(
         fetchOptions.body = body;
       }
 
+      const t0 = Date.now();
       const res = await fetch(url, fetchOptions);
+      const elapsed = Date.now() - t0;
+
       let responseBody: unknown;
       const ct = res.headers.get("content-type") || "";
       if (ct.includes("application/json")) {
@@ -62,68 +78,92 @@ export async function handleRetryLoop(
       lastResponse = { status: res.status, body: responseBody };
       lastError = null;
 
-      // If no condition, succeed on first try
+      const statusColor = res.status < 400 ? "success" : "error";
+      log(statusColor, `Attempt ${attempt}/${maxRetries} — ${method} ${url} → ${res.status} (${elapsed}ms)`);
+
+      attempts.push({ attempt, status: res.status, body: responseBody, error: null, delayMs: 0 });
+
       if (!condition) {
+        log("success", `No condition set — request succeeded on attempt ${attempt}`);
         return {
           success: true,
           message: `${method} ${url} → ${res.status} (attempt ${attempt}/${maxRetries})`,
-          data: lastResponse,
+          data: { response: lastResponse, attempts },
+          logs,
         };
       }
 
-      // Evaluate condition against response
       const input = { response: lastResponse, previousStep: ancestorChain?.output };
       const conditionResult = Boolean(evaluateExpression(condition, input));
 
       if (conditionResult) {
+        log("success", `Condition met on attempt ${attempt}/${maxRetries}`);
         return {
           success: true,
-          message: `Condition met on attempt ${attempt}/${maxRetries} — ${method} ${url} → ${res.status}`,
-          data: lastResponse,
+          message: `Condition met on attempt ${attempt}/${maxRetries}`,
+          data: { response: lastResponse, attempts },
+          logs,
         };
       }
 
-      // Condition not met — wait before retry (unless last attempt)
+      log("warning", `Condition not met — will retry`);
+
       if (attempt < maxRetries) {
+        log("info", `Waiting ${delayMs / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
+        attempts[attempts.length - 1].delayMs = delayMs;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     } catch (err) {
       lastError = err instanceof Error ? err.message : "Request failed";
       lastResponse = null;
 
-      // On network error, wait before retry (unless last attempt)
+      log("error", `Attempt ${attempt}/${maxRetries} — network error: ${lastError}`);
+
+      attempts.push({ attempt, status: null, body: null, error: lastError, delayMs: 0 });
+
       if (attempt < maxRetries) {
+        log("info", `Waiting ${delayMs / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
+        attempts[attempts.length - 1].delayMs = delayMs;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
 
-  // All retries exhausted
   if (lastResponse) {
+    const msg = `Condition not met after ${maxRetries} attempts — last response: ${lastResponse.status}`;
+    log("error", msg);
     if (onFailure === "skip") {
+      log("success", `onFailure=skip — returning last response`);
       return {
         success: true,
-        message: `Condition not met after ${maxRetries} attempts — returning last response (skip mode)`,
-        data: lastResponse,
+        message: msg,
+        data: { response: lastResponse, attempts },
+        logs,
       };
     }
     return {
       success: false,
-      message: `Condition not met after ${maxRetries} attempts — ${method} ${url} → ${lastResponse.status}`,
-      data: lastResponse,
+      message: msg,
+      data: { response: lastResponse, attempts },
+      logs,
     };
   }
 
-  // All attempts failed with network errors
+  const msg = `All ${maxRetries} attempts failed — ${lastError}`;
+  log("error", msg);
   if (onFailure === "skip") {
+    log("success", `onFailure=skip — returning last error`);
     return {
       success: true,
-      message: `All ${maxRetries} attempts failed — returning last error (skip mode)`,
-      data: { error: lastError },
+      message: msg,
+      data: { error: lastError, attempts },
+      logs,
     };
   }
   return {
     success: false,
-    message: `All ${maxRetries} attempts failed — ${lastError}`,
+    message: msg,
+    data: { error: lastError, attempts },
+    logs,
   };
 }

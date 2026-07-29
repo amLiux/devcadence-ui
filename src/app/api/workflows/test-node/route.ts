@@ -56,10 +56,29 @@ export async function POST(req: Request) {
       ancestorChain = buildAncestorChain(node.id, parents, contextOutputs, allNodes);
     }
 
+    // Streaming path for retry loop — NDJSON, one JSON object per line
+    if (title === "Retry Loop") {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          const result = await handleRetryLoop(meta, ancestorChain, (entry) => {
+            controller.enqueue(encoder.encode(JSON.stringify({ type: "log", entry }) + "\n"));
+          });
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "result", nodeId: node.id, title, ...result }) + "\n"));
+          controller.close();
+        },
+      });
+      return new NextResponse(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
     const now = () => new Date().toISOString();
     const logs: LogEntry[] = [];
-
-    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
 
     let result: NodeHandlerResult;
     try {
@@ -69,8 +88,6 @@ export async function POST(req: Request) {
         result = await handleTransformData(meta, ancestorChain);
       } else if (title === "Build JSON") {
         result = await handleBuildJson(meta, ancestorChain);
-      } else if (title === "Retry Loop") {
-        result = await handleRetryLoop(meta, ancestorChain);
       } else if (title === "HTTP Request") {
         result = await handleHttpRequest(meta, ancestorChain);
       } else if (type === "Trigger" && title === "Webhook") {
@@ -106,6 +123,18 @@ export async function POST(req: Request) {
         message: err instanceof Error ? err.message : "Execution failed",
       };
     }
+
+    if (result.logs) {
+      return NextResponse.json({
+        nodeId: node.id,
+        title,
+        success: result.success,
+        logs: result.logs,
+        data: result.data ?? null,
+      });
+    }
+
+    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
 
     logs.push({
       type: result.success ? "success" : "error",
