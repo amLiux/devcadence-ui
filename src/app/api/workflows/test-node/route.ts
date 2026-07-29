@@ -23,6 +23,7 @@ import {
   handleInput,
   handleReturn,
   handleBuildJson,
+  handleRetryLoop,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowContext } from "@/lib/types";
@@ -68,6 +69,8 @@ export async function POST(req: Request) {
         result = await handleTransformData(meta, ancestorChain);
       } else if (title === "Build JSON") {
         result = await handleBuildJson(meta, ancestorChain);
+      } else if (title === "Retry Loop") {
+        result = await handleRetryLoop(meta, ancestorChain);
       } else if (title === "HTTP Request") {
         result = await handleHttpRequest(meta, ancestorChain);
       } else if (type === "Trigger" && title === "Webhook") {

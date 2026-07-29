@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal, ArrowRightLeft, LogIn, LogOut } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal, ArrowRightLeft, LogIn, LogOut, RotateCcw } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface NodeDoc {
@@ -63,6 +63,28 @@ const NODE_DOCS: NodeDoc[] = [
       "previousStep.status === 200",
       "previousStep.body.length > 0",
       "previousStep.classification === 'bug'",
+    ],
+  },
+  {
+    title: "Retry Loop",
+    icon: <RotateCcw className="h-4 w-4 text-orange-500" />,
+    color: "border-orange-500/30",
+    description: "Makes an HTTP request and retries until a condition is met or max attempts exhausted. Poll APIs, wait for async jobs, or retry flaky endpoints.",
+    requires: "None",
+    settings: [
+      { key: "url", desc: "Request URL. Supports {{expression}} template variables." },
+      { key: "method", desc: "GET, POST, PUT, PATCH, DELETE." },
+      { key: "headers", desc: "JSON object for auth tokens, content types, etc." },
+      { key: "body", desc: "JSON payload for POST/PUT/PATCH." },
+      { key: "maxRetries", desc: "Max attempts (1–10). Default: 3." },
+      { key: "delay", desc: "Seconds between retries (1–30). Default: 2." },
+      { key: "condition", desc: "Expression that must be true to stop. Use response.status and response.body." },
+      { key: "onFailure", desc: "What to do after all retries fail: 'error' (fail workflow) or 'skip' (return last response)." },
+    ],
+    examples: [
+      "Poll: GET https://api.example.com/status/{{previousStep.jobId}} — condition: response.body.done === true",
+      "Wait for deploy: condition: response.status === 200 && response.body.status === 'active'",
+      "Retry on 429: condition: response.status !== 429 (keep retrying while rate-limited)",
     ],
   },
   {
@@ -273,9 +295,9 @@ export default function NodesDocsPage() {
 
       {/* Navigation */}
       <div className="flex gap-4">
-        <Link href="/docs/reusable-workflows" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+        <Link href="/docs/retry-loop" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
           <ArrowRight className="h-3 w-3 rotate-180" />
-          Previous: Reusable Workflows
+          Previous: Retry Loops
         </Link>
         <Link href="/docs/connections" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
           Next: Connections & Triggers

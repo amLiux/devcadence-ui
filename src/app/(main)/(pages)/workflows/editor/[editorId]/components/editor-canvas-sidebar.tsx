@@ -50,6 +50,7 @@ const actionNodes: NodeCardDef[] = [
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
   { type: "Action", title: "Build JSON", description: "Build a JSON object from fields" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
+  { type: "Action", title: "Retry Loop", description: "HTTP request with retry until condition met" },
   { type: "Action", title: "Call Workflow", description: "Call a reusable sub-workflow" },
   { type: "Action", title: "Return", description: "Export values back to parent workflow (sub-workflows only)" },
   { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query", requiresConnection: "PostgreSQL" },

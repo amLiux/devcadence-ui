@@ -1,6 +1,7 @@
 export { handleTransformData } from "./transform-data";
 export { handleConditional } from "./conditional";
 export { handleHttpRequest } from "./http-request";
+export { handleRetryLoop } from "./retry-loop";
 export { handleGithubTrigger } from "./github-triggers";
 export { handleGithubAction } from "./github-actions";
 export { handlePostgresQuery, handlePostgresInsert, handlePostgresUpdate, handlePostgresDelete } from "./postgresql";

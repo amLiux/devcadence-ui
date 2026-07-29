@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const PREFIX = "devdock-docs";
 
-const DOCS_PAGES = ["tutorial", "workflow", "connecting", "connections", "nodes", "template-variables", "conditional-logic", "reusable-workflows"] as const;
+const DOCS_PAGES = ["tutorial", "workflow", "connecting", "connections", "nodes", "template-variables", "conditional-logic", "reusable-workflows", "retry-loop"] as const;
 export type DocsPage = (typeof DOCS_PAGES)[number];
 
 function key(page: DocsPage) {

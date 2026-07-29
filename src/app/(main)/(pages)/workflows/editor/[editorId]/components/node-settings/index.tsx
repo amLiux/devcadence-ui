@@ -33,6 +33,7 @@ import { CallWorkflowSettings } from "./call-workflow";
 import { InputSettings } from "./input";
 import { ReturnSettings } from "./return";
 import { BuildJsonSettings } from "./build-json";
+import { RetryLoopSettings } from "./retry-loop";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   return (
@@ -69,6 +70,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   Extract: ExtractSettings,
   "Call Workflow": CallWorkflowSettings,
   "Build JSON": BuildJsonSettings,
+  "Retry Loop": RetryLoopSettings,
   Input: InputSettings,
   Return: ReturnSettings,
 };
