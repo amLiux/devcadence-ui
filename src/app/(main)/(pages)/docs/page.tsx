@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft } from "lucide-react";
+import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft, RotateCcw } from "lucide-react";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
 const topics: { title: string; description: string; href: string; icon: React.ReactNode; tag: string; tagColor?: string; page: DocsPage }[] = [
@@ -58,6 +58,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     page: "reusable-workflows",
   },
   {
+    title: "Retry Loops",
+    description: "Poll APIs, wait for deploys, or retry flaky requests until a condition is met.",
+    href: "/docs/retry-loop",
+    icon: <RotateCcw className="h-5 w-5" />,
+    tag: "New",
+    tagColor: "text-orange-500",
+    page: "retry-loop",
+  },
+  {
     title: "Node Types",
     description: "HTTP Request, Transform, AI, Conditional, PostgreSQL — settings and examples for each.",
     href: "/docs/nodes",
@@ -84,13 +93,14 @@ const iconColors: Record<string, string> = {
   "template-variables": "text-cyan-500",
   "conditional-logic": "text-amber-500",
   "reusable-workflows": "text-emerald-500",
+  "retry-loop": "text-orange-500",
 };
 
 export default function DocsPage() {
   const { isPageDone, doneCount, total, percent, allDone } = useDocsProgress();
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold">Documentation</h1>
         <p className="text-muted-foreground mt-1">
@@ -114,13 +124,13 @@ export default function DocsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
         {topics.map((topic) => {
           const done = isPageDone(topic.page);
           return (
             <Link key={topic.href} href={topic.href}>
               <Card
-                className={`group hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer ${
+                className={`group hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer h-full ${
                   done
                     ? "border-green-500/30 bg-green-500/5"
                     : topic.page === "tutorial" && !allDone
@@ -128,7 +138,7 @@ export default function DocsPage() {
                       : ""
                 }`}
               >
-                <CardContent className="flex items-center gap-4 p-4">
+                <CardContent className="flex items-center gap-4 p-4 h-full">
                   <div className="shrink-0">
                     {done ? (
                       <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
