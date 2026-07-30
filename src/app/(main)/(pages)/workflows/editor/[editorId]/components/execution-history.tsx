@@ -253,9 +253,15 @@ export function ExecutionHistory({ workflowId }: { workflowId: string }) {
 
       {runs.length > 0 && (
         <div className="space-y-1.5 flex-1 overflow-auto">
-          {runs.map((run) => (
-            <RunRow key={run.id} run={run} />
-          ))}
+          {[...runs]
+            .sort((a, b) => {
+              if (a.status === "running" && b.status !== "running") return -1;
+              if (a.status !== "running" && b.status === "running") return 1;
+              return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+            })
+            .map((run) => (
+              <RunRow key={run.id} run={run} />
+            ))}
         </div>
       )}
     </div>

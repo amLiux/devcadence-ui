@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workflow; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const router = useRouter();
   const { request } = useApi();
-  const { dirty } = useEditor();
+  const { dirty, editor } = useEditor();
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
@@ -80,7 +80,8 @@ function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workfl
     setStatusUpdating(false);
   };
 
-  const triggerType = inferTriggerType(workflow.nodes, workflow.type);
+  const liveNodesJson = editor.elements.length > 0 ? JSON.stringify(editor.elements) : workflow.nodes;
+  const triggerType = inferTriggerType(liveNodesJson, workflow.type);
 
   return (
     <div className="flex flex-col h-full">

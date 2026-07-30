@@ -174,7 +174,9 @@ colima-status: ## Check Colima status
 
 # --- Full Stack -------------------------------------------------------------
 .PHONY: up
-up: compose-up dev ## Start everything: database + Redis + dev server
+up: compose-up ## Start everything: database + Redis + dev server + worker
+	@echo "$(GREEN)Starting dev server and worker...$(NC)"
+	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
 	@echo "$(GREEN)devdock is running at http://localhost:3000$(NC)"
 
 .PHONY: setup
@@ -191,7 +193,7 @@ setup: ## First-time setup: install deps, generate client, run migrations, seed
 .PHONY: worker
 worker: ## Start the BullMQ workflow worker (long-running process)
 	@echo "$(GREEN)Starting workflow worker...$(NC)"
-	npx tsx src/worker.ts
+	npx dotenv -e .env -- npx tsx src/worker.ts
 
 # --- Utility ----------------------------------------------------------------
 .PHONY: clean
