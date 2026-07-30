@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useApi } from "@/hooks/use-api";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Wand2 } from "lucide-react";
 import type { NodeSettingsProps } from "./types";
 import type { Connection } from "@/lib/types";
+import { inferSchemaFromPayload } from "@/lib/json-schema";
 
 function WebhookConnectionSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { request } = useApi();
@@ -46,6 +47,17 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
       await navigator.clipboard.writeText(webhookUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleInferSchema = () => {
+    if (!meta.testPayload) return;
+    try {
+      const payload = JSON.parse(meta.testPayload);
+      const schema = inferSchemaFromPayload(payload);
+      handleChange("schemaJson", schema);
+    } catch {
+      // ignore invalid JSON
     }
   };
 
@@ -90,6 +102,31 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
         />
         <p className="text-[10px] text-muted-foreground">
           JSON payload used when testing this trigger. Leave empty for a default test payload.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">JSON Schema (optional)</Label>
+          {meta.testPayload && (
+            <button
+              type="button"
+              onClick={handleInferSchema}
+              className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+            >
+              <Wand2 className="h-3 w-3" />
+              Infer from test payload
+            </button>
+          )}
+        </div>
+        <Textarea
+          className="min-h-[100px] text-xs font-mono"
+          placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
+          value={meta.schemaJson || ""}
+          onChange={(e) => handleChange("schemaJson", e.target.value)}
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Incoming webhook payloads are validated against this schema. Empty = no validation.
         </p>
       </div>
     </div>

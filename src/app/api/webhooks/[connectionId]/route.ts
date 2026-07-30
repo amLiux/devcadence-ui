@@ -10,6 +10,7 @@ import {
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
 import { sanitize } from "@/lib/workflows/sanitize";
+import { validateSchema } from "@/lib/json-schema";
 import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowTriggerType } from "@/lib/types";
 
 const now = () => new Date().toISOString();
@@ -95,9 +96,48 @@ async function executeWebhook(
     });
   }
 
-  const results = [];
+  const validationErrors: { workflowId: string; workflowName: string; errors: string[] }[] = [];
+  const validWorkflows = [];
 
   for (const workflow of matchingWorkflows) {
+    const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
+    const webhookNode = nodes.find(
+      (node) =>
+        node.data.type === "Trigger" &&
+        node.data.title === "Webhook" &&
+        (node.data.metadata as Record<string, string>)?.connectionId === connectionId,
+    );
+    const schemaJson = (webhookNode?.data.metadata as Record<string, string>)?.schemaJson;
+    if (schemaJson) {
+      try {
+        const schema = JSON.parse(schemaJson);
+        const result = validateSchema(schema, body);
+        if (!result.valid) {
+          validationErrors.push({ workflowId: workflow.id, workflowName: workflow.name, errors: result.errors });
+          continue;
+        }
+      } catch {
+        validationErrors.push({ workflowId: workflow.id, workflowName: workflow.name, errors: ["Invalid JSON schema configured on webhook trigger"] });
+        continue;
+      }
+    }
+    validWorkflows.push(workflow);
+  }
+
+  if (validWorkflows.length === 0) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Webhook payload failed validation against all matching workflows",
+        errors: validationErrors,
+      },
+      { status: 422 },
+    );
+  }
+
+  const results = [];
+
+  for (const workflow of validWorkflows) {
     const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
     const edges: EditorEdge[] = workflow.edges ? JSON.parse(workflow.edges) : [];
 
@@ -250,9 +290,13 @@ async function executeWebhook(
     });
   }
 
-  return NextResponse.json({
+  const response: Record<string, unknown> = {
     success: true,
     message: `Webhook triggered ${results.length} workflow(s)`,
     results,
-  });
+  };
+  if (validationErrors.length > 0) {
+    response.validationErrors = validationErrors;
+  }
+  return NextResponse.json(response);
 }
