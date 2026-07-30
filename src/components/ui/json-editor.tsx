@@ -5,6 +5,7 @@ import Editor from "react-simple-code-editor";
 import Prism from "prismjs";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism.css";
+import "./json-editor.css";
 
 interface JsonEditorProps {
   value: string;
@@ -29,7 +30,7 @@ export function JsonEditor({ value, onChange, placeholder, minHeight = 80, error
   return (
     <div className="space-y-1">
       <div
-        className={`rounded-md border bg-muted/30 font-mono text-xs overflow-hidden ${error ? "border-red-500" : "border-input"}`}
+        className={`json-editor-wrapper rounded-md border bg-muted/30 font-mono text-xs overflow-hidden ${error ? "border-red-500" : "border-input"}`}
         style={{ minHeight }}
       >
         <Editor

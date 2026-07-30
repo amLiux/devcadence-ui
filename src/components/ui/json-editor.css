@@ -1,0 +1,7 @@
+.json-editor-wrapper .token.punctuation {
+  color: inherit !important;
+}
+
+.json-editor-wrapper .token.operator {
+  color: inherit !important;
+}
