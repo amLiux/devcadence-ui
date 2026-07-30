@@ -1,7 +1,12 @@
-.json-editor-wrapper .token.punctuation {
+.json-editor-wrapper .token.punctuation,
+.json-editor-wrapper .token.operator,
+.json-editor-wrapper .token.property,
+.json-editor-wrapper .token.string {
   color: inherit !important;
 }
 
-.json-editor-wrapper .token.operator {
-  color: inherit !important;
+.json-editor-wrapper .token.number,
+.json-editor-wrapper .token.boolean,
+.json-editor-wrapper .token.null {
+  color: hsl(var(--primary)) !important;
 }
