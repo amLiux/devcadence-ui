@@ -1,8 +1,9 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { JsonEditor, formatJson } from "@/components/ui/json-editor";
+import { AlignLeft } from "lucide-react";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
 
@@ -51,21 +52,45 @@ export function RetryLoopSettings({
         </select>
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Headers (JSON)</Label>
-        <Textarea
-          className="min-h-[60px] text-xs font-mono"
-          placeholder='{"Authorization": "Bearer token"}'
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Headers (JSON)</Label>
+          {meta.headers && (
+            <button
+              type="button"
+              onClick={() => handleChange("headers", formatJson(meta.headers))}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              <AlignLeft className="h-3 w-3" />
+              Format
+            </button>
+          )}
+        </div>
+        <JsonEditor
           value={meta.headers || ""}
-          onChange={(e) => handleChange("headers", e.target.value)}
+          onChange={(v) => handleChange("headers", v)}
+          placeholder='{"Authorization": "Bearer token"}'
+          minHeight={60}
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Body (JSON)</Label>
-        <Textarea
-          className="min-h-[60px] text-xs font-mono"
-          placeholder='{"key": "value"}'
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Body (JSON)</Label>
+          {meta.body && (
+            <button
+              type="button"
+              onClick={() => handleChange("body", formatJson(meta.body))}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              <AlignLeft className="h-3 w-3" />
+              Format
+            </button>
+          )}
+        </div>
+        <JsonEditor
           value={meta.body || ""}
-          onChange={(e) => handleChange("body", e.target.value)}
+          onChange={(v) => handleChange("body", v)}
+          placeholder='{"key": "value"}'
+          minHeight={60}
         />
       </div>
 
