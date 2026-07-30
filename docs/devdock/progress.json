@@ -1,0 +1,27 @@
+{
+  "tickets": {
+    "dd-25": {
+      title: "Centralize prisma queries into src/lib/db/",
+      type: "chore",
+      status: "open",
+      description: "Extract all inline Prisma queries into domain-specific modules under src/lib/db/. Migrate all 23 files that import prisma from @/lib/db to use named query functions instead.",
+      files: [
+        "src/lib/db/client.ts",
+        "src/lib/db/workflows.ts",
+        "src/lib/db/connections.ts",
+        "src/lib/db/ai.ts",
+        "src/lib/db/index.ts",
+      ],
+      migration_targets: [
+        "src/app/api/workflows/**/*.ts",
+        "src/app/api/connections/**/*.ts",
+        "src/app/api/ai/**/*.ts",
+        "src/app/api/webhooks/**/*.ts",
+        "src/lib/github.ts",
+        "src/lib/postgresql.ts",
+        "src/lib/workflows/*.ts",
+        "src/app/api/dev/seed-runs/route.ts",
+      ],
+    },
+  },
+}
