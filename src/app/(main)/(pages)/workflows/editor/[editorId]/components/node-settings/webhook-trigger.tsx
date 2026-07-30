@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useApi } from "@/hooks/use-api";
-import { Copy, Check, Wand2 } from "lucide-react";
+import { Copy, Check, Wand2, AlignLeft } from "lucide-react";
+import { JsonEditor, formatJson, validateJson } from "@/components/ui/json-editor";
 import type { NodeSettingsProps } from "./types";
 import type { Connection } from "@/lib/types";
 import { inferSchemaFromPayload } from "@/lib/json-schema";
@@ -93,12 +93,25 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
       )}
 
       <div className="space-y-1.5">
-        <Label className="text-xs">Test Payload (optional)</Label>
-        <Textarea
-          className="min-h-[80px] text-xs font-mono"
-          placeholder='{"event": "push", "data": {...}}'
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Test Payload (optional)</Label>
+          {meta.testPayload && (
+            <button
+              type="button"
+              onClick={() => handleChange("testPayload", formatJson(meta.testPayload))}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              <AlignLeft className="h-3 w-3" />
+              Format
+            </button>
+          )}
+        </div>
+        <JsonEditor
           value={meta.testPayload || ""}
-          onChange={(e) => handleChange("testPayload", e.target.value)}
+          onChange={(v) => handleChange("testPayload", v)}
+          placeholder='{"event": "push", "data": {...}}'
+          minHeight={80}
+          error={validateJson(meta.testPayload || "")}
         />
         <p className="text-[10px] text-muted-foreground">
           JSON payload used when testing this trigger. Leave empty for a default test payload.
@@ -108,22 +121,35 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs">JSON Schema (optional)</Label>
-          {meta.testPayload && (
-            <button
-              type="button"
-              onClick={handleInferSchema}
-              className="flex items-center gap-1 text-[10px] text-primary hover:underline"
-            >
-              <Wand2 className="h-3 w-3" />
-              Infer from test payload
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {meta.testPayload && (
+              <button
+                type="button"
+                onClick={handleInferSchema}
+                className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+              >
+                <Wand2 className="h-3 w-3" />
+                Infer
+              </button>
+            )}
+            {meta.schemaJson && (
+              <button
+                type="button"
+                onClick={() => handleChange("schemaJson", formatJson(meta.schemaJson))}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                <AlignLeft className="h-3 w-3" />
+                Format
+              </button>
+            )}
+          </div>
         </div>
-        <Textarea
-          className="min-h-[100px] text-xs font-mono"
-          placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
+        <JsonEditor
           value={meta.schemaJson || ""}
-          onChange={(e) => handleChange("schemaJson", e.target.value)}
+          onChange={(v) => handleChange("schemaJson", v)}
+          placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
+          minHeight={100}
+          error={validateJson(meta.schemaJson || "")}
         />
         <p className="text-[10px] text-muted-foreground">
           Incoming webhook payloads are validated against this schema. Empty = no validation.
