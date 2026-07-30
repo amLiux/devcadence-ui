@@ -155,6 +155,37 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
           Incoming webhook payloads are validated against this schema. Empty = no validation.
         </p>
       </div>
+
+      <div className="space-y-1.5 rounded-md border p-2">
+        <Label className="text-xs">Rate Limiting</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Max requests</Label>
+            <Input
+              type="number"
+              min={0}
+              className="h-8 text-xs"
+              placeholder="∞"
+              value={meta.rateLimitRequests || ""}
+              onChange={(e) => handleChange("rateLimitRequests", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Window (seconds)</Label>
+            <Input
+              type="number"
+              min={1}
+              className="h-8 text-xs"
+              placeholder="60"
+              value={meta.rateLimitWindowSeconds || ""}
+              onChange={(e) => handleChange("rateLimitWindowSeconds", e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Leave Max requests empty for unlimited. Limit is checked per webhook trigger node.
+        </p>
+      </div>
     </div>
   );
 }

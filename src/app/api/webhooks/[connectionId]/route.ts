@@ -11,6 +11,7 @@ import {
 import { executeNode } from "@/lib/workflows/execute-node";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { validateSchema } from "@/lib/json-schema";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowTriggerType } from "@/lib/types";
 
 const now = () => new Date().toISOString();
@@ -97,6 +98,7 @@ async function executeWebhook(
   }
 
   const validationErrors: { workflowId: string; workflowName: string; errors: string[] }[] = [];
+  const rateLimited: { workflowId: string; workflowName: string; retryAfter: number }[] = [];
   const validWorkflows = [];
 
   for (const workflow of matchingWorkflows) {
@@ -107,7 +109,18 @@ async function executeWebhook(
         node.data.title === "Webhook" &&
         (node.data.metadata as Record<string, string>)?.connectionId === connectionId,
     );
-    const schemaJson = (webhookNode?.data.metadata as Record<string, string>)?.schemaJson;
+    const metadata = (webhookNode?.data.metadata || {}) as Record<string, string>;
+
+    const rateLimitResult = await checkRateLimit(`webhook:${webhookNode?.id || workflow.id}`, {
+      requests: metadata.rateLimitRequests ? parseInt(metadata.rateLimitRequests, 10) : undefined,
+      windowSeconds: metadata.rateLimitWindowSeconds ? parseInt(metadata.rateLimitWindowSeconds, 10) : undefined,
+    });
+    if (!rateLimitResult.allowed) {
+      rateLimited.push({ workflowId: workflow.id, workflowName: workflow.name, retryAfter: rateLimitResult.retryAfter || 1 });
+      continue;
+    }
+
+    const schemaJson = metadata.schemaJson;
     if (schemaJson) {
       try {
         const schema = JSON.parse(schemaJson);
@@ -125,6 +138,17 @@ async function executeWebhook(
   }
 
   if (validWorkflows.length === 0) {
+    if (rateLimited.length > 0) {
+      const maxRetryAfter = Math.max(...rateLimited.map((r) => r.retryAfter));
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Webhook rate limit exceeded",
+          rateLimited,
+        },
+        { status: 429, headers: { "Retry-After": String(maxRetryAfter) } },
+      );
+    }
     return NextResponse.json(
       {
         success: false,
@@ -297,6 +321,9 @@ async function executeWebhook(
   };
   if (validationErrors.length > 0) {
     response.validationErrors = validationErrors;
+  }
+  if (rateLimited.length > 0) {
+    response.rateLimited = rateLimited;
   }
   return NextResponse.json(response);
 }
