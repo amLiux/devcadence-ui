@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat } from "lucide-react";
+import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -144,10 +144,11 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
               <CardTitle className="text-base truncate">{workflow.name}</CardTitle>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <Badge
-                  variant={workflow.publish ? "default" : "secondary"}
-                  className="text-[10px] px-1.5 py-0"
+                  variant={workflow.status === "active" ? "default" : workflow.status === "paused" ? "secondary" : "outline"}
+                  className="text-[10px] px-1.5 py-0 gap-0.5"
                 >
-                  {workflow.publish ? "Published" : "Draft"}
+                  {workflow.status === "active" ? <Play className="h-3 w-3" /> : workflow.status === "paused" ? <Pause className="h-3 w-3" /> : <FileEdit className="h-3 w-3" />}
+                  {workflow.status === "active" ? "Active" : workflow.status === "paused" ? "Paused" : "Draft"}
                 </Badge>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   {TRIGGER_TYPE_LABELS[triggerType]}

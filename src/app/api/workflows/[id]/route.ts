@@ -9,7 +9,6 @@ interface UpdateWorkflowBody {
   nodes?: string;
   edges?: string;
   flowPath?: string;
-  publish?: boolean;
   status?: WorkflowStatus;
 }
 
@@ -21,7 +20,6 @@ function simplifyWorkflow(w: {
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
-  publish: boolean;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -34,7 +32,6 @@ function simplifyWorkflow(w: {
     nodes: w.nodes,
     edges: w.edges,
     flowPath: w.flowPath,
-    publish: w.publish,
     status: w.status as WorkflowStatus,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
@@ -69,10 +66,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         ...(body.edges !== undefined && { edges: body.edges }),
         ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
         ...(body.status !== undefined && { status: body.status }),
-        ...(body.publish !== undefined && {
-          publish: body.publish,
-          status: body.publish ? "active" : "draft",
-        }),
       },
     });
     return NextResponse.json(simplifyWorkflow(workflow));

@@ -33,7 +33,7 @@ export function getFirstWorkflowId() {
 
 export function findActiveWebhookWorkflows() {
   return prisma.workflow.findMany({
-    where: { OR: [{ status: "active" }, { publish: true }] },
+    where: { status: "active" },
   });
 }
 

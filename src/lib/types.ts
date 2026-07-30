@@ -62,7 +62,6 @@ export interface Workflow {
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
-  publish: boolean;
   status: WorkflowStatus;
   createdAt: string;
   updatedAt: string;

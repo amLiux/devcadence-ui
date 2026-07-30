@@ -74,7 +74,7 @@ async function executeWebhook(
   req: Request,
 ) {
   const workflows = await prisma.workflow.findMany({
-    where: { OR: [{ status: "active" }, { publish: true }] },
+    where: { status: "active" },
   });
 
   const matchingWorkflows = workflows.filter((workflow) => {
