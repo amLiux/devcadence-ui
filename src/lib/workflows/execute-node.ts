@@ -11,6 +11,7 @@ import {
   handlePostgresUpdate,
   handlePostgresDelete,
   handleWebhookTrigger,
+  handleScheduleTrigger,
   handlePrompt,
   handleClassify,
   handleExtract,
@@ -42,6 +43,7 @@ function dispatchHandler(
   if (title === "Retry Loop") return handleRetryLoop(meta, ancestorChain);
   if (title === "HTTP Request") return handleHttpRequest(meta, ancestorChain);
   if (type === "Trigger" && title === "Webhook") return handleWebhookTrigger(meta);
+  if (type === "Trigger" && title === "Schedule") return handleScheduleTrigger(meta);
   if (type === "GitHub" && title.startsWith("Listen")) return handleGithubTrigger(title, meta);
   if (title === "PostgreSQL Query") return handlePostgresQuery(meta, ancestorChain);
   if (title === "PostgreSQL Insert") return handlePostgresInsert(meta, ancestorChain);

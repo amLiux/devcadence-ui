@@ -6,6 +6,7 @@ export { handleGithubTrigger } from "./github-triggers";
 export { handleGithubAction } from "./github-actions";
 export { handlePostgresQuery, handlePostgresInsert, handlePostgresUpdate, handlePostgresDelete } from "./postgresql";
 export { handleWebhookTrigger } from "./webhook";
+export { handleScheduleTrigger } from "./schedule-trigger";
 export { handlePrompt, handleClassify, handleExtract } from "./ai";
 export { handleCallWorkflow } from "./call-workflow";
 export { handleBuildJson } from "./build-json";

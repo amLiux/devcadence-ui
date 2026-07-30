@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { registerSchedule, unregisterSchedule } from "@/lib/scheduler";
 import type { Workflow, WorkflowStatus } from "@/lib/types";
+import type { EditorNode } from "@/lib/types";
 
 interface UpdateWorkflowBody {
   name?: string;
@@ -68,6 +70,21 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         ...(body.status !== undefined && { status: body.status }),
       },
     });
+
+    const shouldSyncSchedule = body.status !== undefined || body.nodes !== undefined;
+    if (shouldSyncSchedule) {
+      const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
+      const scheduleNode = nodes.find((n) => n.data.type === "Trigger" && n.data.title === "Schedule");
+      const cron = (scheduleNode?.data.metadata as Record<string, string>)?.cron;
+      const status = body.status ?? (workflow.status as WorkflowStatus);
+      if (status === "active" && cron) {
+        await unregisterSchedule(id);
+        await registerSchedule(id, cron);
+      } else if (status === "paused" || status === "draft") {
+        await unregisterSchedule(id);
+      }
+    }
+
     return NextResponse.json(simplifyWorkflow(workflow));
   } catch (error) {
     console.error("PUT /api/workflows/[id] error:", error instanceof Error ? error.message : error);
@@ -81,6 +98,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    await unregisterSchedule(id);
     await prisma.workflow.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

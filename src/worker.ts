@@ -1,4 +1,9 @@
 import "./lib/queue";
+import { syncSchedules } from "./lib/scheduler";
+
+syncSchedules().then(() => {
+  console.log("[worker] Schedules synced");
+});
 
 console.log("[worker] Workflow queue worker started");
 console.log("[worker] Waiting for jobs...");
