@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import {
   buildParentMap,
   buildAncestorChain,
@@ -6,30 +7,15 @@ import {
   type ContextStep,
 } from "@/lib/workflow-context";
 import {
-  handleTransformData,
-  handleConditional,
-  handleHttpRequest,
-  handleGithubTrigger,
-  handleGithubAction,
-  handlePostgresQuery,
-  handlePostgresInsert,
-  handlePostgresUpdate,
-  handlePostgresDelete,
-  handleWebhookTrigger,
-  handlePrompt,
-  handleClassify,
-  handleExtract,
-  handleCallWorkflow,
-  handleInput,
-  handleReturn,
-  handleBuildJson,
   handleRetryLoop,
-  type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
-import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowContext } from "@/lib/types";
+import { executeNode } from "@/lib/workflows/execute-node";
+import { sanitize } from "@/lib/workflows/sanitize";
+import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowContext } from "@/lib/types";
 
 interface TestNodeRequest {
   node: EditorNode;
+  workflowId?: string;
   edges?: EditorEdge[];
   nodes?: EditorNode[];
   context?: WorkflowContext;
@@ -37,10 +23,23 @@ interface TestNodeRequest {
 
 export async function POST(req: Request) {
   try {
-    const { node, edges, nodes: clientNodes, context } = (await req.json()) as TestNodeRequest;
+    const { node, workflowId: reqWorkflowId, edges, nodes: clientNodes, context } =
+      (await req.json()) as TestNodeRequest;
 
     const meta = (node.data.metadata || {}) as Record<string, string>;
     const { title, type } = node.data;
+
+    // Look up an actual workflow — prefer client-provided ID, or query first available
+    let workflowId: string;
+    if (reqWorkflowId) {
+      workflowId = reqWorkflowId;
+    } else {
+      const first = await prisma.workflow.findFirst({ select: { id: true }, orderBy: { createdAt: "desc" } });
+      if (!first) {
+        return NextResponse.json({ error: "No workflow found" }, { status: 400 });
+      }
+      workflowId = first.id;
+    }
 
     // Build ancestor chain from editor context (parents must already be tested)
     let ancestorChain: ContextStep | undefined;
@@ -56,13 +55,56 @@ export async function POST(req: Request) {
       ancestorChain = buildAncestorChain(node.id, parents, contextOutputs, allNodes);
     }
 
+    const run = await prisma.workflowRun.create({
+      data: { workflowId, source: "test" },
+    });
+
     // Streaming path for retry loop — NDJSON, one JSON object per line
     if (title === "Retry Loop") {
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
-          const result = await handleRetryLoop(meta, ancestorChain, (entry) => {
+          const startedAt = new Date().toISOString();
+          const result = await handleRetryLoop(meta, ancestorChain, async (entry) => {
             controller.enqueue(encoder.encode(JSON.stringify({ type: "log", entry }) + "\n"));
+            await prisma.workflowLog.create({
+              data: {
+                runId: run.id,
+                nodeId: node.id,
+                nodeType: title,
+                stepNr: 1,
+                status: "retry",
+                startedAt,
+                finishedAt: entry.timestamp,
+                elapsedMs: 0,
+                error: entry.type === "error" ? entry.message : null,
+              },
+            });
+          });
+          const finishedAt = new Date().toISOString();
+          const sanitizedOutput = sanitize(result.data);
+          await prisma.workflowLog.create({
+            data: {
+              runId: run.id,
+              nodeId: node.id,
+              nodeType: title,
+              stepNr: 1,
+              status: result.success ? "success" : "error",
+              output: sanitizedOutput.sanitized as any,
+              error: result.success ? null : result.message,
+              meta: extractRetryMeta(result.data) as any,
+              startedAt,
+              finishedAt,
+              elapsedMs: new Date(finishedAt).getTime() - new Date(startedAt).getTime(),
+            },
+          });
+          await prisma.workflowRun.update({
+            where: { id: run.id },
+            data: {
+              status: result.success ? "success" : "error",
+              finishedAt,
+              error: result.success ? null : result.message,
+            },
           });
           controller.enqueue(encoder.encode(JSON.stringify({ type: "result", nodeId: node.id, title, ...result }) + "\n"));
           controller.close();
@@ -77,89 +119,21 @@ export async function POST(req: Request) {
       });
     }
 
-    const now = () => new Date().toISOString();
-    const logs: LogEntry[] = [];
+    const { debugLog, data } = await executeNode(node, ancestorChain, { runId: run.id, stepNr: 1 });
 
-    let result: NodeHandlerResult;
-    try {
-      if (title === "Conditional") {
-        result = await handleConditional(meta, ancestorChain);
-      } else if (title === "Transform Data") {
-        result = await handleTransformData(meta, ancestorChain);
-      } else if (title === "Build JSON") {
-        result = await handleBuildJson(meta, ancestorChain);
-      } else if (title === "HTTP Request") {
-        result = await handleHttpRequest(meta, ancestorChain);
-      } else if (type === "Trigger" && title === "Webhook") {
-        result = handleWebhookTrigger(meta);
-      } else if (type === "GitHub" && title.startsWith("Listen")) {
-        result = await handleGithubTrigger(title, meta);
-      } else if (title === "PostgreSQL Query") {
-        result = await handlePostgresQuery(meta, ancestorChain);
-      } else if (title === "PostgreSQL Insert") {
-        result = await handlePostgresInsert(meta, ancestorChain);
-      } else if (title === "PostgreSQL Update") {
-        result = await handlePostgresUpdate(meta, ancestorChain);
-      } else if (title === "PostgreSQL Delete") {
-        result = await handlePostgresDelete(meta, ancestorChain);
-      } else if (title === "Prompt") {
-        result = await handlePrompt(meta, ancestorChain);
-      } else if (title === "Classify") {
-        result = await handleClassify(meta, ancestorChain);
-      } else if (title === "Extract") {
-        result = await handleExtract(meta, ancestorChain);
-      } else if (title === "Call Workflow") {
-        result = await handleCallWorkflow(meta, ancestorChain);
-      } else if (title === "Input") {
-        result = await handleInput(meta, ancestorChain);
-      } else if (title === "Return") {
-        result = await handleReturn(meta, ancestorChain);
-      } else {
-        result = await handleGithubAction(title, meta, ancestorChain);
-      }
-    } catch (err) {
-      result = {
-        success: false,
-        message: err instanceof Error ? err.message : "Execution failed",
-      };
-    }
-
-    if (result.logs) {
-      return NextResponse.json({
-        nodeId: node.id,
-        title,
-        success: result.success,
-        logs: result.logs,
-        data: result.data ?? null,
-      });
-    }
-
-    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
-
-    logs.push({
-      type: result.success ? "success" : "error",
-      message: result.message,
-      timestamp: now(),
+    await prisma.workflowRun.update({
+      where: { id: run.id },
+      data: {
+        status: debugLog.success ? "success" : "error",
+        finishedAt: new Date().toISOString(),
+        error: debugLog.success ? null : "Node execution failed",
+      },
     });
-
-    if (result.data) {
-      logs.push({
-        type: "info",
-        message: `Output: ${JSON.stringify(result.data, null, 2)}`,
-        timestamp: now(),
-      });
-    }
-
-    const debugLog: NodeDebugLog = {
-      nodeId: node.id,
-      title,
-      success: result.success,
-      logs,
-    };
 
     return NextResponse.json({
       ...debugLog,
-      data: result.data ?? null,
+      data: data ?? null,
+      runId: run.id,
     });
   } catch (error) {
     console.error(
@@ -182,4 +156,14 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractRetryMeta(data: any): Record<string, unknown> | null {
+  if (!data) return null;
+  const m: Record<string, unknown> = {};
+  if (data.attempts) m.retry_attempts = data.attempts;
+  if (data.maxAttempts) m.retry_max = data.maxAttempts;
+  if (data.totalDuration) m.http_latency = data.totalDuration;
+  return Object.keys(m).length > 0 ? m : null;
 }

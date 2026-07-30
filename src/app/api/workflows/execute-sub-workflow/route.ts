@@ -7,116 +7,13 @@ import {
   findRoots,
   type NodeOutput,
 } from "@/lib/workflow-context";
-import {
-  handleTransformData,
-  handleConditional,
-  handleHttpRequest,
-  handleGithubTrigger,
-  handleGithubAction,
-  handlePostgresQuery,
-  handlePostgresInsert,
-  handlePostgresUpdate,
-  handlePostgresDelete,
-  handleWebhookTrigger,
-  handlePrompt,
-  handleClassify,
-  handleExtract,
-  handleInput,
-  handleReturn,
-  handleBuildJson,
-  handleRetryLoop,
-  type NodeHandlerResult,
-} from "@/lib/workflows/nodes";
-import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry } from "@/lib/types";
+import { executeNode } from "@/lib/workflows/execute-node";
+import { sanitize } from "@/lib/workflows/sanitize";
+import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 interface ExecuteSubWorkflowRequest {
   workflowId: string;
   input: Record<string, unknown>;
-}
-
-async function executeNode(
-  node: EditorNode,
-  ancestorChain: import("@/lib/workflow-context").ContextStep | undefined,
-): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
-  const meta = (node.data.metadata || {}) as Record<string, string>;
-  const { title, type } = node.data;
-  const now = () => new Date().toISOString();
-  const logs: LogEntry[] = [];
-
-  try {
-    let result: NodeHandlerResult;
-
-    if (title === "Conditional") {
-      result = await handleConditional(meta, ancestorChain);
-    } else if (title === "Transform Data") {
-      result = await handleTransformData(meta, ancestorChain);
-    } else if (title === "Build JSON") {
-      result = await handleBuildJson(meta, ancestorChain);
-    } else if (title === "Retry Loop") {
-      result = await handleRetryLoop(meta, ancestorChain);
-    } else if (title === "HTTP Request") {
-      result = await handleHttpRequest(meta, ancestorChain);
-    } else if (type === "Trigger" && title === "Webhook") {
-      result = handleWebhookTrigger(meta);
-    } else if (type === "GitHub" && title.startsWith("Listen")) {
-      result = await handleGithubTrigger(title, meta);
-    } else if (title === "PostgreSQL Query") {
-      result = await handlePostgresQuery(meta, ancestorChain);
-    } else if (title === "PostgreSQL Insert") {
-      result = await handlePostgresInsert(meta, ancestorChain);
-    } else if (title === "PostgreSQL Update") {
-      result = await handlePostgresUpdate(meta, ancestorChain);
-    } else if (title === "PostgreSQL Delete") {
-      result = await handlePostgresDelete(meta, ancestorChain);
-    } else if (title === "Prompt") {
-      result = await handlePrompt(meta, ancestorChain);
-    } else if (title === "Classify") {
-      result = await handleClassify(meta, ancestorChain);
-    } else if (title === "Extract") {
-      result = await handleExtract(meta, ancestorChain);
-    } else if (title === "Input") {
-      result = await handleInput(meta, ancestorChain);
-    } else if (title === "Return") {
-      result = await handleReturn(meta, ancestorChain);
-    } else {
-      result = await handleGithubAction(title, meta, ancestorChain);
-    }
-
-    if (result.logs) {
-      return {
-        debugLog: { nodeId: node.id, title, success: result.success, logs: result.logs },
-        data: result.data,
-      };
-    }
-
-    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
-
-    logs.push({
-      type: result.success ? "success" : "error",
-      message: result.message,
-      timestamp: now(),
-    });
-
-    if (result.data) {
-      logs.push({
-        type: "info",
-        message: `Output: ${JSON.stringify(result.data, null, 2)}`,
-        timestamp: now(),
-      });
-    }
-
-    return {
-      debugLog: { nodeId: node.id, title, success: result.success, logs },
-      data: result.data,
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Execution failed";
-    logs.push({ type: "error", message: msg, timestamp: now() });
-    return {
-      debugLog: { nodeId: node.id, title, success: false, logs },
-      data: undefined,
-    };
-  }
 }
 
 export async function POST(req: Request) {
@@ -168,10 +65,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No root nodes found" }, { status: 400 });
     }
 
+    const run = await prisma.workflowRun.create({
+      data: {
+        workflowId,
+        source: "subWorkflow",
+        triggerPayload: sanitize(input).sanitized,
+      },
+    });
+
     // Execute nodes in order
     const context: Record<string, NodeOutput> = {};
     const debugLogs: NodeDebugLog[] = [];
     let lastResult: unknown = undefined;
+    let stepNr = 0;
 
     const visited = new Set<string>();
     const queue = [...executionOrder];
@@ -193,7 +99,7 @@ export async function POST(req: Request) {
       }
 
       const ancestorChain = buildAncestorChain(nodeId, parentMap, new Map(Object.entries(context)), nodes);
-      const { debugLog, data } = await executeNode(node, ancestorChain);
+      const { debugLog, data } = await executeNode(node, ancestorChain, { runId: run.id, stepNr: ++stepNr });
 
       debugLogs.push(debugLog);
       context[nodeId] = { data, success: true, error: null };
@@ -207,6 +113,17 @@ export async function POST(req: Request) {
         }
       }
     }
+
+    const allPassed = debugLogs.every((l) => l.success);
+
+    await prisma.workflowRun.update({
+      where: { id: run.id },
+      data: {
+        status: allPassed ? "success" : "error",
+        finishedAt: new Date().toISOString(),
+        error: allPassed ? null : "One or more nodes failed",
+      },
+    });
 
     // Find Return node output
     const returnNode = nodes.find((n) => n.data.title === "Return");
@@ -222,6 +139,7 @@ export async function POST(req: Request) {
       success: true,
       output,
       debugLogs,
+      runId: run.id,
     });
   } catch (error) {
     console.error("Sub-workflow execution error:", error);

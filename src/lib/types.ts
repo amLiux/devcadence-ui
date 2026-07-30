@@ -52,15 +52,18 @@ export interface IntegrationConfig {
   features?: string[];
 }
 
+export type WorkflowStatus = "draft" | "active" | "paused";
+
 export interface Workflow {
   id: string;
   name: string;
   description: string;
-  type: string;  // "workflow" | "sub-workflow"
+  type: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
   publish: boolean;
+  status: WorkflowStatus;
   createdAt: string;
   updatedAt: string;
 }

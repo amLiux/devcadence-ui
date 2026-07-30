@@ -20,10 +20,11 @@ import { EditorCanvasCard } from "./editor-canvas-card";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
 import { useWorkflowDirty } from "@/hooks/use-workflow-dirty";
-import { Save, Send, Play, Download } from "lucide-react";
+import { Save, Play, Download } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
-import type { Workflow, NodeDebugLog, WorkflowContext, EditorNode, LogEntry } from "@/lib/types";
+import { useDebugLogs } from "@/hooks/use-debug-logs";
+import type { Workflow, WorkflowContext, EditorNode } from "@/lib/types";
 import { createDefaultSubWorkflowNodes } from "@/lib/types";
 
 const nodeTypes = { cardNode: EditorCanvasCard };
@@ -42,12 +43,19 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [saving, setSaving] = useState(false);
-  const [testingWorkflow, setTestingWorkflow] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [debugTitle, setDebugTitle] = useState("");
-  const [debugSteps, setDebugSteps] = useState<NodeDebugLog[]>([]);
+  const debug = useDebugLogs({
+    onWorkflowResult: (context) => setContext(context),
+    onNodeResult: (nodeId, data, success, error) => {
+      const node = editor.elements.find((n) => n.id === nodeId);
+      if (!node) return;
+      setContext((prev) => ({
+        ...prev,
+        [nodeId]: { name: node.data.title, output: data, success, error },
+      }));
+    },
+  });
 
-  const { dirty, markClean, markCleanAfterSave } = useWorkflowDirty({
+  const { markClean, markCleanAfterSave } = useWorkflowDirty({
     nodes,
     edges,
   });
@@ -137,97 +145,11 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
       dispatch({ type: "DELETE_NODE", payload: { nodeId } });
     };
-    const handleNodeTest = async (e: Event) => {
+    const handleNodeTest = (e: Event) => {
       const nodeId = (e as CustomEvent).detail.nodeId;
       const node = editor.elements.find((n) => n.id === nodeId);
       if (!node) return;
-
-      setDebugTitle(`Test: ${node.data.title}`);
-      setDebugSteps([{ nodeId: node.id, title: node.data.title, success: false, logs: [] }]);
-      setDebugOpen(true);
-
-      try {
-        const res = await fetch("/api/workflows/test-node", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            node,
-            nodes: editor.elements as EditorNode[],
-            edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
-            context: editor.context,
-          }),
-        });
-
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("event-stream")) {
-          const entries: LogEntry[] = [];
-          const reader = res.body?.getReader();
-          const decoder = new TextDecoder();
-          if (!reader) throw new Error("No reader");
-          let buf = "";
-          for (;;) {
-            const { done, value } = await reader.read();
-            buf += decoder.decode(value || new Uint8Array(), { stream: !done });
-            const lines = buf.split("\n");
-            buf = lines.pop() || "";
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || trimmed.startsWith(":")) continue;
-              const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
-              try {
-                const msg = JSON.parse(data);
-                if (msg.type === "log") {
-                  entries.push(msg.entry);
-                  setDebugSteps([{ nodeId: node.id, title: node.data.title, success: false, logs: [...entries] }]);
-                } else if (msg.type === "result") {
-                  setDebugSteps([{ nodeId: msg.nodeId, title: msg.title, success: msg.success, logs: msg.logs || entries }]);
-                  if (msg.data !== undefined) {
-                    setContext((prev) => ({
-                      ...prev,
-                      [nodeId]: {
-                        name: node.data.title,
-                        output: msg.data,
-                        success: msg.success,
-                        error: msg.success ? null : (msg.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null),
-                      },
-                    }));
-                  }
-                }
-              } catch { /* skip malformed */ }
-            }
-            if (done) break;
-          }
-        } else {
-          const result = await res.json();
-          setDebugSteps([result]);
-          if (result.data !== undefined) {
-            setContext((prev) => ({
-              ...prev,
-              [nodeId]: {
-                name: node.data.title,
-                output: result.data,
-                success: result.success,
-                error: result.success ? null : result.logs?.find((l: { type: string }) => l.type === "error")?.message ?? null,
-              },
-            }));
-          }
-        }
-      } catch {
-        setDebugSteps([
-          {
-            nodeId: node.id,
-            title: node.data.title,
-            success: false,
-            logs: [
-              {
-                type: "error",
-                message: "Request failed",
-                timestamp: new Date().toISOString(),
-              },
-            ],
-          },
-        ]);
-      }
+      debug.testNode(node, workflow.id, editor.elements as EditorNode[], edges, editor.context);
     };
     window.addEventListener("node:edit", handleNodeEdit);
     window.addEventListener("node:delete", handleNodeDelete);
@@ -298,15 +220,6 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       onSaveRef.current = handleSave;
     }
   }, [handleSave, onSaveRef]);
-
-  const handlePublish = async () => {
-    await request({
-      endpoint: `/api/workflows/${workflow.id}`,
-      method: "PUT",
-      data: { publish: !workflow.publish },
-    });
-  };
-
   const handleExport = () => {
     const merged = nodes.map((n) => {
       const el = editor.elements.find((e) => e.id === n.id);
@@ -332,12 +245,6 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
   };
 
   const handleTestWorkflow = async () => {
-    setTestingWorkflow(true);
-    setDebugTitle(`Test: ${workflow.name}`);
-    setDebugSteps([]);
-    setDebugOpen(true);
-
-    // Clear context so the run starts fresh
     setContext((prev) => {
       const fresh: WorkflowContext = {};
       for (const node of editor.elements) {
@@ -347,58 +254,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       }
       return fresh;
     });
-
-    try {
-      const res = await fetch("/api/workflows/test-workflow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workflowId: workflow.id,
-          nodes: editor.elements,
-          edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
-        }),
-      });
-      const result = await res.json();
-
-      if (result.steps) {
-        setDebugSteps(result.steps);
-        if (result.context) {
-          setContext(result.context as WorkflowContext);
-        }
-      } else {
-        setDebugSteps([
-          {
-            nodeId: "error",
-            title: "Workflow",
-            success: false,
-            logs: [
-              {
-                type: "error",
-                message: result.error || result.message || "Unknown error",
-                timestamp: new Date().toISOString(),
-              },
-            ],
-          },
-        ]);
-      }
-    } catch {
-      setDebugSteps([
-        {
-          nodeId: "error",
-          title: "Workflow",
-          success: false,
-          logs: [
-            {
-              type: "error",
-              message: "Request failed",
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        },
-      ]);
-    } finally {
-      setTestingWorkflow(false);
-    }
+    await debug.testWorkflow(workflow, editor.elements, edges);
   };
 
   return (
@@ -442,20 +298,12 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
               </Button>
               <Button
                 size="sm"
-                variant={workflow.publish ? "destructive" : "default"}
-                onClick={handlePublish}
-              >
-                <Send className="h-3.5 w-3.5 mr-1" />
-                {workflow.publish ? "Unpublish" : "Publish"}
-              </Button>
-              <Button
-                size="sm"
                 variant="outline"
                 onClick={handleTestWorkflow}
-                disabled={testingWorkflow || nodes.length === 0}
+                disabled={debug.running || nodes.length === 0}
               >
                 <Play className="h-3.5 w-3.5 mr-1" />
-                {testingWorkflow ? "Testing..." : "Test"}
+                {debug.running ? "Testing..." : "Test"}
               </Button>
               <Button
                 size="sm"
@@ -468,17 +316,17 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
               </Button>
             </div>
             <div className="flex-1 overflow-auto">
-              <EditorCanvasSidebar />
+              <EditorCanvasSidebar workflowId={workflow.id} />
             </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
       <DebugModal
-        open={debugOpen}
-        onOpenChange={setDebugOpen}
-        title={debugTitle}
-        steps={debugSteps}
-        running={testingWorkflow}
+        open={debug.open}
+        onOpenChange={debug.setOpen}
+        title={debug.title}
+        steps={debug.steps}
+        running={debug.running}
       />
     </>
   );

@@ -8,116 +8,16 @@ import {
   findRoots,
   type NodeOutput,
 } from "@/lib/workflow-context";
-import {
-  handleTransformData,
-  handleConditional,
-  handleHttpRequest,
-  handleGithubAction,
-  handlePostgresQuery,
-  handlePostgresInsert,
-  handlePostgresUpdate,
-  handlePostgresDelete,
-  handlePrompt,
-  handleClassify,
-  handleExtract,
-  handleCallWorkflow,
-  handleInput,
-  handleReturn,
-  handleBuildJson,
-  handleRetryLoop,
-  type NodeHandlerResult,
-} from "@/lib/workflows/nodes";
-import type { EditorNode, EditorEdge, NodeDebugLog, LogEntry, WorkflowTriggerType } from "@/lib/types";
+import { executeNode } from "@/lib/workflows/execute-node";
+import { sanitize } from "@/lib/workflows/sanitize";
+import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowTriggerType } from "@/lib/types";
+
+const now = () => new Date().toISOString();
 
 function verifyHmacSignature(payload: string, secret: string, signature: string): boolean {
   const expected = createHmac("sha256", secret).update(payload).digest("hex");
   const trusted = `sha256=${expected}`;
   return trusted === signature;
-}
-
-async function executeNode(
-  node: EditorNode,
-  ancestorChain: import("@/lib/workflow-context").ContextStep | undefined,
-): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
-  const meta = (node.data.metadata || {}) as Record<string, string>;
-  const { title, type } = node.data;
-  const now = () => new Date().toISOString();
-  const logs: LogEntry[] = [];
-
-  try {
-    let result: NodeHandlerResult;
-
-    if (title === "Conditional") {
-      result = await handleConditional(meta, ancestorChain);
-    } else if (title === "Transform Data") {
-      result = await handleTransformData(meta, ancestorChain);
-    } else if (title === "Build JSON") {
-      result = await handleBuildJson(meta, ancestorChain);
-    } else if (title === "Retry Loop") {
-      result = await handleRetryLoop(meta, ancestorChain);
-    } else if (title === "HTTP Request") {
-      result = await handleHttpRequest(meta, ancestorChain);
-    } else if (type === "Trigger" && title === "Webhook") {
-      result = { success: true, message: "Webhook payload received" };
-    } else if (title === "PostgreSQL Query") {
-      result = await handlePostgresQuery(meta, ancestorChain);
-    } else if (title === "PostgreSQL Insert") {
-      result = await handlePostgresInsert(meta, ancestorChain);
-    } else if (title === "PostgreSQL Update") {
-      result = await handlePostgresUpdate(meta, ancestorChain);
-    } else if (title === "PostgreSQL Delete") {
-      result = await handlePostgresDelete(meta, ancestorChain);
-    } else if (title === "Prompt") {
-      result = await handlePrompt(meta, ancestorChain);
-    } else if (title === "Classify") {
-      result = await handleClassify(meta, ancestorChain);
-    } else if (title === "Extract") {
-      result = await handleExtract(meta, ancestorChain);
-    } else if (title === "Call Workflow") {
-      result = await handleCallWorkflow(meta, ancestorChain);
-    } else if (title === "Input") {
-      result = await handleInput(meta, ancestorChain);
-    } else if (title === "Return") {
-      result = await handleReturn(meta, ancestorChain);
-    } else {
-      result = await handleGithubAction(title, meta, ancestorChain);
-    }
-
-    if (result.logs) {
-      return {
-        debugLog: { nodeId: node.id, title, success: result.success, logs: result.logs },
-        data: result.data,
-      };
-    }
-
-    logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
-
-    logs.push({
-      type: result.success ? "success" : "error",
-      message: result.message,
-      timestamp: now(),
-    });
-
-    if (result.data) {
-      logs.push({
-        type: "info",
-        message: `Output: ${JSON.stringify(result.data, null, 2)}`,
-        timestamp: now(),
-      });
-    }
-
-    return {
-      debugLog: { nodeId: node.id, title, success: result.success, logs },
-      data: result.data,
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Execution failed";
-    logs.push({ type: "error", message: msg, timestamp: now() });
-    return {
-      debugLog: { nodeId: node.id, title, success: false, logs },
-      data: undefined,
-    };
-  }
 }
 
 export async function POST(
@@ -201,6 +101,14 @@ async function executeWebhook(
     const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
     const edges: EditorEdge[] = workflow.edges ? JSON.parse(workflow.edges) : [];
 
+    const run = await prisma.workflowRun.create({
+      data: {
+        workflowId: workflow.id,
+        source: "webhook",
+        triggerPayload: sanitize(body).sanitized,
+      },
+    });
+
     const parents = buildParentMap(edges);
     const forward = buildForwardMap(edges);
     const roots = findRoots(nodes, edges);
@@ -208,6 +116,7 @@ async function executeWebhook(
     const nodeOutputs = new Map<string, NodeOutput>();
     const stepResults: NodeDebugLog[] = [];
     const visited = new Set<string>();
+    let stepNr = 0;
 
     // Store webhook payload BEFORE walking so downstream nodes can access it via previousStep
     const webhookNode = nodes.find(
@@ -225,7 +134,51 @@ async function executeWebhook(
     }
 
     // Queue-based traversal: ensure all parents execute before any child
-    const queue = roots.map((r) => r.id);
+    const queue: string[] = [];
+
+    for (const root of roots) {
+      const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
+      if (isWebhookTrigger) {
+        const startedAt = now();
+        stepNr++;
+        const payload = sanitize(body).sanitized;
+        stepResults.push({
+          nodeId: root.id,
+          title: "Webhook",
+          success: true,
+          logs: [
+            { type: "info", message: "Starting Webhook...", timestamp: startedAt },
+            { type: "info", message: `Input: ${JSON.stringify(payload)}`, timestamp: startedAt },
+            { type: "success", message: "Webhook completed in 0ms", timestamp: now() },
+            { type: "info", message: `Output: ${JSON.stringify(payload)}`, timestamp: now() },
+          ],
+        });
+        await prisma.workflowLog.create({
+          data: {
+            runId: run.id,
+            nodeId: root.id,
+            nodeType: "Webhook",
+            stepNr,
+            status: "success",
+            input: undefined,
+            output: payload,
+            error: null,
+            controlFlow: undefined,
+            meta: undefined,
+            startedAt,
+            finishedAt: now(),
+            elapsedMs: 0,
+          },
+        });
+        visited.add(root.id);
+        const webhookChildren = forward.get(root.id) || [];
+        for (const child of webhookChildren) {
+          queue.push(child.targetId);
+        }
+      } else {
+        queue.push(root.id);
+      }
+    }
 
     while (queue.length > 0) {
       const nodeId = queue.shift()!;
@@ -243,7 +196,7 @@ async function executeWebhook(
       if (!node) continue;
 
       const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
-      const { debugLog, data } = await executeNode(node, chain);
+      const { debugLog, data } = await executeNode(node, chain, { runId: run.id, stepNr: ++stepNr });
       stepResults.push(debugLog);
 
       if (!nodeOutputs.has(nodeId)) {
@@ -279,11 +232,21 @@ async function executeWebhook(
 
     const allPassed = stepResults.every((r) => r.success);
 
+    await prisma.workflowRun.update({
+      where: { id: run.id },
+      data: {
+        status: allPassed ? "success" : "error",
+        finishedAt: new Date().toISOString(),
+        error: allPassed ? null : "One or more nodes failed",
+      },
+    });
+
     results.push({
       workflowId: workflow.id,
       workflowName: workflow.name,
       success: allPassed,
       steps: stepResults,
+      runId: run.id,
     });
   }
 

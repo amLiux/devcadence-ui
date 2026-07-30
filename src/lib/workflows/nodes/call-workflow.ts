@@ -44,9 +44,6 @@ export async function handleCallWorkflow(
   return {
     success: true,
     message: `Called workflow "${workflowId}" successfully`,
-    data: {
-      output: result.output || result,
-      ...result.output,
-    },
+    data: result.output ?? result,
   };
 }

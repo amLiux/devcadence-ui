@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DebugModal } from "@/components/composed/debug-modal";
 import { inferTriggerType, TRIGGER_TYPE_LABELS, type WorkflowTriggerType } from "@/lib/types";
-import type { Workflow, NodeDebugLog } from "@/lib/types";
+import type { Workflow, NodeDebugLog, LogEntry } from "@/lib/types";
 
 const triggerIcons: Record<WorkflowTriggerType, React.ReactNode> = {
   webhook: <Webhook className="h-5 w-5" />,
@@ -50,25 +50,68 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workflowId: workflow.id }),
       });
-      const result = await res.json();
 
-      if (result.steps) {
-        setDebugSteps(result.steps);
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("event-stream")) {
+        const pendingEntries = new Map<string, LogEntry[]>();
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        if (!reader) throw new Error("No reader");
+        let buf = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          buf += decoder.decode(value || new Uint8Array(), { stream: !done });
+          const lines = buf.split("\n");
+          buf = lines.pop() || "";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(":")) continue;
+            const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
+            try {
+              const msg = JSON.parse(data);
+              if (msg.type === "step-start") {
+                pendingEntries.set(msg.nodeId, []);
+                setDebugSteps((prev) => [...prev, { nodeId: msg.nodeId, title: msg.title, success: false, logs: [] }]);
+              } else if (msg.type === "log") {
+                const entries = pendingEntries.get(msg.nodeId);
+                if (entries) {
+                  entries.push(msg.entry);
+                  setDebugSteps((prev) =>
+                    prev.map((s) => (s.nodeId === msg.nodeId ? { ...s, logs: [...entries] } : s)),
+                  );
+                }
+              } else if (msg.type === "step") {
+                setDebugSteps((prev) =>
+                  prev.map((s) => (s.nodeId === msg.step.nodeId ? msg.step : s)),
+                );
+              } else if (msg.type === "result") {
+                setTesting(false);
+              }
+            } catch { /* skip malformed */ }
+          }
+          if (done) break;
+        }
       } else {
-        setDebugSteps([
-          {
-            nodeId: "error",
-            title: "Workflow",
-            success: false,
-            logs: [
-              {
-                type: "error",
-                message: result.error || result.message || "Unknown error",
-                timestamp: new Date().toISOString(),
-              },
-            ],
-          },
-        ]);
+        const result = await res.json();
+        if (result.steps) {
+          setDebugSteps(result.steps);
+        } else {
+          setDebugSteps([
+            {
+              nodeId: "error",
+              title: "Workflow",
+              success: false,
+              logs: [
+                {
+                  type: "error",
+                  message: result.error || result.message || "Unknown error",
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            },
+          ]);
+        }
+        setTesting(false);
       }
     } catch {
       setDebugSteps([
@@ -85,7 +128,6 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
           ],
         },
       ]);
-    } finally {
       setTesting(false);
     }
   };

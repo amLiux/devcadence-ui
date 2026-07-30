@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
+import { ExecutionHistory } from "./execution-history";
 import type { EditorNodeData, Connection } from "@/lib/types";
 import { SETTINGS_REGISTRY } from "./node-settings";
 
@@ -134,7 +135,7 @@ function NodeSettingsForm() {
   return <p className="text-xs text-muted-foreground">No configuration available for this node type.</p>;
 }
 
-export function EditorCanvasSidebar() {
+export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
   const hasNodes = editor.elements.length > 0;
   const [configuredTypes, setConfiguredTypes] = useState<Set<Connection["type"]>>(new Set());
@@ -160,24 +161,38 @@ export function EditorCanvasSidebar() {
       <div className="flex border-b">
         <button
           onClick={() => setSidebarTab("actions")}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
             sidebarTab === "actions"
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
           }`}
         >
+          <Settings className="h-3 w-3" />
           Actions
         </button>
         <div className="w-px bg-border" />
         <button
           onClick={() => setSidebarTab("settings")}
-          className={`flex-1 py-2 text-xs font-medium transition-colors ${
+          className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
             sidebarTab === "settings"
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
           }`}
         >
+          <Settings className="h-3 w-3" />
           Settings
+        </button>
+        <div className="w-px bg-border" />
+        <button
+          onClick={() => setSidebarTab("history")}
+          className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+            sidebarTab === "history"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+        >
+          <History className="h-3 w-3" />
+          History
         </button>
       </div>
       {sidebarTab === "actions" && (
@@ -220,6 +235,9 @@ export function EditorCanvasSidebar() {
             </p>
           )}
         </div>
+      )}
+      {sidebarTab === "history" && workflowId && (
+        <ExecutionHistory workflowId={workflowId} />
       )}
     </div>
   );

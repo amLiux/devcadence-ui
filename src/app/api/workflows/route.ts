@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import type { Workflow } from "@/lib/types";
+import type { Workflow, WorkflowStatus } from "@/lib/types";
 
 interface CreateWorkflowBody {
   name: string;
@@ -17,6 +17,7 @@ function simplifyWorkflow(w: {
   edges: string | null;
   flowPath: string | null;
   publish: boolean;
+  status: string;
   createdAt: Date;
   updatedAt: Date;
 }): Workflow {
@@ -29,6 +30,7 @@ function simplifyWorkflow(w: {
     edges: w.edges,
     flowPath: w.flowPath,
     publish: w.publish,
+    status: w.status as WorkflowStatus,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
   };

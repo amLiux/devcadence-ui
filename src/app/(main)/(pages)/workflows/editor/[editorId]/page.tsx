@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Repeat, FileEdit, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -11,13 +11,15 @@ import { useApi } from "@/hooks/use-api";
 import { EditorProvider, useEditor } from "@/providers/editor-provider";
 import { EditorCanvas } from "./components/editor-canvas";
 import { inferTriggerType, TRIGGER_TYPE_LABELS } from "@/lib/types";
-import type { Workflow } from "@/lib/types";
+import type { Workflow, WorkflowStatus } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-function EditorShell({ workflow, saveRef }: { workflow: Workflow; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
+function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workflow; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const router = useRouter();
   const { request } = useApi();
   const { dirty } = useEditor();
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -56,8 +58,26 @@ function EditorShell({ workflow, saveRef }: { workflow: Workflow; saveRef: React
       method: "PUT",
       data: { type },
     });
-    // Force full page refresh to pick up type change
     window.location.reload();
+  };
+
+  const STATUS_LABELS: Record<WorkflowStatus, string> = { draft: "Draft", active: "Active", paused: "Paused" };
+  const STATUS_ICONS: Record<WorkflowStatus, React.ReactNode> = {
+    draft: <FileEdit className="h-3 w-3 shrink-0" />,
+    active: <Play className="h-3 w-3 shrink-0" />,
+    paused: <Pause className="h-3 w-3 shrink-0" />,
+  };
+
+  const handleStatusChange = async (status: WorkflowStatus) => {
+    setStatusUpdating(true);
+    const res = await request<Workflow>({
+      endpoint: `/api/workflows/${workflow.id}`,
+      method: "PUT",
+      data: { status },
+    });
+    if (res) onWorkflowUpdate(res);
+    await new Promise((r) => setTimeout(r, 400));
+    setStatusUpdating(false);
   };
 
   const triggerType = inferTriggerType(workflow.nodes, workflow.type);
@@ -85,15 +105,29 @@ function EditorShell({ workflow, saveRef }: { workflow: Workflow; saveRef: React
             <p className="text-xs text-muted-foreground">{workflow.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="reusable-toggle" className="text-xs text-muted-foreground cursor-pointer">
-            Reusable
-          </Label>
-          <Switch
-            id="reusable-toggle"
-            checked={workflow.type === "sub-workflow"}
-            onCheckedChange={handleReusableToggle}
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="reusable-toggle" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap flex items-center gap-1">
+              <Repeat className="h-3 w-3" />
+              Reusable
+            </Label>
+            <Switch
+              id="reusable-toggle"
+              checked={workflow.type === "sub-workflow"}
+              onCheckedChange={handleReusableToggle}
+            />
+          </div>
+          <div className="w-px h-5 bg-border" />
+          <Select value={workflow.status} disabled={statusUpdating} onValueChange={(v) => v && handleStatusChange(v as WorkflowStatus)}>
+            <SelectTrigger className="h-7 w-[100px] text-xs gap-1">
+              {statusUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <>{STATUS_ICONS[workflow.status]}<span>{STATUS_LABELS[workflow.status]}</span></>}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft" className="text-xs">Draft</SelectItem>
+              <SelectItem value="active" className="text-xs">Active</SelectItem>
+              <SelectItem value="paused" className="text-xs">Paused</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
@@ -158,7 +192,7 @@ export default function EditorPage() {
 
   return (
     <EditorProvider>
-      <EditorShell workflow={workflow} saveRef={saveRef} />
+      <EditorShell workflow={workflow} onWorkflowUpdate={setWorkflow} saveRef={saveRef} />
     </EditorProvider>
   );
 }

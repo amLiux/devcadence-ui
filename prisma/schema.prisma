@@ -18,17 +18,51 @@ model Connection {
 }
 
 model Workflow {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   name        String
-  description String   @default("")
-  type        String   @default("workflow")  // "workflow" | "sub-workflow"
+  description String        @default("")
+  type        String        @default("workflow")  // "workflow" | "sub-workflow"
   nodes       String?
   edges       String?
   flowPath    String?
-  status      String   @default("draft")
-  publish     Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      String        @default("draft")
+  publish     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  runs        WorkflowRun[]
+}
+
+model WorkflowRun {
+  id             String        @id @default(uuid())
+  workflowId     String
+  status         String        @default("running") // running | success | error | cancelled
+  source         String        @default("manual")  // test | webhook | schedule | subWorkflow
+  triggerPayload Json?
+  startedAt      DateTime      @default(now())
+  finishedAt     DateTime?
+  error          String?
+  nodeOutputs    Json?
+  workflow       Workflow      @relation(fields: [workflowId], references: [id])
+  logs           WorkflowLog[]
+}
+
+model WorkflowLog {
+  id          String      @id @default(uuid())
+  runId       String
+  nodeId      String
+  nodeType    String
+  stepNr      Int
+  status      String      // success | error | skipped | retry
+  input       Json?
+  output      Json?
+  contextDiff Json?
+  controlFlow Json?
+  error       String?
+  meta        Json?
+  startedAt   DateTime
+  finishedAt  DateTime
+  elapsedMs   Int
+  run         WorkflowRun @relation(fields: [runId], references: [id])
 }
 
 model AIPersona {

@@ -34,7 +34,7 @@ interface HistoryState {
   currentIndex: number;
 }
 
-type SidebarTab = "actions" | "settings";
+type SidebarTab = "actions" | "settings" | "history";
 
 interface EditorContextType {
   editor: EditorState;
