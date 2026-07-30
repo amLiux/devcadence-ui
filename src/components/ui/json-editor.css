@@ -1,4 +1,5 @@
 .json-editor-wrapper .token.punctuation,
 .json-editor-wrapper .token.operator {
   color: inherit !important;
+  background: transparent !important;
 }
