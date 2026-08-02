@@ -35,6 +35,7 @@ import { InputSettings } from "./input";
 import { ReturnSettings } from "./return";
 import { BuildJsonSettings } from "./build-json";
 import { RetryLoopSettings } from "./retry-loop";
+import { SendEmailSettings } from "./smtp";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   let preview = "";
@@ -83,6 +84,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "Retry Loop": RetryLoopSettings,
   Input: InputSettings,
   Return: ReturnSettings,
+  "Send Email": SendEmailSettings,
 };
 
 export { SETTINGS_REGISTRY };

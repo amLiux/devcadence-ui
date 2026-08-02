@@ -29,6 +29,13 @@ services:
       timeout: 3s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: devdock-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
 volumes:
   pgdata:
   redisdata:

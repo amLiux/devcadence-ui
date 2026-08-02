@@ -20,6 +20,7 @@ import {
   handleReturn,
   handleBuildJson,
   handleRetryLoop,
+  handleSendEmail,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -55,6 +56,7 @@ function dispatchHandler(
   if (title === "Call Workflow") return handleCallWorkflow(meta, ancestorChain);
   if (title === "Input") return handleInput(meta, ancestorChain);
   if (title === "Return") return handleReturn(meta, ancestorChain);
+  if (title === "Send Email") return handleSendEmail(meta, ancestorChain);
   return handleGithubAction(title, meta, ancestorChain);
 }
 
