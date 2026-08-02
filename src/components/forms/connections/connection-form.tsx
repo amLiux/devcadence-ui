@@ -5,26 +5,28 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { integrationConfigs, connectionIcons } from "@/lib/constants";
 import { useModal } from "@/providers/modal-provider";
-import type { ConnectionData, ConnectionType } from "@/lib/types";
+import type { Connection, ConnectionData, ConnectionType } from "@/lib/types";
 import { ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 
 interface Props {
+  initialData?: Connection;
   onSubmit: (data: ConnectionData) => Promise<void>;
+  onUpdate?: (id: string, data: ConnectionData) => Promise<void>;
 }
 
 type Step = "selectProvider" | "providerConfig";
 
 const PAGE_SIZE = 9;
 
-export function ConnectionForm({ onSubmit }: Props) {
-  const [step, setStep] = useState<Step>("selectProvider");
-  const [selectedType, setSelectedType] = useState<ConnectionType | "">("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [config, setConfig] = useState<Record<string, string>>({});
+export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
+  const [step, setStep] = useState<Step>(initialData ? "providerConfig" : "selectProvider");
+  const [selectedType, setSelectedType] = useState<ConnectionType | "">(initialData?.type ?? "");
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [description, setDescription] = useState(initialData?.description ?? "");
+  const [config, setConfig] = useState<Record<string, string>>(initialData?.config ?? {});
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(0);
   const { setClose } = useModal();
@@ -50,7 +52,12 @@ export function ConnectionForm({ onSubmit }: Props) {
     if (!selectedType || !name) return;
     setSubmitting(true);
     try {
-      await onSubmit({ type: selectedType, name, description, config });
+      const data = { type: selectedType, name, description, config };
+      if (initialData && onUpdate) {
+        await onUpdate(initialData.id, data);
+      } else {
+        await onSubmit(data);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -126,14 +133,16 @@ export function ConnectionForm({ onSubmit }: Props) {
 
   return (
     <div className="space-y-4 px-4">
-      <button
-        type="button"
-        onClick={() => setStep("selectProvider")}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-3 w-3" />
-        Back
-      </button>
+      {!initialData && (
+        <button
+          type="button"
+          onClick={() => setStep("selectProvider")}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          Back
+        </button>
+      )}
       <div className="flex items-center gap-3">
         {selectedType && (
           <div className="h-10 w-10 flex items-center justify-center overflow-hidden">
@@ -196,21 +205,18 @@ export function ConnectionForm({ onSubmit }: Props) {
               <div key={key} className={`space-y-2 ${!compact && type === "select" ? "md:col-span-2" : ""}`}>
                 <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
                 {type === "select" && options ? (
-                  <Select
+                  <select
+                    id={key}
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={config[key] || defaultValue || ""}
-                    onValueChange={(value) => handleInputChange(key, value ?? "")}
+                    onChange={(e) => handleInputChange(key, e.target.value)}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <Input
                     id={key}
@@ -233,7 +239,7 @@ export function ConnectionForm({ onSubmit }: Props) {
           onClick={handleSubmit}
           disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && defaultValue === undefined)}
         >
-          {submitting ? "Connecting..." : "Connect"}
+          {submitting ? (initialData ? "Saving..." : "Connecting...") : (initialData ? "Save" : "Connect")}
         </Button>
       </div>
     </div>
