@@ -39,10 +39,30 @@ export default function ConnectionsPage() {
     setConnections((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const handleUpdate = async (id: string, data: ConnectionData) => {
+    const updated = await request<Connection>({
+      endpoint: `/api/connections/${id}`,
+      method: "PUT",
+      data,
+    });
+    if (updated) {
+      setConnections((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    }
+    setClose();
+  };
+
   const openNewConnection = () => {
     setOpen(
       <CustomModal title="Add Connection" subheading="Choose a service to connect">
         <ConnectionForm onSubmit={handleCreate} />
+      </CustomModal>,
+    );
+  };
+
+  const openEditConnection = (conn: Connection) => {
+    setOpen(
+      <CustomModal title="Edit Connection" subheading={`Update ${conn.name}`}>
+        <ConnectionForm initialData={conn} onSubmit={handleCreate} onUpdate={handleUpdate} />
       </CustomModal>,
     );
   };
@@ -91,8 +111,8 @@ export default function ConnectionsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled
                   className="text-muted-foreground h-7 w-7 px-0"
+                  onClick={() => openEditConnection(conn)}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
