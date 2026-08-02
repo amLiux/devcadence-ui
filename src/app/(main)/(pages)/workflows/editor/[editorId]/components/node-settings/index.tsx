@@ -36,6 +36,7 @@ import { ReturnSettings } from "./return";
 import { BuildJsonSettings } from "./build-json";
 import { RetryLoopSettings } from "./retry-loop";
 import { SendEmailSettings } from "./smtp";
+import { SendMessageSettings } from "./slack";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   let preview = "";
@@ -85,6 +86,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   Input: InputSettings,
   Return: ReturnSettings,
   "Send Email": SendEmailSettings,
+  "Send Slack Message": SendMessageSettings,
 };
 
 export { SETTINGS_REGISTRY };

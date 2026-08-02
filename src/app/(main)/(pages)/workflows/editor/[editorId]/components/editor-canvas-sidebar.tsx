@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -62,6 +62,7 @@ const actionNodes: NodeCardDef[] = [
   { type: "AI", title: "Classify", description: "Classify text into categories using AI", requiresConnection: "AI" },
   { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI" },
   { type: "SMTP", title: "Send Email", description: "Send an email via SMTP", requiresConnection: "SMTP" },
+  { type: "Slack", title: "Send Slack Message", description: "Post a message to a Slack channel", requiresConnection: "Slack" },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -75,6 +76,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Input: <LogIn className="h-3 w-3 text-cyan-500" />,
   Return: <LogOut className="h-3 w-3 text-amber-500" />,
   SMTP: <Mail className="h-3 w-3 text-red-500" />,
+  Slack: <MessageSquare className="h-3 w-3 text-purple-500" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {

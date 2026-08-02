@@ -21,6 +21,7 @@ import {
   handleBuildJson,
   handleRetryLoop,
   handleSendEmail,
+  handleSendMessage,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -57,6 +58,7 @@ function dispatchHandler(
   if (title === "Input") return handleInput(meta, ancestorChain);
   if (title === "Return") return handleReturn(meta, ancestorChain);
   if (title === "Send Email") return handleSendEmail(meta, ancestorChain);
+  if (title === "Send Slack Message") return handleSendMessage(meta, ancestorChain);
   return handleGithubAction(title, meta, ancestorChain);
 }
 
