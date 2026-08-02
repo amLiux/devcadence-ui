@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { integrationConfigs, connectionIcons } from "@/lib/constants";
 import { useModal } from "@/providers/modal-provider";
 import type { ConnectionData, ConnectionType } from "@/lib/types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 
 interface Props {
   onSubmit: (data: ConnectionData) => Promise<void>;
@@ -32,7 +32,12 @@ export function ConnectionForm({ onSubmit }: Props) {
   const config_ = selectedType ? integrationConfigs[selectedType] : undefined;
   const inputs = config_?.inputs ?? [];
 
-  const allTypes = Object.keys(integrationConfigs) as ConnectionType[];
+  const allTypes = (Object.keys(integrationConfigs) as ConnectionType[]).sort((a, b) => {
+    const aSoon = !!integrationConfigs[a].comingSoon;
+    const bSoon = !!integrationConfigs[b].comingSoon;
+    if (aSoon === bSoon) return a.localeCompare(b);
+    return aSoon ? 1 : -1;
+  });
   const totalPages = Math.ceil(allTypes.length / PAGE_SIZE);
   const pagedTypes = allTypes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const emptySlots = PAGE_SIZE - pagedTypes.length;
@@ -121,6 +126,14 @@ export function ConnectionForm({ onSubmit }: Props) {
 
   return (
     <div className="space-y-4 px-4">
+      <button
+        type="button"
+        onClick={() => setStep("selectProvider")}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        Back
+      </button>
       <div className="flex items-center gap-3">
         {selectedType && (
           <div className="h-10 w-10 flex items-center justify-center overflow-hidden">
@@ -154,73 +167,74 @@ export function ConnectionForm({ onSubmit }: Props) {
           </div>
         </div>
       )}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Connection"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description"
-          />
-        </div>
-        {inputs.map(({ key, type, label, defaultValue, options }) => (
-          <div key={key} className="space-y-2">
-            <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
-            {type === "select" && options ? (
-              <Select
-                value={config[key] || defaultValue || ""}
-                onValueChange={(value) => handleInputChange(key, value ?? "")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
+      {(() => {
+        const compact = inputs.length <= 3;
+        const gridClass = compact ? "space-y-4" : "grid grid-cols-1 md:grid-cols-2 gap-4";
+        return (
+          <div className={gridClass}>
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
               <Input
-                id={key}
-                type={type}
-                value={config[key] || defaultValue || ""}
-                onChange={(e) => handleInputChange(key, e.target.value)}
-                placeholder={type === "password" ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : ""}
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="My Connection"
               />
-            )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional description"
+              />
+            </div>
+            {inputs.map(({ key, type, label, defaultValue, options }) => (
+              <div key={key} className={`space-y-2 ${!compact && type === "select" ? "md:col-span-2" : ""}`}>
+                <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
+                {type === "select" && options ? (
+                  <Select
+                    value={config[key] || defaultValue || ""}
+                    onValueChange={(value) => handleInputChange(key, value ?? "")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id={key}
+                    type={type}
+                    value={config[key] || defaultValue || ""}
+                    onChange={(e) => handleInputChange(key, e.target.value)}
+                    placeholder={type === "password" ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : ""}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="flex justify-between pb-4">
-        <Button variant="outline" onClick={() => setStep("selectProvider")}>
-          Back
+        );
+      })()}
+      <div className="flex justify-end gap-2 pb-4">
+        <Button variant="ghost" onClick={setClose}>
+          Cancel
         </Button>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={setClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && defaultValue === undefined)}
-          >
-            {submitting ? "Connecting..." : "Connect"}
-          </Button>
-        </div>
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && defaultValue === undefined)}
+        >
+          {submitting ? "Connecting..." : "Connect"}
+        </Button>
       </div>
     </div>
   );
