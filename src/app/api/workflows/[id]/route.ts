@@ -99,7 +99,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     await unregisterSchedule(id);
-    await prisma.workflow.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.workflowLog.deleteMany({ where: { run: { workflowId: id } } });
+      await tx.workflowRun.deleteMany({ where: { workflowId: id } });
+      await tx.workflow.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(

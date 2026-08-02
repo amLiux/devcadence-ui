@@ -66,14 +66,18 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     inputs: [
       { key: "host", type: "text", label: "SMTP Host" },
       { key: "port", type: "text", label: "Port", defaultValue: "587" },
-      { key: "user", type: "text", label: "Username" },
-      { key: "password", type: "password", label: "Password" },
+      { key: "user", type: "text", label: "Username (optional)", defaultValue: "" },
+      { key: "password", type: "password", label: "Password (optional)", defaultValue: "" },
       { key: "fromEmail", type: "text", label: "From Email" },
+      { key: "secure", type: "select", label: "TLS", options: [
+        { value: "auto", label: "Auto (port 465 = TLS, otherwise STARTTLS)" },
+        { value: "true", label: "Force TLS" },
+        { value: "false", label: "No TLS" },
+      ], defaultValue: "auto" },
     ],
     checkboxes: [],
-    description: "Send emails through any SMTP server. Works with SendGrid, Mailgun, AWS SES, or your own mail server.",
+    description: "Send emails through any SMTP server. Works with SendGrid, Mailgun, AWS SES, MailHog, or your own mail server.",
     features: ["Send Email"],
-    comingSoon: true,
   },
   Slack: {
     inputs: [],
@@ -108,7 +112,7 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
 export const connectionIcons: Record<ConnectionType, string> = {
   GitHub: "/github.png",
   PostgreSQL: "/postgresql.svg",
-  Webhook: "/webhook.svg",
+  Webhook: "/dd-logo.svg",
   Slack: "/slack.png",
   Discord: "/discord.png",
   AI: "/dd-logo.svg",

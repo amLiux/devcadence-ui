@@ -12,4 +12,5 @@ export { handleCallWorkflow } from "./call-workflow";
 export { handleBuildJson } from "./build-json";
 export { handleInput } from "./input";
 export { handleReturn } from "./return";
+export { handleSendEmail } from "./smtp";
 export type { NodeHandlerResult, NodeHandlerContext } from "./types";
