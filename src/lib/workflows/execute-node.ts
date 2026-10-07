@@ -21,6 +21,10 @@ import {
   handleBuildJson,
   handleRetryLoop,
   handleSendEmail,
+  handleSendDiscordMessage,
+  handleReadDiscordMessages,
+  handleSendDirectMessage,
+  handleListenDiscordMessages,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -57,6 +61,10 @@ function dispatchHandler(
   if (title === "Input") return handleInput(meta, ancestorChain);
   if (title === "Return") return handleReturn(meta, ancestorChain);
   if (title === "Send Email") return handleSendEmail(meta, ancestorChain);
+  if (title === "Send Discord Message") return handleSendDiscordMessage(meta, ancestorChain);
+  if (title === "Read Discord Messages") return handleReadDiscordMessages(meta, ancestorChain);
+  if (title === "Send Direct Message") return handleSendDirectMessage(meta, ancestorChain);
+  if (title === "Listen Discord Messages") return handleListenDiscordMessages(meta, ancestorChain);
   return handleGithubAction(title, meta, ancestorChain);
 }
 

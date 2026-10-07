@@ -87,11 +87,12 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     features: ["Send Message"],
   },
   Discord: {
-    inputs: [],
+    inputs: [
+      { key: "botToken", type: "password", label: "Bot Token" },
+    ],
     checkboxes: [],
-    comingSoon: true,
-    description: "Send messages and notifications to Discord channels.",
-    features: ["Send Message"],
+    description: "Send messages and notifications to Discord channels using a bot token.",
+    features: ["Listen Discord Messages", "Send Discord Message", "Read Discord Messages", "Send Direct Message"],
   },
   Notion: {
     inputs: [],

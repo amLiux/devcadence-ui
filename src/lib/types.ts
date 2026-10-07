@@ -85,7 +85,7 @@ export interface EditorNodeData {
   completed: boolean;
   current: boolean;
   metadata: Record<string, unknown>;
-  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL" | "AI" | "SMTP";
+  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord";
 }
 
 export interface EditorEdge {
@@ -95,11 +95,12 @@ export interface EditorEdge {
   sourceHandle?: string | null;
 }
 
-export type WorkflowTriggerType = "webhook" | "schedule" | "github" | "sub-workflow" | "manual";
+export type WorkflowTriggerType = "webhook" | "schedule" | "github" | "sub-workflow" | "discord" | "manual";
 
 const TRIGGER_TITLE_MAP: Record<string, WorkflowTriggerType> = {
   Webhook: "webhook",
   Schedule: "schedule",
+  "Listen Discord Messages": "discord",
   Input: "sub-workflow",
   "Listen Commits": "github",
   "Listen Pull Requests": "github",
@@ -127,6 +128,7 @@ export const TRIGGER_TYPE_LABELS: Record<WorkflowTriggerType, string> = {
   webhook: "Webhook",
   schedule: "Scheduled",
   github: "GitHub Events",
+  discord: "Discord Messages",
   "sub-workflow": "Reusable",
   manual: "Manual",
 };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { registerSchedule, unregisterSchedule } from "@/lib/scheduler";
+import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
 import type { Workflow, WorkflowStatus } from "@/lib/types";
 import type { EditorNode } from "@/lib/types";
 
@@ -73,13 +73,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const shouldSyncSchedule = body.status !== undefined || body.nodes !== undefined;
     if (shouldSyncSchedule) {
-      const nodes: EditorNode[] = workflow.nodes ? JSON.parse(workflow.nodes) : [];
-      const scheduleNode = nodes.find((n) => n.data.type === "Trigger" && n.data.title === "Schedule");
-      const cron = (scheduleNode?.data.metadata as Record<string, string>)?.cron;
       const status = body.status ?? (workflow.status as WorkflowStatus);
-      if (status === "active" && cron) {
-        await unregisterSchedule(id);
-        await registerSchedule(id, cron);
+      if (status === "active") {
+        await syncSchedules();
       } else if (status === "paused" || status === "draft") {
         await unregisterSchedule(id);
       }
