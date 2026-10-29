@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getConnectionConfigById } from "@/lib/connection-config";
 import { createHmac } from "crypto";
 import {
   buildParentMap,
@@ -37,7 +38,7 @@ export async function POST(
       return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
     }
 
-    const config = connection.config as Record<string, string>;
+    const config = (await getConnectionConfigById(connectionId)) as Record<string, string>;
     const secret = config.secret;
 
     if (secret) {
