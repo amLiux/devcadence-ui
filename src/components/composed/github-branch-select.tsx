@@ -17,6 +17,25 @@ interface GitHubBranch {
   name: string;
 }
 
+const branchCache = new Map<string, GitHubBranch[]>();
+
+async function fetchBranches(owner: string, repo: string): Promise<GitHubBranch[]> {
+  const key = `${owner}/${repo}`;
+  const cached = branchCache.get(key);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(`/api/github/repos/${owner}/${repo}/branches`);
+    if (!res.ok) throw new Error("Failed to fetch branches");
+    const data = (await res.json()) as { data?: GitHubBranch[] };
+    const branches = Array.isArray(data.data) ? data.data : [];
+    branchCache.set(key, branches);
+    return branches;
+  } catch {
+    return [];
+  }
+}
+
 interface GitHubBranchSelectProps {
   repo: string;
   value: string;
@@ -33,12 +52,10 @@ export function GitHubBranchSelect({ repo, value, onChange }: GitHubBranchSelect
       setBranches([]);
       return;
     }
-    setLoading(true);
     const [owner, name] = repo.split("/");
-    fetch(`/api/github/repos/${owner}/${name}/branches`)
-      .then((r) => r.json())
-      .then((data) => setBranches(Array.isArray(data.data) ? data.data : []))
-      .catch(() => setBranches([]))
+    setLoading(true);
+    fetchBranches(owner, name)
+      .then(setBranches)
       .finally(() => setLoading(false));
   }, [repo]);
 
@@ -57,10 +74,10 @@ export function GitHubBranchSelect({ repo, value, onChange }: GitHubBranchSelect
           />
         }
       >
-        {selected ? (
+        {selected || value ? (
           <span className="flex items-center gap-1.5 truncate text-sm">
             <GitBranch className="h-3 w-3 shrink-0" />
-            {selected.name}
+            {selected?.name || value}
           </span>
         ) : (
           <span className="text-sm text-muted-foreground">

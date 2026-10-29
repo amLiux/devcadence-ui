@@ -36,6 +36,7 @@ import { ReturnSettings } from "./return";
 import { BuildJsonSettings } from "./build-json";
 import { RetryLoopSettings } from "./retry-loop";
 import { SendEmailSettings } from "./smtp";
+import { SendMessageSettings } from "./slack";
 import { SendDiscordMessageSettings, ReadDiscordMessagesSettings, SendDirectMessageSettings, ListenDiscordMessagesSettings } from "./discord";
 import { ScanDependenciesSettings } from "./scan-dependencies";
 
@@ -87,6 +88,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   Input: InputSettings,
   Return: ReturnSettings,
   "Send Email": SendEmailSettings,
+  "Send Slack Message": SendMessageSettings,
   "Send Discord Message": SendDiscordMessageSettings,
   "Read Discord Messages": ReadDiscordMessagesSettings,
   "Send Direct Message": SendDirectMessageSettings,

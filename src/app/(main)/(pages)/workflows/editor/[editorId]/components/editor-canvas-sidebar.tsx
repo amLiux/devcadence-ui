@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -64,6 +64,7 @@ const actionNodes: NodeCardDef[] = [
   { type: "AI", title: "Classify", description: "Classify text into categories using AI", requiresConnection: "AI" },
   { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI" },
   { type: "SMTP", title: "Send Email", description: "Send an email via SMTP", requiresConnection: "SMTP" },
+  { type: "Slack", title: "Send Slack Message", description: "Post a message to a Slack channel", requiresConnection: "Slack" },
   { type: "Discord", title: "Send Discord Message", description: "Send a message to a Discord channel", requiresConnection: "Discord" },
   { type: "Discord", title: "Read Discord Messages", description: "Fetch recent messages from a channel", requiresConnection: "Discord" },
   { type: "Discord", title: "Send Direct Message", description: "Send a DM to a Discord user", requiresConnection: "Discord" },
@@ -89,6 +90,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Input: <LogIn className="h-3 w-3 text-cyan-500" />,
   Return: <LogOut className="h-3 w-3 text-amber-500" />,
   SMTP: <Mail className="h-3 w-3 text-red-500" />,
+  Slack: <MessageSquare className="h-3 w-3 text-purple-500" />,
   Security: <Shield className="h-3 w-3 text-emerald-500" />,
   "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
   "Send Discord Message": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
@@ -146,9 +148,14 @@ function NodeSettingsForm() {
     markDirty();
   };
 
+  const updateMeta = (patch: Record<string, string>) => {
+    updateNode(node.id, { metadata: { ...meta, ...patch } });
+    markDirty();
+  };
+
   const SettingsComponent = SETTINGS_REGISTRY[title];
   if (SettingsComponent) {
-    return <SettingsComponent meta={meta} handleChange={handleChange} parentOutput={parentOutput} hasParentEdge={!!parentEdge} />;
+    return <SettingsComponent meta={meta} handleChange={handleChange} updateMeta={updateMeta} parentOutput={parentOutput} hasParentEdge={!!parentEdge} />;
   }
 
   return <p className="text-xs text-muted-foreground">No configuration available for this node type.</p>;

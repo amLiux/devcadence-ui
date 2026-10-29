@@ -13,6 +13,7 @@ export { handleBuildJson } from "./build-json";
 export { handleInput } from "./input";
 export { handleReturn } from "./return";
 export { handleSendEmail } from "./smtp";
+export { handleSendMessage } from "./slack";
 export { handleSendDiscordMessage, handleReadDiscordMessages, handleSendDirectMessage, handleListenDiscordMessages } from "./discord";
 export { handleScanDependencies } from "./scan-dependencies";
 export type { NodeHandlerResult, NodeHandlerContext } from "./types";

@@ -80,9 +80,10 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     features: ["Send Email"],
   },
   Slack: {
-    inputs: [],
+    inputs: [
+      { key: "botToken", type: "password", label: "Bot Token" },
+    ],
     checkboxes: [],
-    comingSoon: true,
     description: "Send messages and notifications to Slack channels.",
     features: ["Send Message"],
   },

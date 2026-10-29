@@ -21,6 +21,7 @@ import {
   handleBuildJson,
   handleRetryLoop,
   handleSendEmail,
+  handleSendMessage,
   handleSendDiscordMessage,
   handleReadDiscordMessages,
   handleSendDirectMessage,
@@ -62,6 +63,7 @@ function dispatchHandler(
   if (title === "Input") return handleInput(meta, ancestorChain);
   if (title === "Return") return handleReturn(meta, ancestorChain);
   if (title === "Send Email") return handleSendEmail(meta, ancestorChain);
+  if (title === "Send Slack Message") return handleSendMessage(meta, ancestorChain);
   if (title === "Send Discord Message") return handleSendDiscordMessage(meta, ancestorChain);
   if (title === "Read Discord Messages") return handleReadDiscordMessages(meta, ancestorChain);
   if (title === "Send Direct Message") return handleSendDirectMessage(meta, ancestorChain);
