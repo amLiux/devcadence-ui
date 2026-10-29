@@ -14,4 +14,5 @@ export { handleInput } from "./input";
 export { handleReturn } from "./return";
 export { handleSendEmail } from "./smtp";
 export { handleSendDiscordMessage, handleReadDiscordMessages, handleSendDirectMessage, handleListenDiscordMessages } from "./discord";
+export { handleScanDependencies } from "./scan-dependencies";
 export type { NodeHandlerResult, NodeHandlerContext } from "./types";

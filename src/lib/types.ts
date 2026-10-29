@@ -85,7 +85,7 @@ export interface EditorNodeData {
   completed: boolean;
   current: boolean;
   metadata: Record<string, unknown>;
-  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord";
+  type: "Trigger" | "Action" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord" | "Security";
 }
 
 export interface EditorEdge {

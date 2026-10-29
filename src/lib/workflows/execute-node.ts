@@ -25,6 +25,7 @@ import {
   handleReadDiscordMessages,
   handleSendDirectMessage,
   handleListenDiscordMessages,
+  handleScanDependencies,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
@@ -65,6 +66,7 @@ function dispatchHandler(
   if (title === "Read Discord Messages") return handleReadDiscordMessages(meta, ancestorChain);
   if (title === "Send Direct Message") return handleSendDirectMessage(meta, ancestorChain);
   if (title === "Listen Discord Messages") return handleListenDiscordMessages(meta, ancestorChain);
+  if (title === "Scan Dependencies") return handleScanDependencies(meta, ancestorChain);
   return handleGithubAction(title, meta, ancestorChain);
 }
 
