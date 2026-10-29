@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     container_name: devdock-postgres
     environment:
       POSTGRES_USER: devdock
@@ -17,7 +17,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: devdock-redis
     ports:
       - "6379:6379"
@@ -30,7 +30,7 @@ services:
       retries: 5
 
   mailhog:
-    image: mailhog/mailhog:latest
+    image: docker.io/mailhog/mailhog:latest
     container_name: devdock-mailhog
     ports:
       - "1025:1025"
