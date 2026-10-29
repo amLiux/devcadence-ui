@@ -99,6 +99,11 @@ export function GitHubManifestSelect({ repo, branch, value, onChange }: GitHubMa
                     onChange(path);
                     setOpen(false);
                   }}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    onChange(path);
+                    setOpen(false);
+                  }}
                 >
                   <span className="flex items-center gap-1.5 truncate">
                     <FileText className="h-3 w-3 shrink-0" />
