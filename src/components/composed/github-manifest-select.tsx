@@ -13,6 +13,30 @@ interface GitHubTreeItem {
   type: string;
 }
 
+const manifestCache = new Map<string, string[]>();
+
+async function fetchManifests(owner: string, repo: string, branch: string): Promise<string[]> {
+  const key = `${owner}/${repo}/${branch}`;
+  const cached = manifestCache.get(key);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(
+      `/api/github/repos/${owner}/${repo}/tree?branch=${encodeURIComponent(branch)}`,
+    );
+    if (!res.ok) throw new Error("Failed to fetch tree");
+    const data = (await res.json()) as { data?: { tree?: GitHubTreeItem[] } };
+    const tree = data.data?.tree || [];
+    const manifests = tree
+      .filter((item) => item.type === "blob" && MANIFEST_PATTERNS.some((p) => item.path.endsWith(p)))
+      .map((item) => item.path);
+    manifestCache.set(key, manifests);
+    return manifests;
+  } catch {
+    return [];
+  }
+}
+
 interface GitHubManifestSelectProps {
   repo: string;
   branch: string;
@@ -29,18 +53,10 @@ export function GitHubManifestSelect({ repo, branch, value, onChange }: GitHubMa
       setPaths([]);
       return;
     }
-    setLoading(true);
     const [owner, name] = repo.split("/");
-    fetch(`/api/github/repos/${owner}/${name}/tree?branch=${encodeURIComponent(branch)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const tree = (data.data?.tree || []) as GitHubTreeItem[];
-        const manifests = tree
-          .filter((item) => item.type === "blob" && MANIFEST_PATTERNS.some((p) => item.path.endsWith(p)))
-          .map((item) => item.path);
-        setPaths(manifests);
-      })
-      .catch(() => setPaths([]))
+    setLoading(true);
+    fetchManifests(owner, name, branch)
+      .then(setPaths)
       .finally(() => setLoading(false));
   }, [repo, branch]);
 
