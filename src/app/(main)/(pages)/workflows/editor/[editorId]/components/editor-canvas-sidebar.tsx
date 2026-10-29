@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -69,6 +69,15 @@ const actionNodes: NodeCardDef[] = [
   { type: "Discord", title: "Send Direct Message", description: "Send a DM to a Discord user", requiresConnection: "Discord" },
 ];
 
+const securityNodes: NodeCardDef[] = [
+  {
+    type: "Security",
+    title: "Scan Dependencies",
+    description: "Scan repo dependencies for known vulnerabilities",
+    requiresConnection: "GitHub",
+  },
+];
+
 const iconMap: Record<string, React.ReactNode> = {
   Trigger: <Zap className="h-3 w-3 text-yellow-500" />,
   Action: <Settings className="h-3 w-3 text-blue-500" />,
@@ -80,6 +89,8 @@ const iconMap: Record<string, React.ReactNode> = {
   Input: <LogIn className="h-3 w-3 text-cyan-500" />,
   Return: <LogOut className="h-3 w-3 text-amber-500" />,
   SMTP: <Mail className="h-3 w-3 text-red-500" />,
+  Security: <Shield className="h-3 w-3 text-emerald-500" />,
+  "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
   "Send Discord Message": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
 };
 
@@ -163,6 +174,7 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
 
   const availableTriggerNodes = hasNodes ? [] : triggerNodes.filter(isAvailable);
   const availableActionNodes = actionNodes.filter(isAvailable);
+  const availableSecurityNodes = securityNodes.filter(isAvailable);
 
   return (
     <div className="h-full flex flex-col">
@@ -223,6 +235,16 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
               <DraggableCard key={node.title} node={node} />
             ))}
           </div>
+          {availableSecurityNodes.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Security
+              </p>
+              {availableSecurityNodes.map((node) => (
+                <DraggableCard key={node.title} node={node} />
+              ))}
+            </div>
+          )}
         </div>
       )}
       {sidebarTab === "settings" && (

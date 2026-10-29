@@ -37,6 +37,7 @@ import { BuildJsonSettings } from "./build-json";
 import { RetryLoopSettings } from "./retry-loop";
 import { SendEmailSettings } from "./smtp";
 import { SendDiscordMessageSettings, ReadDiscordMessagesSettings, SendDirectMessageSettings, ListenDiscordMessagesSettings } from "./discord";
+import { ScanDependenciesSettings } from "./scan-dependencies";
 
 function ScheduleSettings({ meta, handleChange }: NodeSettingsProps) {
   let preview = "";
@@ -90,6 +91,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "Read Discord Messages": ReadDiscordMessagesSettings,
   "Send Direct Message": SendDirectMessageSettings,
   "Listen Discord Messages": ListenDiscordMessagesSettings,
+  "Scan Dependencies": ScanDependenciesSettings,
 };
 
 export { SETTINGS_REGISTRY };

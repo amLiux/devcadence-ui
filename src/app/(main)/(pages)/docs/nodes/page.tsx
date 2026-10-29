@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal, ArrowRightLeft, LogIn, LogOut, RotateCcw } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronDown, ChevronRight, Globe, Sparkles, GitBranch, Database, Zap, Mail, Terminal, ArrowRightLeft, LogIn, LogOut, RotateCcw, Shield } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface NodeDoc {
@@ -164,6 +164,26 @@ const NODE_DOCS: NodeDoc[] = [
     ],
     examples: [
       "POST to /api/webhooks/:connectionId with JSON body",
+    ],
+  },
+  {
+    title: "Scan Dependencies",
+    icon: <Shield className="h-4 w-4 text-emerald-500" />,
+    color: "border-emerald-500/30",
+    description: "Scans a repository manifest for known vulnerabilities using OSV or GitHub Advisory. Use with a Conditional node to open issues only when findings exist.",
+    requires: "GitHub connection",
+    settings: [
+      { key: "repo", desc: "Repository in owner/name format." },
+      { key: "branch", desc: "Branch to read the manifest from." },
+      { key: "manifestPath", desc: "Path to manifest (package.json, requirements.txt, pyproject.toml)." },
+      { key: "ecosystem", desc: "npm or python; auto-detected from manifest path." },
+      { key: "provider", desc: "OSV (default) or GitHub Advisory." },
+      { key: "severityFilter", desc: "Filter findings by minimum severity: all, low, moderate, high, critical." },
+      { key: "outputName", desc: "Optional alias for the scan result output." },
+    ],
+    examples: [
+      "Schedule → Scan Dependencies → Conditional (previousStep.hasFindings) → Create Issue",
+      "Filter to high+ findings by setting severityFilter to high",
     ],
   },
   {
