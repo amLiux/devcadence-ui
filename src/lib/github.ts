@@ -1,15 +1,11 @@
-import { prisma } from "@/lib/db";
+import { getConnectionConfigByType } from "@/lib/connection-config";
 
 const GITHUB_API = "https://api.github.com";
 
 export async function getGitHubToken(): Promise<string | null> {
-  const conn = await prisma.connection.findFirst({
-    where: { type: "GitHub" },
-    orderBy: { updatedAt: "desc" },
-  });
-  if (!conn) return null;
-  const config = conn.config as Record<string, string>;
-  return config.patToken || null;
+  const config = await getConnectionConfigByType("GitHub");
+  if (!config) return null;
+  return (config.patToken as string) || null;
 }
 
 interface FetchOptions {

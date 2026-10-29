@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, MessageSquare } from "lucide-react";
+import Image from "next/image";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -19,6 +20,7 @@ interface NodeCardDef {
 const triggerNodes: NodeCardDef[] = [
   { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event", requiresConnection: "Webhook" },
   { type: "Trigger", title: "Schedule", description: "Trigger on a cron schedule" },
+  { type: "Trigger", title: "Listen Discord Messages", description: "Trigger on new Discord channel messages", requiresConnection: "Discord" },
   { type: "Trigger", title: "Input", description: "Receive data from parent workflow (sub-workflows only)" },
   { type: "GitHub", title: "Listen Commits", description: "Trigger on new pushes to a repo", requiresConnection: "GitHub" },
   {
@@ -63,6 +65,18 @@ const actionNodes: NodeCardDef[] = [
   { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI" },
   { type: "SMTP", title: "Send Email", description: "Send an email via SMTP", requiresConnection: "SMTP" },
   { type: "Slack", title: "Send Slack Message", description: "Post a message to a Slack channel", requiresConnection: "Slack" },
+  { type: "Discord", title: "Send Discord Message", description: "Send a message to a Discord channel", requiresConnection: "Discord" },
+  { type: "Discord", title: "Read Discord Messages", description: "Fetch recent messages from a channel", requiresConnection: "Discord" },
+  { type: "Discord", title: "Send Direct Message", description: "Send a DM to a Discord user", requiresConnection: "Discord" },
+];
+
+const securityNodes: NodeCardDef[] = [
+  {
+    type: "Security",
+    title: "Scan Dependencies",
+    description: "Scan repo dependencies for known vulnerabilities",
+    requiresConnection: "GitHub",
+  },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -77,6 +91,9 @@ const iconMap: Record<string, React.ReactNode> = {
   Return: <LogOut className="h-3 w-3 text-amber-500" />,
   SMTP: <Mail className="h-3 w-3 text-red-500" />,
   Slack: <MessageSquare className="h-3 w-3 text-purple-500" />,
+  Security: <Shield className="h-3 w-3 text-emerald-500" />,
+  "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
+  "Send Discord Message": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {
@@ -159,6 +176,7 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
 
   const availableTriggerNodes = hasNodes ? [] : triggerNodes.filter(isAvailable);
   const availableActionNodes = actionNodes.filter(isAvailable);
+  const availableSecurityNodes = securityNodes.filter(isAvailable);
 
   return (
     <div className="h-full flex flex-col">
@@ -219,6 +237,16 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
               <DraggableCard key={node.title} node={node} />
             ))}
           </div>
+          {availableSecurityNodes.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Security
+              </p>
+              {availableSecurityNodes.map((node) => (
+                <DraggableCard key={node.title} node={node} />
+              ))}
+            </div>
+          )}
         </div>
       )}
       {sidebarTab === "settings" && (

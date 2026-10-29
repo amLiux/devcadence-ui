@@ -8,26 +8,73 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const connection = { url: REDIS_URL };
 const queue = new Queue(QUEUE_NAME, { connection });
 
-function findScheduleNode(nodes: EditorNode[]): { cron: string } | null {
+interface ScheduleTrigger {
+  type: "schedule";
+  cron: string;
+}
+
+interface DiscordListenTrigger {
+  type: "discord-listen";
+  cron: string;
+  channelId: string;
+  limit: number;
+  connectionId: string;
+}
+
+type TriggerConfig = ScheduleTrigger | DiscordListenTrigger;
+
+function findTriggerNodes(nodes: EditorNode[]): TriggerConfig | null {
   for (const node of nodes) {
-    if (node.data.type === "Trigger" && node.data.title === "Schedule") {
-      const meta = (node.data.metadata || {}) as Record<string, string>;
-      if (meta.cron) return { cron: meta.cron };
+    if (node.data.type !== "Trigger") continue;
+    const meta = (node.data.metadata || {}) as Record<string, string>;
+
+    if (node.data.title === "Schedule" && meta.cron) {
+      return { type: "schedule", cron: meta.cron };
+    }
+
+    if (node.data.title === "Listen Discord Messages" && meta.cron && meta.channelId && meta.connectionId) {
+      return {
+        type: "discord-listen",
+        cron: meta.cron,
+        channelId: meta.channelId,
+        limit: parseInt(meta.limit || "50", 10),
+        connectionId: meta.connectionId,
+      };
     }
   }
   return null;
 }
 
-export async function registerSchedule(workflowId: string, cron: string): Promise<void> {
+function jobName(workflowId: string, trigger: TriggerConfig): string {
+  if (trigger.type === "schedule") return workflowId;
+  return `discord-listen:${workflowId}:${trigger.channelId}`;
+}
+
+function jobData(workflowId: string, trigger: TriggerConfig): Record<string, unknown> {
+  if (trigger.type === "schedule") {
+    return { workflowId, source: "schedule" };
+  }
+  return {
+    workflowId,
+    source: "discord-listen",
+    body: {
+      connectionId: trigger.connectionId,
+      channelId: trigger.channelId,
+      limit: trigger.limit,
+    },
+  };
+}
+
+export async function registerSchedule(name: string, workflowId: string, trigger: TriggerConfig): Promise<void> {
   const existing = await queue.getRepeatableJobs();
-  const already = existing.some((j) => j.name === workflowId && j.pattern === cron);
+  const already = existing.some((j) => j.name === name && j.pattern === trigger.cron);
   if (already) return;
 
   await queue.add(
-    workflowId,
-    { workflowId, source: "schedule" },
+    name,
+    jobData(workflowId, trigger),
     {
-      repeat: { pattern: cron },
+      repeat: { pattern: trigger.cron },
     },
   );
 }
@@ -35,8 +82,11 @@ export async function registerSchedule(workflowId: string, cron: string): Promis
 export async function unregisterSchedule(workflowId: string): Promise<void> {
   const existing = await queue.getRepeatableJobs();
   for (const job of existing) {
-    if (job.name === workflowId && job.pattern) {
-      await queue.removeRepeatable(workflowId, { pattern: job.pattern });
+    if (!job.name) continue;
+    if (job.name === workflowId || job.name.startsWith(`discord-listen:${workflowId}:`)) {
+      if (job.pattern) {
+        await queue.removeRepeatable(job.name, { pattern: job.pattern });
+      }
     }
   }
 }
@@ -46,28 +96,29 @@ export async function syncSchedules(): Promise<void> {
     where: { status: "active" },
   });
 
-  const desired = new Map<string, string>();
+  const desired = new Map<string, { workflowId: string; cron: string; trigger: TriggerConfig }>();
   for (const workflow of workflows) {
     if (!workflow.nodes) continue;
     const nodes: EditorNode[] = JSON.parse(workflow.nodes);
-    const schedule = findScheduleNode(nodes);
-    if (schedule) {
-      desired.set(workflow.id, schedule.cron);
+    const trigger = findTriggerNodes(nodes);
+    if (trigger) {
+      const name = jobName(workflow.id, trigger);
+      desired.set(name, { workflowId: workflow.id, cron: trigger.cron, trigger });
     }
   }
 
   const existing = await queue.getRepeatableJobs();
   for (const job of existing) {
     if (!job.name) continue;
-    const wantedCron = desired.get(job.name);
-    if (wantedCron === undefined || job.pattern !== wantedCron) {
+    const wanted = desired.get(job.name);
+    if (!wanted || job.pattern !== wanted.cron) {
       if (job.pattern) {
         await queue.removeRepeatable(job.name, { pattern: job.pattern });
       }
     }
   }
 
-  for (const [workflowId, cron] of desired) {
-    await registerSchedule(workflowId, cron);
+  for (const [name, { workflowId, trigger }] of desired) {
+    await registerSchedule(name, workflowId, trigger);
   }
 }

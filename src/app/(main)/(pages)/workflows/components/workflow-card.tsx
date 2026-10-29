@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause } from "lucide-react";
+import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ const triggerIcons: Record<WorkflowTriggerType, React.ReactNode> = {
   webhook: <Webhook className="h-5 w-5" />,
   schedule: <Clock className="h-5 w-5" />,
   github: <GitBranch className="h-5 w-5" />,
+  discord: <MessageCircle className="h-5 w-5" />,
   "sub-workflow": <Repeat className="h-5 w-5" />,
   manual: <Hand className="h-5 w-5" />,
 };
@@ -22,6 +23,7 @@ const triggerColors: Record<WorkflowTriggerType, string> = {
   webhook: "text-blue-500",
   schedule: "text-yellow-500",
   github: "text-foreground",
+  discord: "text-indigo-500",
   "sub-workflow": "text-purple-500",
   manual: "text-muted-foreground",
 };

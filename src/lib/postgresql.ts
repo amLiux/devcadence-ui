@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import type { QueryResult } from "pg";
 import { prisma } from "@/lib/db";
+import { unpackConfig } from "@/lib/connection-config";
 
 const pools = new Map<string, Pool>();
 
@@ -28,7 +29,7 @@ export async function getConnectionPool(connectionId: string): Promise<Pool> {
   if (!conn) throw new Error(`Connection ${connectionId} not found`);
   if (conn.type !== "PostgreSQL") throw new Error(`Connection ${connectionId} is not PostgreSQL`);
 
-  const config = conn.config as Record<string, string>;
+  const config = unpackConfig(conn.config) as Record<string, string>;
   const pool = new Pool(getPoolConfig(connectionId, config));
 
   // Test connection
