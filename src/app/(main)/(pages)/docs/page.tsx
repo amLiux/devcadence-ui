@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft } from "lucide-react";
+import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
 const topics: { title: string; description: string; href: string; icon: React.ReactNode; tag: string; tagColor?: string; page: DocsPage }[] = [
@@ -73,6 +73,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     tag: "Explore",
     page: "connections",
   },
+  {
+    title: "Security & Secrets",
+    description: "How devdock encrypts connection secrets before they ever reach the database.",
+    href: "/docs/security",
+    icon: <Lock className="h-5 w-5" />,
+    tag: "New",
+    tagColor: "text-emerald-500",
+    page: "security",
+  },
 ];
 
 const iconColors: Record<string, string> = {
@@ -84,6 +93,7 @@ const iconColors: Record<string, string> = {
   "template-variables": "text-cyan-500",
   "conditional-logic": "text-amber-500",
   "reusable-workflows": "text-emerald-500",
+  security: "text-emerald-500",
 };
 
 export default function DocsPage() {
