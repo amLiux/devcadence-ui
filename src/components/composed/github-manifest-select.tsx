@@ -6,9 +6,6 @@ const MANIFEST_PATTERNS = [
   "package.json",
   "requirements.txt",
   "pyproject.toml",
-  "go.mod",
-  "Cargo.toml",
-  "pom.xml",
 ];
 
 interface GitHubTreeItem {

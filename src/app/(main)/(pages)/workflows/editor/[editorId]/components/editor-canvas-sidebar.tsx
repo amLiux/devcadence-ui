@@ -148,9 +148,14 @@ function NodeSettingsForm() {
     markDirty();
   };
 
+  const updateMeta = (patch: Record<string, string>) => {
+    updateNode(node.id, { metadata: { ...meta, ...patch } });
+    markDirty();
+  };
+
   const SettingsComponent = SETTINGS_REGISTRY[title];
   if (SettingsComponent) {
-    return <SettingsComponent meta={meta} handleChange={handleChange} parentOutput={parentOutput} hasParentEdge={!!parentEdge} />;
+    return <SettingsComponent meta={meta} handleChange={handleChange} updateMeta={updateMeta} parentOutput={parentOutput} hasParentEdge={!!parentEdge} />;
   }
 
   return <p className="text-xs text-muted-foreground">No configuration available for this node type.</p>;
