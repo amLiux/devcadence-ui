@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield, MessageSquare } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -90,10 +90,13 @@ const iconMap: Record<string, React.ReactNode> = {
   Input: <LogIn className="h-3 w-3 text-cyan-500" />,
   Return: <LogOut className="h-3 w-3 text-amber-500" />,
   SMTP: <Mail className="h-3 w-3 text-red-500" />,
-  Slack: <MessageSquare className="h-3 w-3 text-purple-500" />,
+  Slack: <Image src="/slack.png" alt="Slack" width={12} height={12} className="object-contain" />,
   Security: <Shield className="h-3 w-3 text-emerald-500" />,
   "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
+  Discord: <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
   "Send Discord Message": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
+  "Read Discord Messages": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
+  "Send Direct Message": <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
 };
 
 function DraggableCard({ node }: { node: NodeCardDef }) {
