@@ -10,7 +10,7 @@ import { ExecutionHistory } from "./execution-history";
 import type { EditorNodeData, Connection } from "@/lib/types";
 import { SETTINGS_REGISTRY } from "./node-settings";
 
-type NodeCategory = "Communication" | "Code" | "Infra" | "Data" | "AI" | "Core" | "Security";
+type NodeCategory = "Communication" | "Repository" | "Data" | "AI" | "Core" | "Security";
 
 interface NodeCardDef {
   type: EditorNodeData["type"];
@@ -22,12 +22,11 @@ interface NodeCardDef {
 
 const MAX_EXPANDED_CATEGORIES = 2;
 
-const categoryOrder: NodeCategory[] = ["Communication", "Code", "Infra", "Data", "AI", "Core", "Security"];
+const categoryOrder: NodeCategory[] = ["Communication", "Repository", "Data", "AI", "Core", "Security"];
 
 const categoryLabels: Record<NodeCategory, string> = {
   Communication: "Communication",
-  Code: "Code",
-  Infra: "Infra",
+  Repository: "Repository",
   Data: "Data",
   AI: "AI",
   Core: "Core",
@@ -62,12 +61,12 @@ const actionNodes: NodeCardDef[] = [
     title: "Create Issue",
     description: "Create a new issue with labels and assignees",
     requiresConnection: "GitHub",
-    category: "Code",
+    category: "Repository",
   },
-  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR", requiresConnection: "GitHub", category: "Code" },
-  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR", requiresConnection: "GitHub", category: "Code" },
-  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub", category: "Code" },
-  { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API", category: "Infra" },
+  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR", requiresConnection: "GitHub", category: "Repository" },
+  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR", requiresConnection: "GitHub", category: "Repository" },
+  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub", category: "Repository" },
+  { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API", category: "Core" },
   { type: "Action", title: "Transform Data", description: "Map, filter, or transform data", category: "Core" },
   { type: "Action", title: "Build JSON", description: "Build a JSON object from fields", category: "Core" },
   { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)", category: "Core" },
