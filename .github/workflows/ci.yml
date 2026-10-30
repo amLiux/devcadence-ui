@@ -46,7 +46,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # TODO: remove --legacy-peer-deps after resolving @types/node conflict with vitest
+        run: npm ci --legacy-peer-deps
 
       - name: Generate Prisma client
         run: npx prisma generate
