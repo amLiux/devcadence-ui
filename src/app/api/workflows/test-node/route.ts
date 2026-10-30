@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
   buildParentMap,
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       (await req.json()) as TestNodeRequest;
 
     const meta = (node.data.metadata || {}) as Record<string, string>;
-    const { title, type } = node.data;
+    const { title } = node.data;
 
     // Look up an actual workflow — prefer client-provided ID, or query first available
     let workflowId: string;
@@ -90,9 +91,9 @@ export async function POST(req: Request) {
               nodeType: title,
               stepNr: 1,
               status: result.success ? "success" : "error",
-              output: sanitizedOutput.sanitized as any,
+              output: sanitizedOutput.sanitized as Prisma.InputJsonValue,
               error: result.success ? null : result.message,
-              meta: extractRetryMeta(result.data) as any,
+              meta: extractRetryMeta(result.data) as Prisma.InputJsonValue,
               startedAt,
               finishedAt,
               elapsedMs: new Date(finishedAt).getTime() - new Date(startedAt).getTime(),

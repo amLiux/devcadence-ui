@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
 import type { Workflow, WorkflowStatus } from "@/lib/types";
-import type { EditorNode } from "@/lib/types";
 
 interface UpdateWorkflowBody {
   name?: string;

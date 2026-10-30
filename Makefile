@@ -134,6 +134,12 @@ start: ## Start production server (run build first)
 lint: ## Run ESLint
 	npm run lint
 
+.PHONY: dev-and-worker
+dev-and-worker: ## Start dev server and worker simultaneously
+	@echo "$(GREEN)Starting dev server and worker...$(NC)"
+	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
+	@echo "$(GREEN)devdock and worker are running$(NC)"
+
 # --- Database (Prisma) ------------------------------------------------------
 .PHONY: db-migrate
 db-migrate: ## Run pending migrations

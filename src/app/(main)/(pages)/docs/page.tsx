@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Globe, Sparkles, Link2, Plug, BookOpen, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
+import { ArrowRight, Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
 const topics: { title: string; description: string; href: string; icon: React.ReactNode; tag: string; tagColor?: string; page: DocsPage }[] = [

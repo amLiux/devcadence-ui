@@ -23,6 +23,7 @@ export function useDocsProgress() {
         next[p] = false;
       }
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load persisted progress from localStorage on mount
     setCompleted(next);
   }, []);
 

@@ -20,7 +20,6 @@ interface WorkflowLog {
 }
 
 export function logToDebug(log: WorkflowLog): NodeDebugLog {
-  const ts = (s: string) => new Date(s).toLocaleTimeString();
   const logs: LogEntry[] = [];
   logs.push({ type: "info", message: `Starting ${log.nodeType}...`, timestamp: log.startedAt });
   if (log.input && typeof log.input === "object" && Object.keys(log.input).length > 0) {

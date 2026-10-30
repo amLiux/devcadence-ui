@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, ChevronLeft, Zap, Globe, Plug, Database, Sparkles, Mail, Terminal, GitBranch, Lock, ArrowDown, Check } from "lucide-react";
+import { ArrowRight, ChevronLeft, Zap, Plug, Database, Sparkles, Mail, Terminal, GitBranch, Lock, ArrowDown, Check } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 import { integrationConfigs, connectionIcons } from "@/lib/constants";
 import type { ConnectionType } from "@/lib/types";

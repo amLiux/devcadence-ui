@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
 export async function POST(req: Request) {
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
           workflowId,
           status: r.status,
           source: r.source,
-          triggerPayload: r.triggerPayload as any,
+          triggerPayload: r.triggerPayload as Prisma.InputJsonValue,
           startedAt: startedAt.toISOString(),
           finishedAt: finishedAt?.toISOString() ?? null,
           error: r.status === "error" ? "HTTP request failed: 503 Service Unavailable" : null,
@@ -55,11 +56,11 @@ export async function POST(req: Request) {
             nodeType,
             stepNr: s + 1,
             status: stepStatus,
-            input: { _name: `Step ${s}`, _success: true } as any,
-            output: stepStatus === "error" ? null : { result: `Output of ${nodeType}`, value: Math.random() * 100 } as any,
+            input: { _name: `Step ${s}`, _success: true } as Prisma.InputJsonValue,
+            output: stepStatus === "error" ? Prisma.JsonNull : ({ result: `Output of ${nodeType}`, value: Math.random() * 100 } as Prisma.InputJsonValue),
             error: stepStatus === "error" ? "Connection timed out" : null,
-            controlFlow: nodeType === "Conditional" ? { condition: s % 2 === 0 } as any : null,
-            meta: nodeType === "Prompt" ? { ai_tokens: Math.floor(Math.random() * 1000), ai_model: "gpt-4o" } as any : null,
+            controlFlow: nodeType === "Conditional" ? ({ condition: s % 2 === 0 } as Prisma.InputJsonValue) : Prisma.JsonNull,
+            meta: nodeType === "Prompt" ? ({ ai_tokens: Math.floor(Math.random() * 1000), ai_model: "gpt-4o" } as Prisma.InputJsonValue) : Prisma.JsonNull,
             startedAt: stepStartedAt.toISOString(),
             finishedAt: stepFinishedAt.toISOString(),
             elapsedMs: stepFinishedAt.getTime() - stepStartedAt.getTime(),

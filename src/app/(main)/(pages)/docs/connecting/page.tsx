@@ -2,11 +2,11 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node, type Edge } from "reactflow";
+import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Settings, Link2, RotateCcw, ChevronLeft, Check, MessageCircle, Terminal, Play } from "lucide-react";
+import { ArrowRight, Settings, Link2, RotateCcw, ChevronLeft, Check, MessageCircle, Terminal } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Node data ──────────────────────────────────────────────────────────
@@ -201,7 +201,6 @@ export default function ConnectingNodesPage() {
   const [running, setRunning] = useState(false);
   const [step, setStep] = useState<"idle" | "http" | "transform" | "done">("idle");
   const [hasRun, setHasRun] = useState(false);
-  const [debugStep, setDebugStep] = useState<"http" | "transform" | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [selectedDebugStep, setSelectedDebugStep] = useState<"http" | "transform" | null>(null);
 
@@ -210,7 +209,7 @@ export default function ConnectingNodesPage() {
     { id: "transform", type: "docCard", position: { x: 200, y: 200 }, data: { ...TRANSFORM_DATA } },
   ], []);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const nodeTypes = useMemo(() => ({
@@ -232,20 +231,17 @@ export default function ConnectingNodesPage() {
   const runLinked = useCallback(async () => {
     setRunning(true);
     setStep("idle");
-    setDebugStep(null);
     setCompletedSteps(new Set());
 
     // Phase 1: activate HTTP node
     await new Promise((r) => setTimeout(r, 600));
     setStep("http");
-    setDebugStep("http");
     setSelectedDebugStep("http");
 
     // Phase 2: complete HTTP, activate Transform
     await new Promise((r) => setTimeout(r, 3000));
     setCompletedSteps((prev) => new Set([...prev, "http"]));
     setStep("transform");
-    setDebugStep("transform");
     setSelectedDebugStep("transform");
 
     // Phase 3: complete Transform
@@ -261,7 +257,6 @@ export default function ConnectingNodesPage() {
     setRunning(false);
     setStep("idle");
     setHasRun(false);
-    setDebugStep(null);
     setCompletedSteps(new Set());
     setSelectedDebugStep(null);
     setEdges([]);

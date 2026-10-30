@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Clock, ExternalLink, RefreshCw } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugModal } from "@/components/composed/debug-modal";
 import { logToDebug } from "@/hooks/use-debug-logs";
@@ -79,7 +79,7 @@ function RunRow({ run }: { run: WorkflowRun }) {
   const [loading, setLoading] = useState(false);
   const [detailSteps, setDetailSteps] = useState<NodeDebugLog[] | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     if (logs) return logs;
     setLoading(true);
     try {
@@ -93,13 +93,14 @@ function RunRow({ run }: { run: WorkflowRun }) {
       setLoading(false);
       return [];
     }
-  };
+  }, [logs, run.id, run.workflowId]);
 
   useEffect(() => {
     if (expanded && !logs && !loading) {
-      fetchLogs();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- load logs when row expands
+      void fetchLogs();
     }
-  }, [expanded]);
+  }, [expanded, fetchLogs, loading, logs]);
 
   const handleDetails = async () => {
     const l = await fetchLogs();
@@ -212,7 +213,7 @@ export function ExecutionHistory({ workflowId }: { workflowId: string }) {
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRuns = () => {
+  const fetchRuns = useCallback(() => {
     setLoading(true);
     fetch(`/api/workflows/${workflowId}/runs`)
       .then((r) => r.json())
@@ -221,11 +222,12 @@ export function ExecutionHistory({ workflowId }: { workflowId: string }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  };
+  }, [workflowId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load of run history
     fetchRuns();
-  }, [workflowId]);
+  }, [fetchRuns]);
 
   return (
     <div className="p-2 flex-1 flex flex-col">

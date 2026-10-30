@@ -2,12 +2,12 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node, type Edge } from "reactflow";
+import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Settings, RotateCcw, ChevronLeft, Check, X, MessageCircle, Terminal, Zap, Lightbulb } from "lucide-react";
+import { ArrowRight, Settings, RotateCcw, ChevronLeft, Check, X, Terminal, Zap, Lightbulb } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Quiz data ──────────────────────────────────────────────────────────
@@ -118,8 +118,8 @@ export default function TemplateVariablesPage() {
     { id: "child", type: "docCard", position: { x: 200, y: 200 }, data: {} },
   ], []);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState([
     { id: "e-parent-child", source: "parent", target: "child", animated: true },
   ]);
 

@@ -8,41 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ChevronLeft, Check, RotateCcw, ArrowRightLeft, LogIn, LogOut, Settings, Terminal, X } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
-// ── Node card components ───────────────────────────────────────────────
-
-function BaseNode({ title, icon: Icon, color, isActive, isComplete, badge }: {
-  title: string;
-  icon: React.ElementType;
-  color: string;
-  isActive: boolean;
-  isComplete: boolean;
-  badge?: string;
-}) {
-  let borderClass = "border-border";
-  if (isActive) borderClass = "border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]";
-  if (isComplete) borderClass = "border-green-500 shadow-[0_0_6px_rgba(34,197,94,0.2)]";
-
-  return (
-    <div className="relative">
-      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background" />
-      <div className={`rounded-lg border bg-background p-3 shadow-sm w-fit min-w-[180px] max-w-[240px] transition-all duration-500 ${borderClass}`}>
-        <div className="flex items-center gap-2 min-w-0 mb-1">
-          <Icon className={`h-4 w-4 ${color} shrink-0`} />
-          <span className="font-medium text-sm truncate">{title}</span>
-        </div>
-        <div className="flex items-center gap-1.5 mt-1.5">
-          {isActive && <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />}
-          {isComplete && <div className="h-2 w-2 rounded-full bg-green-500" />}
-          <Badge variant="outline" className="text-[9px]">
-            {badge || (isActive ? "Running..." : isComplete ? "Done" : "Ready")}
-          </Badge>
-        </div>
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-muted-foreground !border-2 !border-background" />
-    </div>
-  );
-}
-
 // ── Sub-workflow modal canvas ──────────────────────────────────────────
 
 function SubWorkflowModal({ phase, onClose }: { phase: "input" | "http" | "return" | "done"; onClose: () => void }) {
