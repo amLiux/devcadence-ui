@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApi } from "@/hooks/use-api";
 import { JsonEditor } from "@/components/ui/json-editor";
+import { toString as cronToString } from "cronstrue";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
 import type { Connection } from "@/lib/types";
@@ -130,6 +131,15 @@ export function SendDirectMessageSettings({ meta, handleChange, parentOutput, ha
 }
 
 export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettingsProps) {
+  let cronPreview = "";
+  if (meta.cron) {
+    try {
+      cronPreview = cronToString(meta.cron);
+    } catch {
+      cronPreview = "Invalid cron expression";
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
@@ -143,6 +153,7 @@ export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettin
       <div className="space-y-1.5">
         <Label className="text-xs">Cron Expression</Label>
         <Input className="h-8 text-xs" placeholder="*/5 * * * *" value={meta.cron || ""} onChange={(e) => handleChange("cron", e.target.value)} />
+        {cronPreview && <p className="text-[11px] text-muted-foreground">{cronPreview}</p>}
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Limit (1-100)</Label>
