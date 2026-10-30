@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, GripVertical, Zap, Settings, Sparkles,
-  Globe, GitBranch, Check, RotateCcw, ArrowRight, Database,
+  GitBranch, Check, RotateCcw, ArrowRight, Database,
   MessageCircle, Rocket,
 } from "lucide-react";
 import { useTutorialProgress } from "@/hooks/use-tutorial-progress";

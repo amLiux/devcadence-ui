@@ -17,7 +17,6 @@ import {
   Database,
   Zap,
   Mail,
-  Terminal,
   ArrowRightLeft,
   LogIn,
   LogOut,

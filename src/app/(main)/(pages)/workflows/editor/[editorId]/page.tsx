@@ -12,7 +12,7 @@ import { EditorProvider, useEditor } from "@/providers/editor-provider";
 import { EditorCanvas } from "./components/editor-canvas";
 import { inferTriggerType, TRIGGER_TYPE_LABELS } from "@/lib/types";
 import type { Workflow, WorkflowStatus } from "@/lib/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workflow; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const router = useRouter();

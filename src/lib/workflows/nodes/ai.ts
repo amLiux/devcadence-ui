@@ -4,12 +4,6 @@ import type { NodeHandlerResult } from "./types";
 
 // --- 4-layer system prompt assembly ---
 
-const NODE_INSTRUCTIONS: Record<string, string> = {
-  prompt: "",
-  classify: "",
-  extract: "",
-};
-
 export async function buildSystemPrompt(
   meta: Record<string, string>,
   nodeType: "prompt" | "classify" | "extract",
@@ -220,7 +214,6 @@ export async function handleExtract(
 
   const config = await getAIConfig(connectionId);
   const resolvedText = resolveTemplates(meta.text, ancestorChain);
-  const fields = meta.fields.split(",").map((f) => f.trim());
   const systemPrompt = await buildSystemPrompt(meta, "extract");
 
   const response = await callAI(config, systemPrompt, resolvedText);

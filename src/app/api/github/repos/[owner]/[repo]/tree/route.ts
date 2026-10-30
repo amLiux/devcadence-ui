@@ -12,9 +12,7 @@ export async function GET(
     }
     const { owner, repo } = await params;
     const { searchParams } = new URL(req.url);
-    const path = searchParams.get("path") || "";
     const branch = searchParams.get("branch") || "main";
-    const query = path ? `?path=${encodeURIComponent(path)}` : "";
     const tree = await githubFetch(
       `/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`,
       token,

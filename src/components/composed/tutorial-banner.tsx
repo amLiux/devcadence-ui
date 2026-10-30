@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Rocket, X } from "lucide-react";
 
 export function TutorialBanner() {
-  const { completed, reset } = useTutorialProgress();
+  const { completed } = useTutorialProgress();
   const [dismissed, setDismissed] = React.useState(false);
   const pathname = usePathname();
 

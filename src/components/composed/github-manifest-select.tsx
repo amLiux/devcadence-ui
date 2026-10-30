@@ -49,15 +49,18 @@ export function GitHubManifestSelect({ repo, branch, value, onChange }: GitHubMa
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!repo || !branch) {
-      setPaths([]);
-      return;
-    }
-    const [owner, name] = repo.split("/");
-    setLoading(true);
-    fetchManifests(owner, name, branch)
-      .then(setPaths)
-      .finally(() => setLoading(false));
+    const load = async () => {
+      if (!repo || !branch) {
+        setPaths([]);
+        return;
+      }
+      const [owner, name] = repo.split("/");
+      setLoading(true);
+      const data = await fetchManifests(owner, name, branch);
+      setPaths(data);
+      setLoading(false);
+    };
+    void load();
   }, [repo, branch]);
 
   const disabled = !repo || !branch || loading;

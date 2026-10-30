@@ -13,7 +13,7 @@ import { executeNode } from "@/lib/workflows/execute-node";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { validateSchema } from "@/lib/json-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
-import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowTriggerType } from "@/lib/types";
+import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 const now = () => new Date().toISOString();
 
@@ -74,7 +74,7 @@ async function executeWebhook(
   connectionId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body: any,
-  req: Request,
+  _req: Request,
 ) {
   const workflows = await prisma.workflow.findMany({
     where: { status: "active" },

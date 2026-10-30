@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import type { ContextStep } from "@/lib/workflow-context";
 import {
   handleTransformData,
@@ -256,11 +257,11 @@ async function writeLog(runId: string, data: WriteLogData): Promise<void> {
       nodeType: data.nodeType,
       stepNr: data.stepNr,
       status: data.status,
-      input: data.input as any,
-      output: data.output as any,
+      input: data.input as Prisma.InputJsonValue,
+      output: data.output as Prisma.InputJsonValue,
       error: data.error,
-      controlFlow: data.controlFlow as any,
-      meta: data.meta as any,
+      controlFlow: data.controlFlow as Prisma.InputJsonValue,
+      meta: data.meta as Prisma.InputJsonValue,
       startedAt: data.startedAt,
       finishedAt: data.finishedAt,
       elapsedMs: data.elapsedMs,

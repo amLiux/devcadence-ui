@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ExternalLink, Play, Zap, Globe, Sparkles, RotateCcw, ChevronLeft, Check, MessageCircle } from "lucide-react";
+import { ArrowRight, Play, Zap, Globe, Sparkles, RotateCcw, ChevronLeft, Check, MessageCircle } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface SimNode {

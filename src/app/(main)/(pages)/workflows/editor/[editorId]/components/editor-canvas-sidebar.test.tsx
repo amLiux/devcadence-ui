@@ -83,7 +83,7 @@ describe("EditorCanvasSidebar", () => {
         id: "node-1",
         type: "trigger",
         position: { x: 0, y: 0 },
-        data: { type: "Trigger", title: "Webhook", description: "" },
+        data: { type: "Trigger", title: "Webhook", description: "", completed: false, current: false, metadata: {} },
       },
     ];
     renderSidebar();
@@ -152,7 +152,7 @@ describe("EditorCanvasSidebar", () => {
     const dragEvent = new MouseEvent("dragstart", { bubbles: true }) as unknown as React.DragEvent;
     Object.defineProperty(dragEvent, "dataTransfer", { value: dataTransfer });
 
-    card.dispatchEvent(dragEvent);
+    card.dispatchEvent(dragEvent as unknown as Event);
 
     expect(setData).toHaveBeenCalledWith("application/reactflow-type", "Slack");
     expect(setData).toHaveBeenCalledWith("application/reactflow-title", "Send Slack Message");

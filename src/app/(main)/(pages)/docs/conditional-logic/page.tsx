@@ -146,8 +146,8 @@ export default function ConditionalLogicPage() {
     { id: "e-cond-no", source: "conditional", sourceHandle: "failure", target: "no-path", animated: true, style: { stroke: "#ef4444" } },
   ], []);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
 
   const nodeTypes = useMemo(() => ({
     parentCard: () => (

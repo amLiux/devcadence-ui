@@ -48,15 +48,18 @@ export function GitHubBranchSelect({ repo, value, onChange }: GitHubBranchSelect
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!repo) {
-      setBranches([]);
-      return;
-    }
-    const [owner, name] = repo.split("/");
-    setLoading(true);
-    fetchBranches(owner, name)
-      .then(setBranches)
-      .finally(() => setLoading(false));
+    const load = async () => {
+      if (!repo) {
+        setBranches([]);
+        return;
+      }
+      const [owner, name] = repo.split("/");
+      setLoading(true);
+      const data = await fetchBranches(owner, name);
+      setBranches(data);
+      setLoading(false);
+    };
+    void load();
   }, [repo]);
 
   const selected = branches.find((b) => b.name === value);

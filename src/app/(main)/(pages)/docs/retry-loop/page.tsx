@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node, type Edge } from "reactflow";
+import ReactFlow, { Handle, Position, Background, type Node, type Edge } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ function RetryNode({ data }: { data: { title: string; description: string; type:
 
 const nodeTypes = { retryDoc: RetryNode };
 
-function RetryFlowCanvas({ scenario, running, attemptIndex, finished }: { scenario: RetryScenario; running: boolean; attemptIndex: number; finished: boolean }) {
+function RetryFlowCanvas({ scenario, running, attemptIndex: _attemptIndex, finished }: { scenario: RetryScenario; running: boolean; attemptIndex: number; finished: boolean }) {
   const nodes: Node[] = [
     {
       id: "start",
@@ -207,8 +207,6 @@ function AttemptLog({ scenario, attemptIndex, running }: { scenario: RetryScenar
       {scenario.attempts.map((attempt, i) => {
         const isCurrent = i === attemptIndex;
         const isDone = i < attemptIndex;
-        const isPending = i > attemptIndex;
-        const isSuccessAttempt = i === scenario.attempts.length - 1 && scenario.finalOutcome === "success";
 
         return (
           <div
@@ -280,21 +278,17 @@ function ConditionTester() {
   const [expr, setExpr] = useState("response.body.done === true");
   const [responseBody, setResponseBody] = useState('{"done": true, "progress": 100}');
   const [responseStatus, setResponseStatus] = useState("200");
-  const [result, setResult] = useState<boolean | null>(null);
-
-  const evaluate = useCallback(() => {
+  const result = useMemo(() => {
     try {
       const parsedBody = JSON.parse(responseBody);
       const input = { response: { status: Number(responseStatus), body: parsedBody } };
       const keys = Object.keys(input);
       const fn = new Function(`const {${keys.join(", ")}} = arguments[0]; return (${expr})`);
-      setResult(Boolean(fn(input)));
+      return Boolean(fn(input));
     } catch {
-      setResult(null);
+      return null;
     }
   }, [expr, responseBody, responseStatus]);
-
-  useEffect(() => { evaluate(); }, [evaluate]);
 
   return (
     <div className="space-y-3">

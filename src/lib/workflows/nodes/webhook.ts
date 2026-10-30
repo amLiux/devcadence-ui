@@ -1,6 +1,5 @@
 import type { NodeHandlerResult } from "./types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function handleWebhookTrigger(meta: Record<string, string>): NodeHandlerResult {
   const connectionId = meta.connectionId;
 
