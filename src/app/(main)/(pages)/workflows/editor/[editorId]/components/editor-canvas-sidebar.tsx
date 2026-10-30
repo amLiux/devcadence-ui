@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield } from "lucide-react";
+import { GitBranch, Zap, Settings, GripVertical, GitFork, Database, Sparkles, ArrowRightLeft, LogIn, LogOut, History, Mail, Shield, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditor } from "@/providers/editor-provider";
@@ -10,12 +10,29 @@ import { ExecutionHistory } from "./execution-history";
 import type { EditorNodeData, Connection } from "@/lib/types";
 import { SETTINGS_REGISTRY } from "./node-settings";
 
+type NodeCategory = "Communication" | "Code" | "Infra" | "Data" | "AI" | "Core" | "Security";
+
 interface NodeCardDef {
   type: EditorNodeData["type"];
   title: string;
   description: string;
   requiresConnection?: Connection["type"];
+  category?: NodeCategory;
 }
+
+const MAX_EXPANDED_CATEGORIES = 2;
+
+const categoryOrder: NodeCategory[] = ["Communication", "Code", "Infra", "Data", "AI", "Core", "Security"];
+
+const categoryLabels: Record<NodeCategory, string> = {
+  Communication: "Communication",
+  Code: "Code",
+  Infra: "Infra",
+  Data: "Data",
+  AI: "AI",
+  Core: "Core",
+  Security: "Security",
+};
 
 const triggerNodes: NodeCardDef[] = [
   { type: "Trigger", title: "Webhook", description: "Trigger on incoming webhook event", requiresConnection: "Webhook" },
@@ -45,37 +62,36 @@ const actionNodes: NodeCardDef[] = [
     title: "Create Issue",
     description: "Create a new issue with labels and assignees",
     requiresConnection: "GitHub",
+    category: "Code",
   },
-  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR", requiresConnection: "GitHub" },
-  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR", requiresConnection: "GitHub" },
-  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub" },
-  { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API" },
-  { type: "Action", title: "Transform Data", description: "Map, filter, or transform data" },
-  { type: "Action", title: "Build JSON", description: "Build a JSON object from fields" },
-  { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)" },
-  { type: "Action", title: "Retry Loop", description: "HTTP request with retry until condition met" },
-  { type: "Action", title: "Call Workflow", description: "Call a reusable sub-workflow" },
-  { type: "Action", title: "Return", description: "Export values back to parent workflow (sub-workflows only)" },
-  { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query", requiresConnection: "PostgreSQL" },
-  { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table", requiresConnection: "PostgreSQL" },
-  { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table", requiresConnection: "PostgreSQL" },
-  { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table", requiresConnection: "PostgreSQL" },
-  { type: "AI", title: "Prompt", description: "Send a prompt to AI and get a response", requiresConnection: "AI" },
-  { type: "AI", title: "Classify", description: "Classify text into categories using AI", requiresConnection: "AI" },
-  { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI" },
-  { type: "SMTP", title: "Send Email", description: "Send an email via SMTP", requiresConnection: "SMTP" },
-  { type: "Slack", title: "Send Slack Message", description: "Post a message to a Slack channel", requiresConnection: "Slack" },
-  { type: "Discord", title: "Send Discord Message", description: "Send a message to a Discord channel", requiresConnection: "Discord" },
-  { type: "Discord", title: "Read Discord Messages", description: "Fetch recent messages from a channel", requiresConnection: "Discord" },
-  { type: "Discord", title: "Send Direct Message", description: "Send a DM to a Discord user", requiresConnection: "Discord" },
-];
-
-const securityNodes: NodeCardDef[] = [
+  { type: "GitHub", title: "Add Comment", description: "Post a comment on an issue or PR", requiresConnection: "GitHub", category: "Code" },
+  { type: "GitHub", title: "Add Label", description: "Add a label to an issue or PR", requiresConnection: "GitHub", category: "Code" },
+  { type: "GitHub", title: "Request Review", description: "Request a review on a pull request", requiresConnection: "GitHub", category: "Code" },
+  { type: "Action", title: "HTTP Request", description: "Make an HTTP request to an API", category: "Infra" },
+  { type: "Action", title: "Transform Data", description: "Map, filter, or transform data", category: "Core" },
+  { type: "Action", title: "Build JSON", description: "Build a JSON object from fields", category: "Core" },
+  { type: "Action", title: "Conditional", description: "Branch based on a condition (success/failure paths)", category: "Core" },
+  { type: "Action", title: "Retry Loop", description: "HTTP request with retry until condition met", category: "Core" },
+  { type: "Action", title: "Call Workflow", description: "Call a reusable sub-workflow", category: "Core" },
+  { type: "Action", title: "Return", description: "Export values back to parent workflow (sub-workflows only)", category: "Core" },
+  { type: "PostgreSQL", title: "PostgreSQL Query", description: "Execute a SELECT query", requiresConnection: "PostgreSQL", category: "Data" },
+  { type: "PostgreSQL", title: "PostgreSQL Insert", description: "Insert a row into a table", requiresConnection: "PostgreSQL", category: "Data" },
+  { type: "PostgreSQL", title: "PostgreSQL Update", description: "Update rows in a table", requiresConnection: "PostgreSQL", category: "Data" },
+  { type: "PostgreSQL", title: "PostgreSQL Delete", description: "Delete rows from a table", requiresConnection: "PostgreSQL", category: "Data" },
+  { type: "AI", title: "Prompt", description: "Send a prompt to AI and get a response", requiresConnection: "AI", category: "AI" },
+  { type: "AI", title: "Classify", description: "Classify text into categories using AI", requiresConnection: "AI", category: "AI" },
+  { type: "AI", title: "Extract", description: "Extract structured data from text using AI", requiresConnection: "AI", category: "AI" },
+  { type: "SMTP", title: "Send Email", description: "Send an email via SMTP", requiresConnection: "SMTP", category: "Communication" },
+  { type: "Slack", title: "Send Slack Message", description: "Post a message to a Slack channel", requiresConnection: "Slack", category: "Communication" },
+  { type: "Discord", title: "Send Discord Message", description: "Send a message to a Discord channel", requiresConnection: "Discord", category: "Communication" },
+  { type: "Discord", title: "Read Discord Messages", description: "Fetch recent messages from a channel", requiresConnection: "Discord", category: "Communication" },
+  { type: "Discord", title: "Send Direct Message", description: "Send a DM to a Discord user", requiresConnection: "Discord", category: "Communication" },
   {
     type: "Security",
     title: "Scan Dependencies",
     description: "Scan repo dependencies for known vulnerabilities",
     requiresConnection: "GitHub",
+    category: "Security",
   },
 ];
 
@@ -136,6 +152,40 @@ function DraggableCard({ node }: { node: NodeCardDef }) {
   );
 }
 
+function NodeCategorySection({
+  label,
+  nodes,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  nodes: NodeCardDef[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (nodes.length === 0) return null;
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-1 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+      >
+        <span>{label}</span>
+        <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "" : "-rotate-90"}`} />
+      </button>
+      {expanded && (
+        <div className="space-y-1">
+          {nodes.map((node) => (
+            <DraggableCard key={node.title} node={node} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NodeSettingsForm() {
   const { editor, updateNode, markDirty } = useEditor();
   const node = editor.selectedNode;
@@ -168,6 +218,7 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
   const hasNodes = editor.elements.length > 0;
   const [configuredTypes, setConfiguredTypes] = useState<Set<Connection["type"]>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<NodeCategory>>(new Set(["Communication"]));
 
   useEffect(() => {
     fetch("/api/connections")
@@ -184,7 +235,29 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
 
   const availableTriggerNodes = hasNodes ? [] : triggerNodes.filter(isAvailable);
   const availableActionNodes = actionNodes.filter(isAvailable);
-  const availableSecurityNodes = securityNodes.filter(isAvailable);
+
+  const groupedActions = availableActionNodes.reduce<Record<NodeCategory, NodeCardDef[]>>((acc, node) => {
+    const category = node.category ?? "Core";
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(node);
+    return acc;
+  }, {} as Record<NodeCategory, NodeCardDef[]>);
+
+  const toggleCategory = (category: NodeCategory) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        if (next.size >= MAX_EXPANDED_CATEGORIES) {
+          const first = next.values().next().value;
+          if (first) next.delete(first);
+        }
+        next.add(category);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -237,24 +310,15 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
               ))}
             </div>
           )}
-          <div className="space-y-1">
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              {hasNodes ? "Available Actions" : "Actions"}
-            </p>
-            {availableActionNodes.map((node) => (
-              <DraggableCard key={node.title} node={node} />
-            ))}
-          </div>
-          {availableSecurityNodes.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Security
-              </p>
-              {availableSecurityNodes.map((node) => (
-                <DraggableCard key={node.title} node={node} />
-              ))}
-            </div>
-          )}
+          {categoryOrder.map((category) => (
+            <NodeCategorySection
+              key={category}
+              label={categoryLabels[category]}
+              nodes={groupedActions[category] ?? []}
+              expanded={expandedCategories.has(category)}
+              onToggle={() => toggleCategory(category)}
+            />
+          ))}
         </div>
       )}
       {sidebarTab === "settings" && (
