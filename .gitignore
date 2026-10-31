@@ -40,4 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local agent tooling (vendor-provided skills, keep local only)
+.agents/
+.claude/
+.windsurf/
+
 /src/generated/prisma
