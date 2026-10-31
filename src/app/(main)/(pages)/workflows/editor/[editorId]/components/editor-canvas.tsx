@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactFlow, {
   Controls,
   MiniMap,
@@ -59,6 +59,13 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
     nodes,
     edges,
   });
+
+  // Keep the latest debug handlers in a ref so the window-event effect below
+  // does not re-subscribe on every render (useDebugLogs returns new functions).
+  const debugRef = useRef(debug);
+  useEffect(() => {
+    debugRef.current = debug;
+  }, [debug]);
 
   useEffect(() => {
     if (workflow.nodes) {
@@ -149,7 +156,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       const nodeId = (e as CustomEvent).detail.nodeId;
       const node = editor.elements.find((n) => n.id === nodeId);
       if (!node) return;
-      debug.testNode(node, workflow.id, editor.elements as EditorNode[], edges, editor.context);
+      debugRef.current.testNode(node, workflow.id, editor.elements as EditorNode[], edges, editor.context);
     };
     window.addEventListener("node:edit", handleNodeEdit);
     window.addEventListener("node:delete", handleNodeDelete);
@@ -159,7 +166,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       window.removeEventListener("node:delete", handleNodeDelete);
       window.removeEventListener("node:test", handleNodeTest);
     };
-  }, [editor.elements, editor.context, selectNode, setSidebarTab, setNodes, dispatch, setContext, edges]);
+  }, [editor.elements, editor.context, workflow.id, selectNode, setSidebarTab, setNodes, dispatch, setContext, edges]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -193,7 +200,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
     [reactFlowInstance, setNodes, dispatch],
   );
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     try {
       const merged = nodes.map((n) => {
@@ -212,7 +219,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
     } finally {
       setSaving(false);
     }
-  };
+  }, [nodes, editor.elements, request, workflow.id, edges, markCleanAfterSave]);
 
   // Expose save function to parent via ref
   useEffect(() => {
