@@ -82,7 +82,7 @@ Connect to external services once, reuse them across workflows:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
+- [Node.js](https://nodejs.org/) 26+
 - [Docker](https://www.docker.com/) + Docker Compose (for PostgreSQL + Redis + MailHog)
 - [npm](https://www.npmjs.com/) or compatible package manager
 
@@ -208,7 +208,7 @@ You will need:
 
 - A PostgreSQL database
 - A Redis instance
-- A server/VPS with Node.js 20+
+- A server/VPS with Node.js 26+
 - A GitHub personal access token for GitHub integrations
 - SMTP credentials for email nodes (optional)
 

@@ -14,7 +14,7 @@ DOCKER_NAME := devdock-postgres
 REDIS_DOCKER_NAME := devdock-redis
 COMPOSE_FILE := docker-compose.yml
 CONTAINER_RUNTIME ?= docker
-NODE_IMG    := node:20-alpine
+NODE_IMG    := node:26-alpine
 PG_IMG      := postgres:16-alpine
 
 # --- Colors -----------------------------------------------------------------
