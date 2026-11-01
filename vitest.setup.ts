@@ -28,3 +28,9 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
 }));
+
+if (typeof window !== "undefined") {
+  window.Element.prototype.setPointerCapture = vi.fn();
+  window.Element.prototype.releasePointerCapture = vi.fn();
+  window.Element.prototype.hasPointerCapture = vi.fn();
+}
