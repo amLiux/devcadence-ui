@@ -5,6 +5,17 @@ import userEvent from "@testing-library/user-event";
 import { WorkflowCard } from "./workflow-card";
 import type { Workflow } from "@/lib/types";
 
+const mockSetOpen = vi.fn();
+
+vi.mock("@/providers/modal-provider", () => ({
+  useModal: () => ({
+    setOpen: mockSetOpen,
+    setClose: vi.fn(),
+    isOpen: false,
+    data: {},
+  }),
+}));
+
 const mockWorkflow: Workflow = {
   id: "wf-123",
   name: "Deploy Automation",
@@ -20,13 +31,18 @@ const mockWorkflow: Workflow = {
 
 describe("WorkflowCard", () => {
   const mockOnDelete = vi.fn();
+  const mockOnUpdate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  function renderCard(workflow: Workflow = mockWorkflow) {
+    render(<WorkflowCard workflow={workflow} onDelete={mockOnDelete} onUpdate={mockOnUpdate} />);
+  }
+
   it("renders workflow name, status, and trigger type badge", () => {
-    render(<WorkflowCard workflow={mockWorkflow} onDelete={mockOnDelete} />);
+    renderCard();
 
     expect(screen.getByText("Deploy Automation")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
@@ -34,21 +50,30 @@ describe("WorkflowCard", () => {
   });
 
   it("renders Paused badge when status is paused", () => {
-    const pausedWorkflow: Workflow = { ...mockWorkflow, status: "paused" };
-    render(<WorkflowCard workflow={pausedWorkflow} onDelete={mockOnDelete} />);
+    renderCard({ ...mockWorkflow, status: "paused" });
 
     expect(screen.getByText("Paused")).toBeInTheDocument();
   });
 
   it("calls onDelete with workflow id when delete button is clicked", async () => {
-    render(<WorkflowCard workflow={mockWorkflow} onDelete={mockOnDelete} />);
+    renderCard();
 
-    // The delete button is the second action button (Trash icon)
+    // The delete button is the last action button (Trash icon)
     const buttons = screen.getAllByRole("button");
     const deleteButton = buttons[buttons.length - 1];
 
     await userEvent.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith("wf-123");
+  });
+
+  it("opens the edit drawer through the modal provider", async () => {
+    renderCard();
+
+    await userEvent.click(screen.getByRole("button", { name: /edit deploy automation/i }));
+
+    expect(mockSetOpen).toHaveBeenCalledTimes(1);
+    expect(React.isValidElement(mockSetOpen.mock.calls[0][0])).toBe(true);
+    expect(mockOnDelete).not.toHaveBeenCalled();
   });
 });

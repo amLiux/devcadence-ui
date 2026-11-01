@@ -2,11 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause, MessageCircle } from "lucide-react";
+import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause, MessageCircle, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DebugModal } from "@/components/composed/debug-modal";
+import { CustomModal } from "@/components/composed/custom-modal";
+import { WorkflowForm, type WorkflowFormValues } from "@/components/forms/workflow-form";
+import { useModal } from "@/providers/modal-provider";
 import { inferTriggerType, TRIGGER_TYPE_LABELS, type WorkflowTriggerType } from "@/lib/types";
 import type { Workflow, NodeDebugLog, LogEntry } from "@/lib/types";
 
@@ -31,13 +34,25 @@ const triggerColors: Record<WorkflowTriggerType, string> = {
 interface Props {
   workflow: Workflow;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, data: WorkflowFormValues) => Promise<void>;
 }
 
-export function WorkflowCard({ workflow, onDelete }: Props) {
+export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
   const triggerType = inferTriggerType(workflow.nodes, workflow.type);
+  const { setOpen } = useModal();
   const [testing, setTesting] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugSteps, setDebugSteps] = useState<NodeDebugLog[]>([]);
+
+  const handleOpenEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(
+      <CustomModal title="Edit Workflow" subheading={`Update ${workflow.name}`}>
+        <WorkflowForm initialData={workflow} onUpdate={onUpdate} />
+      </CustomModal>,
+    );
+  };
 
   const handleTest = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -161,6 +176,15 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 px-0"
+                aria-label={`Edit ${workflow.name}`}
+                onClick={handleOpenEdit}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
