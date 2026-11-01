@@ -22,6 +22,10 @@ export function Workflows() {
     setWorkflows((prev) => prev.filter((w) => w.id !== id));
   };
 
+  const handleUpdate = (updated: Workflow) => {
+    setWorkflows((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+  };
+
   if (loading && workflows.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -43,7 +47,7 @@ export function Workflows() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {workflows.map((workflow) => (
-        <WorkflowCard key={workflow.id} workflow={workflow} onDelete={handleDelete} />
+        <WorkflowCard key={workflow.id} workflow={workflow} onDelete={handleDelete} onUpdate={handleUpdate} />
       ))}
     </div>
   );

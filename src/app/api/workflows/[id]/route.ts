@@ -57,6 +57,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = (await req.json()) as UpdateWorkflowBody;
+
+    if (body.name !== undefined) {
+      if (typeof body.name !== "string" || !body.name.trim()) {
+        return NextResponse.json({ error: "Name is required" }, { status: 400 });
+      }
+      body.name = body.name.trim();
+    }
+
     const workflow = await prisma.workflow.update({
       where: { id },
       data: {
