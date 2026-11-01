@@ -207,7 +207,7 @@ const worker = new Worker<WorkflowJobData>(
 );
 
 worker.on("completed", (job: Job<WorkflowJobData>, result: JobResult) => {
-  console.log(`[queue] Job ${job.id} completed: ${result.runId} success=${result.success}`);
+  console.info(`[queue] Job ${job.id} completed: ${result.runId} success=${result.success}`);
 });
 
 worker.on("failed", (job: Job<WorkflowJobData> | undefined, err: Error) => {

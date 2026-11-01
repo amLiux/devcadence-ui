@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -157,9 +158,11 @@ export function GitHubAssigneesSelect({
                   onSelect={() => toggle(c.login)}
                 >
                   <span className="flex items-center gap-2 truncate">
-                    <img
+                    <Image
                       src={c.avatar_url}
                       alt={c.login}
+                      width={16}
+                      height={16}
                       className="h-4 w-4 rounded-full shrink-0"
                     />
                     {c.login}
