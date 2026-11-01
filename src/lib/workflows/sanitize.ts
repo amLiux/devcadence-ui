@@ -1,8 +1,10 @@
-const SECRET_KEYS = new Set([
-  "password", "token", "secret", "key", "apikey", "api_key",
-  "authorization", "access_key", "private_key", "auth_token",
-  "bearer", "x-api-key", "x-auth-token",
-]);
+const SECRET_KEYS = new Set(
+  [
+    "password", "token", "secret", "key", "apikey", "api_key",
+    "authorization", "access_key", "private_key", "auth_token",
+    "bearer", "x-api-key", "x-auth-token",
+  ].map((k) => k.toLowerCase().replace(/-/g, "_")),
+);
 
 const PII_PATTERNS = [
   /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g,
@@ -37,12 +39,15 @@ export function sanitize(
   if (typeof value === "string") {
     let sanitized = value;
     if (strict) {
+      let matched = false;
       for (const pattern of PII_PATTERNS) {
-        sanitized = sanitized.replace(pattern, "[REDACTED]");
-        if (sanitized !== value) {
-          result!.redactedCount++;
-          result!.redactedPaths.push(path);
-        }
+        const replaced = sanitized.replace(pattern, "[REDACTED]");
+        if (replaced !== sanitized) matched = true;
+        sanitized = replaced;
+      }
+      if (matched) {
+        result.redactedCount++;
+        result.redactedPaths.push(path);
       }
     }
     result.sanitized = sanitized;
