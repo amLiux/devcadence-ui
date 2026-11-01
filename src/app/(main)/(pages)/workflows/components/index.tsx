@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { useApi } from "@/hooks/use-api";
+import { useModal } from "@/providers/modal-provider";
 import { WorkflowCard } from "./workflow-card";
+import type { WorkflowFormValues } from "@/components/forms/workflow-form";
 import type { Workflow } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 export function Workflows() {
   const { request, loading } = useApi();
+  const { setClose } = useModal();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
 
   useEffect(() => {
@@ -22,8 +25,16 @@ export function Workflows() {
     setWorkflows((prev) => prev.filter((w) => w.id !== id));
   };
 
-  const handleUpdate = (updated: Workflow) => {
-    setWorkflows((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+  const handleUpdate = async (id: string, data: WorkflowFormValues) => {
+    const updated = await request<Workflow>({
+      endpoint: `/api/workflows/${id}`,
+      method: "PUT",
+      data,
+    });
+    if (updated) {
+      setWorkflows((prev) => prev.map((w) => (w.id === id ? updated : w)));
+    }
+    setClose();
   };
 
   if (loading && workflows.length === 0) {

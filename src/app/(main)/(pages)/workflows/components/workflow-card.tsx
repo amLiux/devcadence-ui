@@ -6,18 +6,10 @@ import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause,
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { DebugModal } from "@/components/composed/debug-modal";
+import { CustomModal } from "@/components/composed/custom-modal";
+import { WorkflowForm, type WorkflowFormValues } from "@/components/forms/workflow-form";
+import { useModal } from "@/providers/modal-provider";
 import { inferTriggerType, TRIGGER_TYPE_LABELS, type WorkflowTriggerType } from "@/lib/types";
 import type { Workflow, NodeDebugLog, LogEntry } from "@/lib/types";
 
@@ -42,56 +34,24 @@ const triggerColors: Record<WorkflowTriggerType, string> = {
 interface Props {
   workflow: Workflow;
   onDelete: (id: string) => void;
-  onUpdate?: (workflow: Workflow) => void;
+  onUpdate: (id: string, data: WorkflowFormValues) => Promise<void>;
 }
 
 export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
   const triggerType = inferTriggerType(workflow.nodes, workflow.type);
+  const { setOpen } = useModal();
   const [testing, setTesting] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugSteps, setDebugSteps] = useState<NodeDebugLog[]>([]);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editName, setEditName] = useState(workflow.name);
-  const [editDescription, setEditDescription] = useState(workflow.description);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const handleOpenEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setEditName(workflow.name);
-    setEditDescription(workflow.description);
-    setEditError(null);
-    setEditOpen(true);
-  };
-
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = editName.trim();
-    if (!name) {
-      setEditError("Name is required");
-      return;
-    }
-
-    setEditSaving(true);
-    setEditError(null);
-    try {
-      const res = await fetch(`/api/workflows/${workflow.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description: editDescription.trim() }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload?.error || "Failed to update workflow");
-      }
-      onUpdate?.(payload as Workflow);
-      setEditOpen(false);
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Failed to update workflow");
-    } finally {
-      setEditSaving(false);
-    }
+    setOpen(
+      <CustomModal title="Edit Workflow" subheading={`Update ${workflow.name}`}>
+        <WorkflowForm initialData={workflow} onUpdate={onUpdate} />
+      </CustomModal>,
+    );
   };
 
   const handleTest = async (e: React.MouseEvent) => {
@@ -257,50 +217,6 @@ export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
           </CardContent>
         </Card>
       </Link>
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleSaveEdit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>Edit workflow</DialogTitle>
-              <DialogDescription>
-                Update the name and description shown in the workflow list.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-1.5">
-              <Label htmlFor="workflow-edit-name">Name</Label>
-              <Input
-                id="workflow-edit-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Workflow name"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="workflow-edit-description">Description</Label>
-              <Textarea
-                id="workflow-edit-description"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="What does this workflow do?"
-                className="min-h-20"
-              />
-            </div>
-            {editError && (
-              <p role="alert" className="text-xs text-destructive">
-                {editError}
-              </p>
-            )}
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setEditOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={editSaving}>
-                {editSaving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       <DebugModal
         open={debugOpen}
         onOpenChange={setDebugOpen}

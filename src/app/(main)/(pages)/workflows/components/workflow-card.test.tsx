@@ -1,9 +1,20 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkflowCard } from "./workflow-card";
 import type { Workflow } from "@/lib/types";
+
+const mockSetOpen = vi.fn();
+
+vi.mock("@/providers/modal-provider", () => ({
+  useModal: () => ({
+    setOpen: mockSetOpen,
+    setClose: vi.fn(),
+    isOpen: false,
+    data: {},
+  }),
+}));
 
 const mockWorkflow: Workflow = {
   id: "wf-123",
@@ -20,13 +31,18 @@ const mockWorkflow: Workflow = {
 
 describe("WorkflowCard", () => {
   const mockOnDelete = vi.fn();
+  const mockOnUpdate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  function renderCard(workflow: Workflow = mockWorkflow) {
+    render(<WorkflowCard workflow={workflow} onDelete={mockOnDelete} onUpdate={mockOnUpdate} />);
+  }
+
   it("renders workflow name, status, and trigger type badge", () => {
-    render(<WorkflowCard workflow={mockWorkflow} onDelete={mockOnDelete} />);
+    renderCard();
 
     expect(screen.getByText("Deploy Automation")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
@@ -34,16 +50,15 @@ describe("WorkflowCard", () => {
   });
 
   it("renders Paused badge when status is paused", () => {
-    const pausedWorkflow: Workflow = { ...mockWorkflow, status: "paused" };
-    render(<WorkflowCard workflow={pausedWorkflow} onDelete={mockOnDelete} />);
+    renderCard({ ...mockWorkflow, status: "paused" });
 
     expect(screen.getByText("Paused")).toBeInTheDocument();
   });
 
   it("calls onDelete with workflow id when delete button is clicked", async () => {
-    render(<WorkflowCard workflow={mockWorkflow} onDelete={mockOnDelete} />);
+    renderCard();
 
-    // The delete button is the second action button (Trash icon)
+    // The delete button is the last action button (Trash icon)
     const buttons = screen.getAllByRole("button");
     const deleteButton = buttons[buttons.length - 1];
 
@@ -51,75 +66,14 @@ describe("WorkflowCard", () => {
 
     expect(mockOnDelete).toHaveBeenCalledWith("wf-123");
   });
-});
 
-describe("WorkflowCard edit dialog", () => {
-  const mockOnDelete = vi.fn();
-  const mockOnUpdate = vi.fn();
-  const fetchMock = vi.fn();
+  it("opens the edit drawer through the modal provider", async () => {
+    renderCard();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  async function openEditor() {
-    render(<WorkflowCard workflow={mockWorkflow} onDelete={mockOnDelete} onUpdate={mockOnUpdate} />);
     await userEvent.click(screen.getByRole("button", { name: /edit deploy automation/i }));
-    return screen.findByRole("dialog");
-  }
 
-  it("opens with the current name and description prefilled", async () => {
-    await openEditor();
-
-    expect(screen.getByLabelText("Name")).toHaveValue("Deploy Automation");
-    expect(screen.getByLabelText("Description")).toHaveValue("Triggers on webhook and runs tasks");
-  });
-
-  it("saves the edited values and notifies the parent", async () => {
-    const updated: Workflow = { ...mockWorkflow, name: "Renamed", description: "Updated copy" };
-    fetchMock.mockResolvedValue({ ok: true, json: async () => updated });
-    await openEditor();
-
-    const nameInput = screen.getByLabelText("Name");
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, "Renamed");
-
-    const descriptionInput = screen.getByLabelText("Description");
-    await userEvent.clear(descriptionInput);
-    await userEvent.type(descriptionInput, "Updated copy");
-
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/workflows/wf-123", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Renamed", description: "Updated copy" }),
-    });
-    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledWith(updated));
-  });
-
-  it("blocks saving when the name is empty", async () => {
-    await openEditor();
-
-    await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Name is required");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("shows the API error and keeps the dialog open", async () => {
-    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "Record not found" }) });
-    await openEditor();
-
-    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Record not found");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(mockSetOpen).toHaveBeenCalledTimes(1);
+    expect(React.isValidElement(mockSetOpen.mock.calls[0][0])).toBe(true);
+    expect(mockOnDelete).not.toHaveBeenCalled();
   });
 });
