@@ -185,7 +185,7 @@ const NODE_DOCS: NodeDoc[] = [
     title: "HTTP Request",
     icon: <Globe className="h-4 w-4 text-blue-500" />,
     color: "border-blue-500/30",
-    description: "Makes HTTP requests to any URL. Supports all methods, custom headers, and JSON bodies. GET requests are cached for 5 minutes.",
+    description: "Makes HTTP requests to any URL. Supports all methods, custom headers, and JSON bodies. GET requests can opt into response caching with a configurable TTL.",
     requires: "None",
     settings: [
       { key: "url", desc: "Request URL. Supports {{expression}} template variables." },

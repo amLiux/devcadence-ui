@@ -34,6 +34,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -66,22 +67,84 @@ describe("handleHttpRequest", () => {
     expect(result.data).toEqual({ status: 200, body: { ok: true } });
   });
 
-  it("serves a repeated GET from the in-memory cache", async () => {
+  it("does not cache GET requests unless the node opts in", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
 
-    await handleHttpRequest({ url: "https://api.test/cached" }, undefined);
-    const second = await handleHttpRequest({ url: "https://api.test/cached" }, undefined);
+    await handleHttpRequest({ url: "https://api.test/no-cache" }, undefined);
+    await handleHttpRequest({ url: "https://api.test/no-cache" }, undefined);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores cacheEnabled values other than the literal true", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await handleHttpRequest({ url: "https://api.test/flag", cacheEnabled: "yes" }, undefined);
+    await handleHttpRequest({ url: "https://api.test/flag", cacheEnabled: "yes" }, undefined);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("serves a repeated GET from the cache when caching is enabled", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await handleHttpRequest({ url: "https://api.test/cached", cacheEnabled: "true" }, undefined);
+    const second = await handleHttpRequest(
+      { url: "https://api.test/cached", cacheEnabled: "true" },
+      undefined,
+    );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(second.message).toBe("GET https://api.test/cached → 200 (cached)");
     expect(second.data).toEqual({ status: 200, body: { ok: true } });
   });
 
+  it("uses the configured TTL to expire the cache entry", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await handleHttpRequest(
+      { url: "https://api.test/ttl", cacheEnabled: "true", cacheTtl: "10" },
+      undefined,
+    );
+    vi.advanceTimersByTime(9_000);
+    await handleHttpRequest(
+      { url: "https://api.test/ttl", cacheEnabled: "true", cacheTtl: "10" },
+      undefined,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(2_000);
+    await handleHttpRequest(
+      { url: "https://api.test/ttl", cacheEnabled: "true", cacheTtl: "10" },
+      undefined,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps separate cache entries per TTL", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await handleHttpRequest(
+      { url: "https://api.test/ttl-key", cacheEnabled: "true", cacheTtl: "60" },
+      undefined,
+    );
+    await handleHttpRequest(
+      { url: "https://api.test/ttl-key", cacheEnabled: "true", cacheTtl: "600" },
+      undefined,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("does not cache failed GET responses", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: "nope" }, 500));
 
-    const first = await handleHttpRequest({ url: "https://api.test/fails" }, undefined);
-    await handleHttpRequest({ url: "https://api.test/fails" }, undefined);
+    const first = await handleHttpRequest(
+      { url: "https://api.test/fails", cacheEnabled: "true" },
+      undefined,
+    );
+    await handleHttpRequest({ url: "https://api.test/fails", cacheEnabled: "true" }, undefined);
 
     expect(first.success).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -103,11 +166,17 @@ describe("handleHttpRequest", () => {
     expect(result.message).toBe("POST https://api.test/items → 201");
   });
 
-  it("never caches non-GET requests", async () => {
+  it("never caches non-GET requests even when caching is enabled", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ id: 1 }, 201));
 
-    await handleHttpRequest({ url: "https://api.test/items", method: "POST" }, undefined);
-    await handleHttpRequest({ url: "https://api.test/items", method: "POST" }, undefined);
+    await handleHttpRequest(
+      { url: "https://api.test/items", method: "POST", cacheEnabled: "true" },
+      undefined,
+    );
+    await handleHttpRequest(
+      { url: "https://api.test/items", method: "POST", cacheEnabled: "true" },
+      undefined,
+    );
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
