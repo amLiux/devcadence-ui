@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useEditor } from "@/providers/editor-provider";
 import { buildParentMap } from "@/lib/workflow-context";
+import { summarizeNode } from "@/lib/workflows/node-summary";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -56,13 +57,16 @@ interface CardData {
   type: string;
   completed: boolean;
   current: boolean;
+  metadata?: Record<string, string>;
 }
 
 function EditorCanvasCardInner({ data, id }: NodeProps) {
-  const { title, description, type } = data as CardData;
+  const { title, description, type, metadata } = data as CardData;
   const { editor } = useEditor();
   const isTrigger = type === "Trigger";
   const isConditional = title === "Conditional";
+
+  const summary = useMemo(() => summarizeNode(metadata, title), [metadata, title]);
 
   const parentMap = useMemo(() => buildParentMap(editor.edges), [editor.edges]);
   const parentIds = useMemo(() => parentMap.get(id) || [], [parentMap, id]);
@@ -164,9 +168,13 @@ function EditorCanvasCardInner({ data, id }: NodeProps) {
             </button>
           </div>
         </div>
-        {description && (
+        {summary ? (
+          <p className="text-[11px] text-muted-foreground mb-1.5 truncate font-mono" title={summary}>
+            {summary}
+          </p>
+        ) : description ? (
           <p className="text-xs text-muted-foreground mb-1.5 line-clamp-2">{description}</p>
-        )}
+        ) : null}
         <div className="flex items-center justify-between">
           <Badge variant="outline" className="text-[10px]">
             {type}
