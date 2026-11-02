@@ -121,7 +121,10 @@ const SUMMARIZERS: Record<string, Summarizer> = {
 
   "Send Direct Message": (meta) => {
     const user = collapse(meta.userId);
-    return user ? `@${shortenId(user)}` : null;
+    const content = collapse(meta.content);
+    if (user && content) return `@${shortenId(user)} · ${cap(content, 60)}`;
+    if (user) return `@${shortenId(user)}`;
+    return content ? `"${cap(content, 60)}"` : null;
   },
 
   Prompt: (meta) => {

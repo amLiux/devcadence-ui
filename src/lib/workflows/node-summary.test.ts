@@ -162,10 +162,14 @@ describe("summarizeNode — Discord", () => {
     ).toBe("#123456… · last 50");
   });
 
-  it("shortens direct message user ids", () => {
-    expect(summarizeNode({ userId: "1234567890123456789" }, "Send Direct Message")).toBe(
-      "@123456…",
-    );
+  it("shortens direct message user ids and keeps the content", () => {
+    expect(
+      summarizeNode({ userId: "1234567890123456789", content: "hi" }, "Send Direct Message"),
+    ).toBe("@123456… · hi");
+  });
+
+  it("falls back to the content when there is no user id", () => {
+    expect(summarizeNode({ content: "hi" }, "Send Direct Message")).toBe('"hi"');
   });
 
   it("returns null when nothing is configured", () => {
