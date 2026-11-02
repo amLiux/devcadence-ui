@@ -5,6 +5,7 @@ interface WorkflowRow {
   name: string;
   description: string;
   type: string;
+  projectId: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
@@ -20,6 +21,7 @@ export function serializeWorkflow(workflow: WorkflowRow): Workflow {
     name: workflow.name,
     description: workflow.description,
     type: workflow.type,
+    projectId: workflow.projectId,
     nodes: workflow.nodes,
     edges: workflow.edges,
     flowPath: workflow.flowPath,

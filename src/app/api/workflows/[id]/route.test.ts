@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   update: vi.fn(),
   transaction: vi.fn(),
+  getProject: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -28,6 +29,10 @@ vi.mock("@/lib/workflows/version-store", () => ({
   recordVersion: vi.fn(),
 }));
 
+vi.mock("@/lib/db/projects", () => ({
+  getProject: mocks.getProject,
+}));
+
 const recordVersionMock = vi.mocked(recordVersion);
 
 function dbRow(overrides: Record<string, unknown> = {}) {
@@ -36,6 +41,7 @@ function dbRow(overrides: Record<string, unknown> = {}) {
     name: "Deploy Automation",
     description: "Triggers on webhook",
     type: "workflow",
+    projectId: "shared",
     nodes: "[]",
     edges: "[]",
     flowPath: null,
@@ -62,6 +68,8 @@ beforeEach(() => {
   mocks.findUnique.mockReset();
   mocks.update.mockReset();
   mocks.transaction.mockReset();
+  mocks.getProject.mockReset();
+  mocks.getProject.mockResolvedValue({ id: "proj-1" });
   recordVersionMock.mockReset();
   vi.mocked(syncSchedules).mockReset();
   vi.mocked(unregisterSchedule).mockReset();
@@ -136,6 +144,7 @@ describe("PUT /api/workflows/[id]", () => {
       name: "Renamed",
       description: "New description",
       type: "workflow",
+      projectId: "shared",
       nodes: "[]",
       edges: "[]",
       flowPath: null,
@@ -143,6 +152,28 @@ describe("PUT /api/workflows/[id]", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
     });
+  });
+
+  it("moves the workflow to another project", async () => {
+    mocks.update.mockResolvedValue(dbRow({ projectId: "proj-1" }));
+
+    const response = await callPut({ projectId: "proj-1" });
+
+    expect(mocks.getProject).toHaveBeenCalledWith("proj-1");
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { id: "wf-123" },
+      data: { projectId: "proj-1" },
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects a move to an unknown project", async () => {
+    mocks.getProject.mockResolvedValue(null);
+
+    const response = await callPut({ projectId: "ghost" });
+
+    expect(response.status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("does not touch schedules when only metadata changes", async () => {
