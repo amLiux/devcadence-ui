@@ -1,5 +1,5 @@
 import { resolveTemplates } from "@/lib/workflow-context";
-import { NodeHandlerResult } from "./types";
+import { NodeHandlerResult, type LogEntry } from "./types";
 
 export async function handleCallWorkflow(
   meta: Record<string, string>,
@@ -15,11 +15,21 @@ export async function handleCallWorkflow(
   }
 
   const inputRaw = resolveTemplates(meta.input || "{}", ancestorChain);
+  const logs: LogEntry[] = [];
   let inputData: Record<string, unknown>;
+
   try {
     inputData = JSON.parse(inputRaw);
   } catch {
+    // Falling back silently made a malformed input look like a successful call
+    // that forwarded the whole blob as a single string.
     inputData = { data: inputRaw };
+    logs.push({
+      type: "warning",
+      message:
+        "Input is not valid JSON, so it was sent to the sub-workflow as `data`. Quote keys and string values to send an object.",
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/workflows/execute-sub-workflow`, {
@@ -36,6 +46,7 @@ export async function handleCallWorkflow(
     return {
       success: false,
       message: `Sub-workflow failed: ${error.error || response.statusText}`,
+      logs,
     };
   }
 
@@ -45,5 +56,6 @@ export async function handleCallWorkflow(
     success: true,
     message: `Called workflow "${workflowId}" successfully`,
     data: result.output ?? result,
+    logs,
   };
 }
