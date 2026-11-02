@@ -63,6 +63,9 @@ model WorkflowRun {
   nodeOutputs    Json?
   workflow       Workflow      @relation(fields: [workflowId], references: [id])
   logs           WorkflowLog[]
+
+  @@index([startedAt])
+  @@index([workflowId, startedAt])
 }
 
 model WorkflowLog {
@@ -82,6 +85,9 @@ model WorkflowLog {
   finishedAt  DateTime
   elapsedMs   Int
   run         WorkflowRun @relation(fields: [runId], references: [id])
+
+  @@index([status, nodeType])
+  @@index([startedAt])
 }
 
 model AIPersona {

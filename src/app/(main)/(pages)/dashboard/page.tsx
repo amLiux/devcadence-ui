@@ -1,160 +1,170 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Zap, DollarSign, TrendingUp } from "lucide-react";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { Bar, BarChart, Line, LineChart, XAxis, YAxis, CartesianGrid, Pie, PieChart, Cell } from "recharts";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useApi } from "@/hooks/use-api";
+import { DASHBOARD_RANGES } from "@/lib/dashboard/types";
+import type { DashboardRange, DashboardStats } from "@/lib/dashboard/types";
+import { DashboardEmpty } from "./components/dashboard-empty";
+import { KpiCards } from "./components/kpi-cards";
+import { SourceChart, VolumeChart } from "./components/charts";
+import { FailingNodesTable, WorkflowHealthTable } from "./components/tables";
 
-const monthlyUsage = [
-  { month: "Jan", calls: 120, tokens: 45000 },
-  { month: "Feb", calls: 180, tokens: 68000 },
-  { month: "Mar", calls: 250, tokens: 95000 },
-  { month: "Apr", calls: 310, tokens: 120000 },
-  { month: "May", calls: 420, tokens: 165000 },
-  { month: "Jun", calls: 580, tokens: 230000 },
-  { month: "Jul", calls: 720, tokens: 290000 },
-];
+const RANGE_LABELS: Record<DashboardRange, string> = {
+  "24h": "Last 24 hours",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+};
 
-const successRate = [
-  { day: "Mon", success: 94, failed: 6 },
-  { day: "Tue", success: 88, failed: 12 },
-  { day: "Wed", success: 96, failed: 4 },
-  { day: "Thu", success: 91, failed: 9 },
-  { day: "Fri", success: 97, failed: 3 },
-  { day: "Sat", success: 99, failed: 1 },
-  { day: "Sun", success: 95, failed: 5 },
-];
-
-const costBreakdown = [
-  { name: "GPT-4o", value: 42, fill: "var(--color-chart-1)" },
-  { name: "Claude Sonnet", value: 28, fill: "var(--color-chart-2)" },
-  { name: "GPT-4o Mini", value: 18, fill: "var(--color-chart-3)" },
-  { name: "Other", value: 12, fill: "var(--color-chart-4)" },
-];
-
-const usageConfig = {
-  calls: { label: "API Calls", color: "var(--color-chart-1)" },
-  tokens: { label: "Tokens (k)", color: "var(--color-chart-2)" },
-} satisfies ChartConfig;
-
-const successConfig = {
-  success: { label: "Success", color: "hsl(142, 76%, 36%)" },
-  failed: { label: "Failed", color: "hsl(0, 84%, 60%)" },
-} satisfies ChartConfig;
-
-const costConfig = {
-  GPT4o: { label: "GPT-4o", color: "var(--color-chart-1)" },
-  Claude: { label: "Claude Sonnet", color: "var(--color-chart-2)" },
-  Mini: { label: "GPT-4o Mini", color: "var(--color-chart-3)" },
-  Other: { label: "Other", color: "var(--color-chart-4)" },
-} satisfies ChartConfig;
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4" data-testid="dashboard-skeleton">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="pb-2">
+              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-7 w-16 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="col-span-2 h-[300px] animate-pulse bg-muted/40" />
+        <Card className="h-[300px] animate-pulse bg-muted/40" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="h-[220px] animate-pulse bg-muted/40" />
+        <Card className="h-[220px] animate-pulse bg-muted/40" />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
+  const { request } = useApi();
+  const [range, setRange] = useState<DashboardRange>("7d");
+  const [data, setData] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const load = useCallback(
+    async (nextRange: DashboardRange) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const stats = await request<DashboardStats>({
+          endpoint: `/api/dashboard?range=${nextRange}`,
+        });
+        if (stats) {
+          setData(stats);
+          setUpdatedAt(new Date());
+        }
+      } catch {
+        setError("Could not load the dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [request],
+  );
+
+  useEffect(() => {
+    // This state update happens after the fetch resolves, not during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load(range);
+  }, [load, range]);
+
+  const hasRuns = (data?.kpis.runs.value ?? 0) > 0;
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your automation platform.</p>
+    <div className="space-y-6 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            {RANGE_LABELS[range]}
+            <span className="text-xs">· excludes test runs</span>
+            {data && data.kpis.running > 0 && (
+              <Badge variant="secondary" className="animate-pulse text-[10px]">
+                {data.kpis.running} running
+              </Badge>
+            )}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border p-0.5">
+            {DASHBOARD_RANGES.map((option) => (
+              <Button
+                key={option}
+                size="sm"
+                variant={option === range ? "default" : "ghost"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setRange(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void load(range)}
+            disabled={loading}
+            aria-label="Refresh"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {error && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Workflows</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 this month</p>
+          <CardContent className="flex items-center justify-between gap-3 py-3">
+            <p className="flex items-center gap-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
+            </p>
+            <Button size="sm" variant="outline" onClick={() => void load(range)}>
+              Retry
+            </Button>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Calls</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2,580</div>
-            <p className="text-xs text-muted-foreground">+24% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">95.2%</div>
-            <p className="text-xs text-muted-foreground">+1.8% from last week</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Est. Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$34.20</div>
-            <p className="text-xs text-muted-foreground">This billing cycle</p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">AI Usage Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={usageConfig} className="h-[250px] w-full">
-              <LineChart data={monthlyUsage}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="calls" stroke="var(--color-chart-1)" strokeWidth={2} dot={{ fill: "var(--color-chart-1)" }} />
-                <Line type="monotone" dataKey="tokens" stroke="var(--color-chart-2)" strokeWidth={2} dot={{ fill: "var(--color-chart-2)" }} yAxisId={0} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {!error && loading && !data && <DashboardSkeleton />}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Cost Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={costConfig} className="h-[250px] w-full">
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={costBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={40} strokeWidth={2}>
-                  {costBreakdown.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {!error && data && !hasRuns && <DashboardEmpty range={range} />}
 
-        <Card className="col-span-2 lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Workflow Success Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={successConfig} className="h-[200px] w-full">
-              <BarChart data={successRate}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="day" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="success" stackId="a" fill="hsl(142, 76%, 36%)" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="failed" stackId="a" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+      {!error && data && hasRuns && (
+        <>
+          <KpiCards kpis={data.kpis} />
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <VolumeChart volume={data.volume} range={data.range} />
+            <SourceChart sources={data.sources} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FailingNodesTable nodes={data.failingNodes} />
+            <WorkflowHealthTable workflows={data.workflows} />
+          </div>
+
+          {updatedAt && (
+            <p className="text-right text-[10px] text-muted-foreground">
+              Updated {updatedAt.toLocaleTimeString()}
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
