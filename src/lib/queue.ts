@@ -10,6 +10,7 @@ import {
   type NodeOutput,
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
+import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { sanitize } from "@/lib/workflows/sanitize";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
@@ -101,6 +102,7 @@ async function executeWorkflow(workflowId: string, source: string, body?: unknow
   const forward = buildForwardMap(edges);
   const roots = findRoots(nodes, edges);
 
+  const nodeIds = new Set(nodes.map((node) => node.id));
   const nodeOutputs = new Map<string, NodeOutput>();
   const stepResults: NodeDebugLog[] = [];
   const visited = new Set<string>();
@@ -165,14 +167,8 @@ async function executeWorkflow(workflowId: string, source: string, body?: unknow
     }
 
     const children = forward.get(nodeId) || [];
-
-    if (node.data.title === "Conditional" && data && typeof data === "object" && "condition" in data) {
-      const condition = (data as { condition: boolean }).condition;
-      const targetHandle = condition ? "success" : "failure";
-      const matching = children.find((c) => c.sourceHandle === targetHandle);
-      if (matching) queue.push(matching.targetId);
-    } else {
-      for (const child of children) queue.push(child.targetId);
+    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+      queue.push(targetId);
     }
   }
 

@@ -8,6 +8,7 @@ import {
   type NodeOutput,
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
+import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { sanitize } from "@/lib/workflows/sanitize";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     let lastResult: unknown = undefined;
     let stepNr = 0;
 
+    const nodeIds = new Set(nodes.map((node) => node.id));
     const visited = new Set<string>();
     const queue = [...executionOrder];
 
@@ -107,9 +109,9 @@ export async function POST(req: Request) {
 
       // Add children to queue
       const children = forwardMap.get(nodeId) || [];
-      for (const child of children) {
-        if (!visited.has(child.targetId)) {
-          queue.push(child.targetId);
+      for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+        if (!visited.has(targetId)) {
+          queue.push(targetId);
         }
       }
     }

@@ -40,3 +40,20 @@ export function countGraph(snapshot: {
     edgeCount: parseGraph(snapshot.edges).length,
   };
 }
+
+interface EdgeEndpoints {
+  source?: string | null;
+  target?: string | null;
+}
+
+/** Drops edges whose endpoints no longer exist, e.g. after a node is deleted. */
+export function pruneDanglingEdges<N extends { id: string }, E extends EdgeEndpoints>(
+  nodes: N[],
+  edges: E[],
+): E[] {
+  const ids = new Set(nodes.map((node) => node.id));
+
+  return edges.filter(
+    (edge) => !!edge.source && !!edge.target && ids.has(edge.source) && ids.has(edge.target),
+  );
+}

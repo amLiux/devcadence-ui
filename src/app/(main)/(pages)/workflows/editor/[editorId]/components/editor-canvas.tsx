@@ -17,6 +17,7 @@ import "reactflow/dist/style.css";
 import { useEditor } from "@/providers/editor-provider";
 import { EditorCanvasSidebar } from "./editor-canvas-sidebar";
 import { EditorCanvasCard } from "./editor-canvas-card";
+import { pruneDanglingEdges } from "@/lib/workflows/graph";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
 import { useWorkflowDirty } from "@/hooks/use-workflow-dirty";
@@ -153,6 +154,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
     const handleNodeDelete = (e: Event) => {
       const nodeId = (e as CustomEvent).detail.nodeId;
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
       dispatch({ type: "DELETE_NODE", payload: { nodeId } });
     };
     const handleNodeTest = (e: Event) => {
@@ -169,7 +171,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
       window.removeEventListener("node:delete", handleNodeDelete);
       window.removeEventListener("node:test", handleNodeTest);
     };
-  }, [editor.elements, editor.context, workflow.id, selectNode, setSidebarTab, setNodes, dispatch, setContext, edges]);
+  }, [editor.elements, editor.context, workflow.id, selectNode, setSidebarTab, setNodes, setEdges, dispatch, setContext, edges]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -210,12 +212,14 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
         const el = editor.elements.find((e) => e.id === n.id);
         return { ...n, data: el?.data ?? n.data };
       });
+      // Edges left behind by deleted nodes would otherwise be saved forever.
+      const validEdges = pruneDanglingEdges(merged, edges);
       await request({
         endpoint: `/api/workflows/${workflow.id}`,
         method: "PUT",
         data: {
           nodes: JSON.stringify(merged),
-          edges: JSON.stringify(edges),
+          edges: JSON.stringify(validEdges),
         },
       });
       markCleanAfterSave();
@@ -243,7 +247,12 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
         type: workflow.type,
       },
       nodes: merged,
-      edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle })),
+      edges: pruneDanglingEdges(merged, edges).map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+      })),
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
