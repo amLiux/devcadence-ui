@@ -111,6 +111,16 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
   },
 };
 
+/** Connection types that can validate their credentials with a test call. */
+export const TESTABLE_CONNECTION_TYPES: ConnectionType[] = [
+  "GitHub",
+  "Slack",
+  "Discord",
+  "SMTP",
+  "PostgreSQL",
+  "AI",
+];
+
 export const connectionIcons: Record<ConnectionType, string> = {
   GitHub: "/github.png",
   PostgreSQL: "/postgresql.svg",

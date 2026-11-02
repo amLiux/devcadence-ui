@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { Plug, Trash2, Pencil } from "lucide-react";
+import { Plug, Trash2, Pencil, Activity, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,14 @@ import { useApi } from "@/hooks/use-api";
 import { useModal } from "@/providers/modal-provider";
 import { CustomModal } from "@/components/composed/custom-modal";
 import { ConnectionForm } from "@/components/forms/connections/connection-form";
-import { connectionIcons } from "@/lib/constants";
-import type { Connection, ConnectionData, ConnectionType } from "@/lib/types";
+import { connectionIcons, TESTABLE_CONNECTION_TYPES } from "@/lib/constants";
+import type { Connection, ConnectionData, ConnectionTestResult, ConnectionType } from "@/lib/types";
 
 export default function ConnectionsPage() {
   const { request, loading } = useApi();
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, ConnectionTestResult>>({});
   const { setOpen, setClose } = useModal();
 
   useEffect(() => {
@@ -49,6 +51,24 @@ export default function ConnectionsPage() {
       setConnections((prev) => prev.map((c) => (c.id === id ? updated : c)));
     }
     setClose();
+  };
+
+  const handleTest = async (id: string) => {
+    setTestingId(id);
+    try {
+      const result = await request<ConnectionTestResult>({
+        endpoint: `/api/connections/${id}/test`,
+        method: "POST",
+      });
+      if (result) setTestResults((prev) => ({ ...prev, [id]: result }));
+    } catch {
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { ok: false, latencyMs: 0, message: "Request failed" },
+      }));
+    } finally {
+      setTestingId(null);
+    }
   };
 
   const openNewConnection = () => {
@@ -108,6 +128,22 @@ export default function ConnectionsPage() {
                 </Badge>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                {TESTABLE_CONNECTION_TYPES.includes(conn.type) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-emerald-600 h-7 w-7 px-0"
+                    onClick={() => handleTest(conn.id)}
+                    disabled={testingId === conn.id}
+                    aria-label={`Test ${conn.name}`}
+                  >
+                    {testingId === conn.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Activity className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -130,6 +166,27 @@ export default function ConnectionsPage() {
               {conn.description && (
                 <p className="text-xs text-muted-foreground line-clamp-1">
                   {conn.description}
+                </p>
+              )}
+              {testResults[conn.id] && (
+                <p
+                  className={`mt-1 flex items-center gap-1 text-[11px] ${
+                    testResults[conn.id].ok ? "text-emerald-600" : "text-destructive"
+                  }`}
+                >
+                  {testResults[conn.id].ok ? (
+                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="truncate" title={testResults[conn.id].message}>
+                    {testResults[conn.id].message}
+                  </span>
+                  {testResults[conn.id].latencyMs > 0 && (
+                    <span className="shrink-0 text-muted-foreground">
+                      · {testResults[conn.id].latencyMs} ms
+                    </span>
+                  )}
                 </p>
               )}
             </CardContent>
