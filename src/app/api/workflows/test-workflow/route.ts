@@ -8,6 +8,7 @@ import {
   type NodeOutput,
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
+import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 const now = () => new Date().toISOString();
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
           controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
         };
 
+        const nodeIds = new Set(nodes.map((node) => node.id));
         const nodeOutputs = new Map<string, NodeOutput>();
         const results: NodeDebugLog[] = [];
         const visited = new Set<string>();
@@ -89,18 +91,8 @@ export async function POST(req: Request) {
           });
 
           const children = forward.get(nodeId) || [];
-
-          if (node.data.title === "Conditional" && data && typeof data === "object" && "condition" in data) {
-            const condition = (data as { condition: boolean }).condition;
-            const targetHandle = condition ? "success" : "failure";
-            const matching = children.find((c) => c.sourceHandle === targetHandle);
-            if (matching) {
-              await walk(matching.targetId);
-            }
-          } else {
-            for (const child of children) {
-              await walk(child.targetId);
-            }
+          for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+            await walk(targetId);
           }
         }
 

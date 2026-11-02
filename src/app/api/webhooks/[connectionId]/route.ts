@@ -10,6 +10,7 @@ import {
   type NodeOutput,
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
+import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { validateSchema } from "@/lib/json-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -199,6 +200,7 @@ async function executeWebhook(
     }
 
     // Queue-based traversal: ensure all parents execute before any child
+    const nodeIds = new Set(nodes.map((node) => node.id));
     const queue: string[] = [];
 
     for (const root of roots) {
@@ -275,23 +277,8 @@ async function executeWebhook(
       }
 
       const children = forward.get(nodeId) || [];
-
-      if (
-        node.data.title === "Conditional" &&
-        data &&
-        typeof data === "object" &&
-        "condition" in data
-      ) {
-        const condition = (data as { condition: boolean }).condition;
-        const targetHandle = condition ? "success" : "failure";
-        const matching = children.find((c) => c.sourceHandle === targetHandle);
-        if (matching) {
-          queue.push(matching.targetId);
-        }
-      } else {
-        for (const child of children) {
-          queue.push(child.targetId);
-        }
+      for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+        queue.push(targetId);
       }
     }
 
