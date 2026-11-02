@@ -161,7 +161,7 @@ async function fetchWorkflowNames(): Promise<Record<string, string>> {
     return workflowNamesCache.names;
   }
 
-  const res = await fetch("/api/workflows?type=sub-workflow");
+  const res = await fetch("/api/workflows?type=sub-workflow&compact=1");
   const data = (await res.json()) as { workflows?: { id: string; name: string }[] };
   const names: Record<string, string> = {};
   for (const wf of data.workflows ?? []) names[wf.id] = wf.name;

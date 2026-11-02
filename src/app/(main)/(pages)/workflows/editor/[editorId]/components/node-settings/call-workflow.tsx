@@ -32,7 +32,7 @@ export function CallWorkflowSettings({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/workflows?type=sub-workflow")
+    fetch("/api/workflows?type=sub-workflow&compact=1")
       .then((res) => res.json())
       .then((data) => {
         setWorkflows(data.workflows || []);
