@@ -62,11 +62,14 @@ interface CardData {
 
 function EditorCanvasCardInner({ data, id }: NodeProps) {
   const { title, description, type, metadata } = data as CardData;
-  const { editor } = useEditor();
+  const { editor, workflowNames } = useEditor();
   const isTrigger = type === "Trigger";
   const isConditional = title === "Conditional";
 
-  const summary = useMemo(() => summarizeNode(metadata, title), [metadata, title]);
+  const summary = useMemo(
+    () => summarizeNode(metadata, title, { workflowNames }),
+    [metadata, title, workflowNames],
+  );
 
   const parentMap = useMemo(() => buildParentMap(editor.edges), [editor.edges]);
   const parentIds = useMemo(() => parentMap.get(id) || [], [parentMap, id]);

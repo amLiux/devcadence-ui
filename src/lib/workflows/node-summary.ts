@@ -1,6 +1,14 @@
 type Meta = Record<string, string>;
 
-type Summarizer = (meta: Meta) => string | null;
+export interface SummaryOptions {
+  /** id → name lookup for Call Workflow targets, so renames show up live. */
+  workflowNames?: Record<string, string>;
+}
+
+type Summarizer = (meta: Meta, options: SummaryOptions) => string | null;
+
+/** Hard character cap for a card preview, independent of the rendered width. */
+export const MAX_PREVIEW_CHARS = 60;
 
 /** Collapses whitespace so multi-line values fit on a single card line. */
 function collapse(value: string | undefined): string {
@@ -56,8 +64,12 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return withOutput(expression || null, meta);
   },
 
-  "Call Workflow": (meta) => {
-    const name = collapse(meta.workflowName) || collapse(meta.workflowId);
+  "Call Workflow": (meta, options) => {
+    const workflowId = collapse(meta.workflowId);
+    const name =
+      (workflowId && options.workflowNames?.[workflowId]) ||
+      collapse(meta.workflowName) ||
+      workflowId;
     return name ? `→ ${name}` : null;
   },
 
@@ -134,13 +146,17 @@ const SUMMARIZERS: Record<string, Summarizer> = {
  * Returns null when the node type has no summarizer or when the relevant
  * metadata is still empty, so callers can fall back to the palette description.
  */
-export function summarizeNode(meta: Meta | undefined, title: string): string | null {
+export function summarizeNode(
+  meta: Meta | undefined,
+  title: string,
+  options: SummaryOptions = {},
+): string | null {
   if (!meta) return null;
   const summarizer = SUMMARIZERS[title];
   if (!summarizer) return null;
   try {
-    const summary = summarizer(meta);
-    return summary && summary.trim() ? summary.trim() : null;
+    const summary = summarizer(meta, options);
+    return summary && summary.trim() ? cap(summary.trim(), MAX_PREVIEW_CHARS) : null;
   } catch {
     return null;
   }

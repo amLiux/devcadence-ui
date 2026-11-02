@@ -51,6 +51,7 @@ interface EditorContextType {
   dirty: boolean;
   markDirty: () => void;
   setDirty: (v: boolean) => void;
+  workflowNames: Record<string, string>;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -154,7 +155,27 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<HistoryState>(initialHistoryState);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("actions");
   const [dirty, setDirty] = useState(false);
+  const [workflowNames, setWorkflowNames] = useState<Record<string, string>>({});
   const isUndoRedo = useRef(false);
+
+  // Used by node cards to resolve a Call Workflow target id into its name.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/workflows?type=sub-workflow")
+      .then((res) => res.json())
+      .then((data: { workflows?: { id: string; name: string }[] }) => {
+        if (cancelled) return;
+        const names: Record<string, string> = {};
+        for (const wf of data.workflows ?? []) names[wf.id] = wf.name;
+        setWorkflowNames(names);
+      })
+      .catch(() => {
+        /* the card falls back to the persisted name */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const markDirty = useCallback(() => {
     setDirty(true);
@@ -235,6 +256,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         dirty,
         markDirty,
         setDirty,
+        workflowNames,
       }}
     >
       {children}

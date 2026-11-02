@@ -39,6 +39,22 @@ describe("summarizeNode — Call Workflow", () => {
     expect(summarizeNode({ workflowId: "wf-123" }, "Call Workflow")).toBe("→ wf-123");
   });
 
+  it("prefers a live name from the provider over the persisted one", () => {
+    expect(
+      summarizeNode({ workflowId: "wf-1", workflowName: "Old Name" }, "Call Workflow", {
+        workflowNames: { "wf-1": "New Name" },
+      }),
+    ).toBe("→ New Name");
+  });
+
+  it("falls back to the persisted name when the id is unknown", () => {
+    expect(
+      summarizeNode({ workflowId: "wf-gone", workflowName: "Deleted Workflow" }, "Call Workflow", {
+        workflowNames: { "wf-1": "Other" },
+      }),
+    ).toBe("→ Deleted Workflow");
+  });
+
   it("returns null when nothing is selected", () => {
     expect(summarizeNode({}, "Call Workflow")).toBeNull();
   });
@@ -198,7 +214,16 @@ describe("summarizeNode — edge cases", () => {
 
   it("caps very long values", () => {
     const summary = summarizeNode({ prompt: "a".repeat(300) }, "Prompt");
-    expect(summary).toHaveLength(100);
+    expect(summary).toHaveLength(60);
+    expect(summary?.endsWith("…")).toBe(true);
+  });
+
+  it("hard-caps every preview, including composed ones", () => {
+    const summary = summarizeNode(
+      { to: "someone@example.com", subject: "b".repeat(200) },
+      "Send Email",
+    );
+    expect(summary).toHaveLength(60);
     expect(summary?.endsWith("…")).toBe(true);
   });
 
