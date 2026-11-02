@@ -12,6 +12,7 @@ import {
 import { executeNode } from "@/lib/workflows/execute-node";
 import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { sanitize } from "@/lib/workflows/sanitize";
+import { notifyRunFailure } from "@/lib/notifications/notify";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 const QUEUE_NAME = "workflow-execution";
@@ -182,6 +183,8 @@ async function executeWorkflow(workflowId: string, source: string, body?: unknow
       error: allPassed ? null : "One or more nodes failed",
     },
   });
+
+  if (!allPassed) await notifyRunFailure(run.id);
 
   return { success: allPassed, runId: run.id, error: allPassed ? undefined : "One or more nodes failed" };
 }

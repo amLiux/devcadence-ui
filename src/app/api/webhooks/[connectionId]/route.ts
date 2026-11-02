@@ -11,6 +11,7 @@ import {
 } from "@/lib/workflow-context";
 import { executeNode } from "@/lib/workflows/execute-node";
 import { resolveNextNodeIds } from "@/lib/workflows/routing";
+import { notifyRunFailure } from "@/lib/notifications/notify";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { validateSchema } from "@/lib/json-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -292,6 +293,8 @@ async function executeWebhook(
         error: allPassed ? null : "One or more nodes failed",
       },
     });
+
+    if (!allPassed) await notifyRunFailure(run.id);
 
     results.push({
       workflowId: workflow.id,

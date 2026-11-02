@@ -61,8 +61,21 @@ model WorkflowRun {
   finishedAt     DateTime?
   error          String?
   nodeOutputs    Json?
+  notifiedAt     DateTime?
   workflow       Workflow      @relation(fields: [workflowId], references: [id])
   logs           WorkflowLog[]
+
+  @@index([workflowId, notifiedAt])
+}
+
+model NotificationSetting {
+  id              String   @id @default("default")
+  enabled         Boolean  @default(false)
+  channel         String   @default("slack") // slack | email | discord
+  connectionId    String?
+  target          String   @default("")
+  throttleMinutes Int      @default(60)
+  updatedAt       DateTime @updatedAt
 }
 
 model WorkflowLog {
