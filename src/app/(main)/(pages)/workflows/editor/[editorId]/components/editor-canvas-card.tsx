@@ -1,8 +1,24 @@
 "use client";
 
 import React, { memo, useMemo } from "react";
+import Image from "next/image";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { GitBranch, Zap, Settings, Trash2, Pencil, Play } from "lucide-react";
+import {
+  GitBranch,
+  Zap,
+  Settings,
+  Trash2,
+  Pencil,
+  Play,
+  GitFork,
+  Database,
+  Sparkles,
+  ArrowRightLeft,
+  LogIn,
+  LogOut,
+  Mail,
+  Shield,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useEditor } from "@/providers/editor-provider";
 import { buildParentMap } from "@/lib/workflow-context";
@@ -12,6 +28,26 @@ const iconMap: Record<string, React.ReactNode> = {
   Trigger: <Zap className="h-5 w-5 text-yellow-500" />,
   Action: <Settings className="h-5 w-5 text-blue-500" />,
   GitHub: <GitBranch className="h-5 w-5 text-foreground" />,
+  Conditional: <GitFork className="h-5 w-5 text-orange-500" />,
+  PostgreSQL: <Database className="h-5 w-5 text-blue-600" />,
+  AI: <Sparkles className="h-5 w-5 text-purple-500" />,
+  "Call Workflow": <ArrowRightLeft className="h-5 w-5 text-emerald-500" />,
+  Input: <LogIn className="h-5 w-5 text-cyan-500" />,
+  Return: <LogOut className="h-5 w-5 text-amber-500" />,
+  SMTP: <Mail className="h-5 w-5 text-red-500" />,
+  Slack: <Image src="/slack.png" alt="Slack" width={20} height={20} className="object-contain" />,
+  Security: <Shield className="h-5 w-5 text-emerald-500" />,
+  "Scan Dependencies": <Shield className="h-5 w-5 text-emerald-500" />,
+  Discord: <Image src="/discord.png" alt="Discord" width={20} height={20} className="object-contain" />,
+  "Send Discord Message": (
+    <Image src="/discord.png" alt="Discord" width={20} height={20} className="object-contain" />
+  ),
+  "Read Discord Messages": (
+    <Image src="/discord.png" alt="Discord" width={20} height={20} className="object-contain" />
+  ),
+  "Send Direct Message": (
+    <Image src="/discord.png" alt="Discord" width={20} height={20} className="object-contain" />
+  ),
 };
 
 interface CardData {
@@ -84,7 +120,9 @@ function EditorCanvasCardInner({ data, id }: NodeProps) {
       >
         <div className="flex items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-2 min-w-0">
-            {iconMap[type] || <Settings className="h-5 w-5 text-muted-foreground shrink-0" />}
+            {iconMap[title] || iconMap[type] || (
+              <Settings className="h-5 w-5 text-muted-foreground shrink-0" />
+            )}
             <span className="font-medium text-sm truncate">{title}</span>
           </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
