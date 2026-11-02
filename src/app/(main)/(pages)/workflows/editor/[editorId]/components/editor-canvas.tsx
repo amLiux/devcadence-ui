@@ -37,9 +37,10 @@ const minimapStyle = { height: 120, width: 200 };
 interface Props {
   workflow: Workflow;
   onSaveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  initialRunId?: string | null;
 }
 
-export function EditorCanvas({ workflow, onSaveRef }: Props) {
+export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
   const { editor, dispatch, setEdges: setEditorEdges, selectNode, setSidebarTab, setContext } = useEditor();
   const { request } = useApi();
   const { setOpen } = useModal();
@@ -352,7 +353,7 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
               </Button>
             </div>
             <div className="flex-1 overflow-auto">
-              <EditorCanvasSidebar workflowId={workflow.id} />
+              <EditorCanvasSidebar workflowId={workflow.id} initialRunId={initialRunId} />
             </div>
           </div>
         </ResizablePanel>

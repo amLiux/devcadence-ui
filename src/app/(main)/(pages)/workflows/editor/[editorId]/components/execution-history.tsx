@@ -73,8 +73,8 @@ function SourceLabel({ source }: { source: string }) {
 }
 
 
-function RunRow({ run }: { run: WorkflowRun }) {
-  const [expanded, setExpanded] = useState(false);
+function RunRow({ run, defaultExpanded }: { run: WorkflowRun; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [logs, setLogs] = useState<WorkflowLog[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [detailSteps, setDetailSteps] = useState<NodeDebugLog[] | null>(null);
@@ -209,7 +209,13 @@ function RunRow({ run }: { run: WorkflowRun }) {
   );
 }
 
-export function ExecutionHistory({ workflowId }: { workflowId: string }) {
+export function ExecutionHistory({
+  workflowId,
+  initialRunId,
+}: {
+  workflowId: string;
+  initialRunId?: string | null;
+}) {
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -262,7 +268,7 @@ export function ExecutionHistory({ workflowId }: { workflowId: string }) {
               return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
             })
             .map((run) => (
-              <RunRow key={run.id} run={run} />
+              <RunRow key={run.id} run={run} defaultExpanded={run.id === initialRunId} />
             ))}
         </div>
       )}

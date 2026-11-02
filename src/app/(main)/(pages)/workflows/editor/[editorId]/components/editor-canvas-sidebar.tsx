@@ -213,7 +213,13 @@ function NodeSettingsForm() {
   return <p className="text-xs text-muted-foreground">No configuration available for this node type.</p>;
 }
 
-export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
+export function EditorCanvasSidebar({
+  workflowId,
+  initialRunId,
+}: {
+  workflowId?: string;
+  initialRunId?: string | null;
+}) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
   const hasNodes = editor.elements.length > 0;
   const [configuredTypes, setConfiguredTypes] = useState<Set<Connection["type"]>>(new Set());
@@ -340,7 +346,7 @@ export function EditorCanvasSidebar({ workflowId }: { workflowId?: string }) {
         </div>
       )}
       {sidebarTab === "history" && workflowId && (
-        <ExecutionHistory workflowId={workflowId} />
+        <ExecutionHistory workflowId={workflowId} initialRunId={initialRunId} />
       )}
     </div>
   );
