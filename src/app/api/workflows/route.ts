@@ -12,8 +12,20 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
+    const compact = searchParams.get("compact") === "1";
 
     const where = type ? { type } : undefined;
+
+    // Callers that only need a picker (Call Workflow, node previews) should not
+    // pay for every workflow's nodes and edges.
+    if (compact) {
+      const workflows = await prisma.workflow.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, name: true },
+      });
+      return NextResponse.json({ workflows });
+    }
 
     const workflows = await prisma.workflow.findMany({
       where,
