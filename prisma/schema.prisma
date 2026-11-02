@@ -29,6 +29,26 @@ model Workflow {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   runs        WorkflowRun[]
+  versions    WorkflowVersion[]
+}
+
+model WorkflowVersion {
+  id          String   @id @default(uuid())
+  workflowId  String
+  version     Int
+  name        String
+  description String   @default("")
+  type        String   @default("workflow")
+  nodes       String?
+  edges       String?
+  status      String   @default("draft")
+  source      String   @default("save") // save | restore
+  hash        String
+  createdAt   DateTime @default(now())
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, version])
+  @@index([workflowId, version])
 }
 
 model WorkflowRun {

@@ -1,10 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PUT } from "./route";
-import { prisma } from "@/lib/db";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
+import { recordVersion } from "@/lib/workflows/version-store";
+
+const mocks = vi.hoisted(() => ({
+  findUnique: vi.fn(),
+  update: vi.fn(),
+  transaction: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({
-  prisma: { workflow: { update: vi.fn() } },
+  prisma: {
+    workflow: {
+      findUnique: mocks.findUnique,
+      update: mocks.update,
+    },
+    $transaction: mocks.transaction,
+  },
 }));
 
 vi.mock("@/lib/scheduler", () => ({
@@ -12,7 +24,11 @@ vi.mock("@/lib/scheduler", () => ({
   unregisterSchedule: vi.fn(),
 }));
 
-const updateMock = vi.mocked(prisma.workflow.update);
+vi.mock("@/lib/workflows/version-store", () => ({
+  recordVersion: vi.fn(),
+}));
+
+const recordVersionMock = vi.mocked(recordVersion);
 
 function dbRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -43,10 +59,18 @@ function callPut(body: unknown) {
 }
 
 beforeEach(() => {
-  updateMock.mockReset();
+  mocks.findUnique.mockReset();
+  mocks.update.mockReset();
+  mocks.transaction.mockReset();
+  recordVersionMock.mockReset();
   vi.mocked(syncSchedules).mockReset();
   vi.mocked(unregisterSchedule).mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
+
+  mocks.findUnique.mockResolvedValue(dbRow());
+  mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
+    callback({ workflow: { update: mocks.update } }),
+  );
 });
 
 describe("PUT /api/workflows/[id]", () => {
@@ -55,22 +79,45 @@ describe("PUT /api/workflows/[id]", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Name is required" });
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("rejects a non-string name", async () => {
     const response = await callPut({ name: 42 });
 
     expect(response.status).toBe(400);
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the workflow does not exist", async () => {
+    mocks.findUnique.mockResolvedValue(null);
+
+    const response = await callPut({ name: "Renamed" });
+
+    expect(response.status).toBe(404);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("stores a version of the previous state before updating", async () => {
+    mocks.update.mockResolvedValue(dbRow({ name: "Renamed" }));
+
+    await callPut({ name: "Renamed" });
+
+    expect(recordVersionMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "wf-123", name: "Deploy Automation" }),
+      expect.objectContaining({ id: "wf-123", name: "Renamed" }),
+      "save",
+    );
   });
 
   it("trims the name before updating", async () => {
-    updateMock.mockResolvedValue(dbRow({ name: "Renamed" }) as never);
+    mocks.update.mockResolvedValue(dbRow({ name: "Renamed" }));
 
     const response = await callPut({ name: "  Renamed  " });
 
-    expect(updateMock).toHaveBeenCalledWith({
+    expect(mocks.update).toHaveBeenCalledWith({
       where: { id: "wf-123" },
       data: { name: "Renamed" },
     });
@@ -78,9 +125,7 @@ describe("PUT /api/workflows/[id]", () => {
   });
 
   it("updates name and description and returns the serialized workflow", async () => {
-    updateMock.mockResolvedValue(
-      dbRow({ name: "Renamed", description: "New description" }) as never,
-    );
+    mocks.update.mockResolvedValue(dbRow({ name: "Renamed", description: "New description" }));
 
     const response = await callPut({ name: "Renamed", description: "New description" });
     const body = await response.json();
@@ -101,7 +146,7 @@ describe("PUT /api/workflows/[id]", () => {
   });
 
   it("does not touch schedules when only metadata changes", async () => {
-    updateMock.mockResolvedValue(dbRow() as never);
+    mocks.update.mockResolvedValue(dbRow());
 
     await callPut({ name: "Renamed" });
 
@@ -110,7 +155,7 @@ describe("PUT /api/workflows/[id]", () => {
   });
 
   it("returns 500 with the error message when the update fails", async () => {
-    updateMock.mockRejectedValue(new Error("Record not found"));
+    mocks.update.mockRejectedValue(new Error("Record not found"));
 
     const response = await callPut({ name: "Renamed" });
 

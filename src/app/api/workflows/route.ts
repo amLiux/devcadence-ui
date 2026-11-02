@@ -1,37 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import type { Workflow, WorkflowStatus } from "@/lib/types";
+import { serializeWorkflow } from "@/lib/workflows/serialize";
 
 interface CreateWorkflowBody {
   name: string;
   description?: string;
   type?: string;
-}
-
-function simplifyWorkflow(w: {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  nodes: string | null;
-  edges: string | null;
-  flowPath: string | null;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-}): Workflow {
-  return {
-    id: w.id,
-    name: w.name,
-    description: w.description,
-    type: w.type,
-    nodes: w.nodes,
-    edges: w.edges,
-    flowPath: w.flowPath,
-    status: w.status as WorkflowStatus,
-    createdAt: w.createdAt.toISOString(),
-    updatedAt: w.updatedAt.toISOString(),
-  };
 }
 
 export async function GET(req: Request) {
@@ -45,7 +19,7 @@ export async function GET(req: Request) {
       where,
       orderBy: { updatedAt: "desc" },
     });
-    return NextResponse.json({ workflows: workflows.map(simplifyWorkflow) });
+    return NextResponse.json({ workflows: workflows.map(serializeWorkflow) });
   } catch (error) {
     console.error("GET /api/workflows error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Failed to fetch workflows" }, { status: 500 });
@@ -62,7 +36,7 @@ export async function POST(req: Request) {
         type: body.type || "workflow",
       },
     });
-    return NextResponse.json(simplifyWorkflow(workflow), { status: 201 });
+    return NextResponse.json(serializeWorkflow(workflow), { status: 201 });
   } catch (error) {
     console.error("POST /api/workflows error:", error instanceof Error ? error.message : error);
     return NextResponse.json(

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
-import type { Workflow, WorkflowStatus } from "@/lib/types";
+import { recordVersion } from "@/lib/workflows/version-store";
+import { serializeWorkflow } from "@/lib/workflows/serialize";
+import type { WorkflowStatus } from "@/lib/types";
 
 interface UpdateWorkflowBody {
   name?: string;
@@ -13,32 +15,6 @@ interface UpdateWorkflowBody {
   status?: WorkflowStatus;
 }
 
-function simplifyWorkflow(w: {
-  id: string;
-  name: string;
-  description: string;
-  type: string;
-  nodes: string | null;
-  edges: string | null;
-  flowPath: string | null;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-}): Workflow {
-  return {
-    id: w.id,
-    name: w.name,
-    description: w.description,
-    type: w.type,
-    nodes: w.nodes,
-    edges: w.edges,
-    flowPath: w.flowPath,
-    status: w.status as WorkflowStatus,
-    createdAt: w.createdAt.toISOString(),
-    updatedAt: w.updatedAt.toISOString(),
-  };
-}
-
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -46,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!workflow) {
       return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
     }
-    return NextResponse.json(simplifyWorkflow(workflow));
+    return NextResponse.json(serializeWorkflow(workflow));
   } catch (error) {
     console.error("GET /api/workflows/[id] error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Failed to fetch workflow" }, { status: 500 });
@@ -65,17 +41,38 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       body.name = body.name.trim();
     }
 
-    const workflow = await prisma.workflow.update({
-      where: { id },
-      data: {
+    const current = await prisma.workflow.findUnique({ where: { id } });
+    if (!current) {
+      return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+    }
+
+    // The version stores the state being replaced, so a restore is always
+    // possible. It only lands when the content actually changed.
+    const workflow = await prisma.$transaction(async (tx) => {
+      const next = {
+        ...current,
         ...(body.name !== undefined && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
         ...(body.type !== undefined && { type: body.type }),
         ...(body.nodes !== undefined && { nodes: body.nodes }),
         ...(body.edges !== undefined && { edges: body.edges }),
-        ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
         ...(body.status !== undefined && { status: body.status }),
-      },
+      };
+
+      await recordVersion(tx, current, next, "save");
+
+      return tx.workflow.update({
+        where: { id },
+        data: {
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.description !== undefined && { description: body.description }),
+          ...(body.type !== undefined && { type: body.type }),
+          ...(body.nodes !== undefined && { nodes: body.nodes }),
+          ...(body.edges !== undefined && { edges: body.edges }),
+          ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
+          ...(body.status !== undefined && { status: body.status }),
+        },
+      });
     });
 
     const shouldSyncSchedule = body.status !== undefined || body.nodes !== undefined;
@@ -88,7 +85,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    return NextResponse.json(simplifyWorkflow(workflow));
+    return NextResponse.json(serializeWorkflow(workflow));
   } catch (error) {
     console.error("PUT /api/workflows/[id] error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
