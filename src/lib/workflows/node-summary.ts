@@ -1,3 +1,5 @@
+import { toString as cronToString } from "cronstrue";
+
 type Meta = Record<string, string>;
 
 export interface SummaryOptions {
@@ -44,6 +46,45 @@ function formatDiscordChannel(value: string | undefined): string | null {
   const raw = collapse(value).replace(/^#/, "");
   if (!raw) return null;
   return `#${shortenId(raw)}`;
+}
+
+/** Number of non-empty mapKey_N entries configured in a Build JSON node. */
+function countJsonFields(meta: Meta): number {
+  let count = 0;
+  for (const [key, value] of Object.entries(meta)) {
+    if (!key.startsWith("mapKey_")) continue;
+    if (collapse(value)) count += 1;
+  }
+  return count;
+}
+
+/** Renders a cron expression as human text, falling back to the raw value. */
+function formatCron(value: string): string | null {
+  const cron = collapse(value);
+  if (!cron) return null;
+  try {
+    return cronToString(cron);
+  } catch {
+    return cron;
+  }
+}
+
+/** Shows the target repository, optionally followed by a detail. */
+function repoSummary(meta: Meta, detail?: string | null): string | null {
+  const repo = collapse(meta.repo);
+  if (!repo) return null;
+  const suffix = collapse(detail ?? "");
+  return suffix ? `${repo} · ${suffix}` : repo;
+}
+
+/** Shows a repository plus an issue or pull request number. */
+function repoNumberSummary(meta: Meta, detail?: string | null): string | null {
+  const repo = collapse(meta.repo);
+  const number = collapse(meta.issueNumber) || collapse(meta.prNumber);
+  if (!repo) return null;
+  if (!number) return repoSummary(meta, detail);
+  const suffix = collapse(detail ?? "");
+  return suffix ? `${repo}#${number} · ${suffix}` : `${repo}#${number}`;
 }
 
 /**
@@ -140,6 +181,49 @@ const SUMMARIZERS: Record<string, Summarizer> = {
   Extract: (meta) => {
     const fields = collapse(meta.fields);
     return fields || null;
+  },
+
+  Schedule: (meta) => formatCron(meta.cron),
+
+  "Retry Loop": (meta) => {
+    const url = collapse(meta.url);
+    const retries = collapse(meta.maxRetries);
+    if (!url) return null;
+    const method = (collapse(meta.method) || "GET").toUpperCase();
+    return retries ? `${method} ${url} · ${retries} retries` : `${method} ${url}`;
+  },
+
+  "Create Issue": (meta) => {
+    const title = collapse(meta.title);
+    return repoSummary(meta, title ? `"${cap(title, 40)}"` : null);
+  },
+
+  "Add Comment": (meta) => repoNumberSummary(meta),
+
+  "Add Label": (meta) => repoNumberSummary(meta, collapse(meta.label)),
+
+  "Request Review": (meta) => repoNumberSummary(meta, collapse(meta.reviewers)),
+
+  "Listen Commits": (meta) => repoSummary(meta, collapse(meta.branch)),
+
+  "Listen Pull Requests": (meta) => repoSummary(meta, collapse(meta.events)),
+
+  "Listen Issues": (meta) => repoSummary(meta, collapse(meta.events)),
+
+  "Listen Comments": (meta) => repoSummary(meta, collapse(meta.filter)),
+
+  "Listen Releases": (meta) => repoSummary(meta),
+
+  "Scan Dependencies": (meta) => {
+    const severity = collapse(meta.severityFilter);
+    const label = severity && severity !== "all" ? `${severity}+` : null;
+    return withOutput(repoSummary(meta, label), meta);
+  },
+
+  "Build JSON": (meta) => {
+    const count = countJsonFields(meta);
+    if (count === 0) return null;
+    return withOutput(`${count} ${count === 1 ? "field" : "fields"}`, meta);
   },
 };
 

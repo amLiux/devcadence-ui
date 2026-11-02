@@ -258,3 +258,125 @@ describe("summarizeNode — edge cases", () => {
     }
   });
 });
+
+describe("summarizeNode — Tier 2", () => {
+  it("renders a schedule cron as human text", () => {
+    expect(summarizeNode({ cron: "0 9 * * *" }, "Schedule")).toBe("At 09:00 AM");
+  });
+
+  it("falls back to the raw cron when it cannot be parsed", () => {
+    expect(summarizeNode({ cron: "not-a-cron" }, "Schedule")).toBe("not-a-cron");
+  });
+
+  it("returns null for an empty schedule", () => {
+    expect(summarizeNode({}, "Schedule")).toBeNull();
+  });
+
+  it("shows the retry loop method, url and retries", () => {
+    expect(
+      summarizeNode({ method: "post", url: "https://api.test/items", maxRetries: "3" }, "Retry Loop"),
+    ).toBe("POST https://api.test/items · 3 retries");
+  });
+
+  it("returns null for a retry loop without a url", () => {
+    expect(summarizeNode({ maxRetries: "3" }, "Retry Loop")).toBeNull();
+  });
+
+  it("shows the repository and title for Create Issue", () => {
+    expect(summarizeNode({ repo: "acme/api", title: "Fix login" }, "Create Issue")).toBe(
+      'acme/api · "Fix login"',
+    );
+  });
+
+  it("shows the repository and number for Add Comment", () => {
+    expect(summarizeNode({ repo: "acme/api", issueNumber: "42" }, "Add Comment")).toBe(
+      "acme/api#42",
+    );
+  });
+
+  it("shows the label for Add Label", () => {
+    expect(
+      summarizeNode({ repo: "acme/api", issueNumber: "42", label: "bug" }, "Add Label"),
+    ).toBe("acme/api#42 · bug");
+  });
+
+  it("shows the reviewers for Request Review", () => {
+    expect(
+      summarizeNode({ repo: "acme/api", prNumber: "7", reviewers: "ana,bob" }, "Request Review"),
+    ).toBe("acme/api#7 · ana,bob");
+  });
+
+  it("shows the branch for Listen Commits", () => {
+    expect(summarizeNode({ repo: "acme/api", branch: "main" }, "Listen Commits")).toBe(
+      "acme/api · main",
+    );
+  });
+
+  it("shows the events for Listen Pull Requests and Listen Issues", () => {
+    expect(
+      summarizeNode({ repo: "acme/api", events: "opened, closed" }, "Listen Pull Requests"),
+    ).toBe("acme/api · opened, closed");
+    expect(
+      summarizeNode({ repo: "acme/api", events: "opened, labeled" }, "Listen Issues"),
+    ).toBe("acme/api · opened, labeled");
+  });
+
+  it("shows the filter for Listen Comments and the repo for Listen Releases", () => {
+    expect(summarizeNode({ repo: "acme/api", filter: "TODO" }, "Listen Comments")).toBe(
+      "acme/api · TODO",
+    );
+    expect(summarizeNode({ repo: "acme/api" }, "Listen Releases")).toBe("acme/api");
+  });
+
+  it("returns null for GitHub nodes without a repository", () => {
+    expect(summarizeNode({ branch: "main" }, "Listen Commits")).toBeNull();
+    expect(summarizeNode({ title: "Fix" }, "Create Issue")).toBeNull();
+    expect(summarizeNode({}, "Add Label")).toBeNull();
+  });
+
+  it("shows the severity filter for Scan Dependencies", () => {
+    expect(
+      summarizeNode({ repo: "acme/api", severityFilter: "high", outputName: "scan" }, "Scan Dependencies"),
+    ).toBe("acme/api · high+ → scan");
+    expect(summarizeNode({ repo: "acme/api", severityFilter: "all" }, "Scan Dependencies")).toBe(
+      "acme/api",
+    );
+  });
+
+  it("counts the configured Build JSON fields", () => {
+    expect(
+      summarizeNode(
+        { mapKey_1: "total", mapValue_1: "a", mapKey_2: "count", mapValue_2: "b" },
+        "Build JSON",
+      ),
+    ).toBe("2 fields");
+    expect(summarizeNode({ mapKey_1: "total" }, "Build JSON")).toBe("1 field");
+  });
+
+  it("appends the output name for Build JSON", () => {
+    expect(
+      summarizeNode({ mapKey_1: "total", mapValue_1: "a", outputName: "payload" }, "Build JSON"),
+    ).toBe("1 field → payload");
+  });
+
+  it("ignores empty Build JSON keys", () => {
+    expect(summarizeNode({ mapKey_1: "", mapKey_2: "total" }, "Build JSON")).toBe("1 field");
+    expect(summarizeNode({}, "Build JSON")).toBeNull();
+  });
+
+  it("never leaks secrets in Tier 2 previews", () => {
+    const secretMeta = {
+      repo: "acme/api",
+      url: "https://api.test/secure",
+      headers: '{"Authorization":"leak-canary"}',
+      body: '{"password":"leak-canary"}',
+      connectionId: "conn-leak-canary",
+      maxRetries: "2",
+    };
+
+    for (const title of ["Retry Loop", "Create Issue", "Listen Commits", "Scan Dependencies"]) {
+      const summary = summarizeNode(secretMeta, title);
+      expect(summary ?? "").not.toContain("leak-canary");
+    }
+  });
+});
