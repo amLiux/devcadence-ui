@@ -10,6 +10,12 @@ export interface Connection {
   updatedAt: string;
 }
 
+export interface ConnectionTestResult {
+  ok: boolean;
+  latencyMs: number;
+  message: string;
+}
+
 export interface RequestOptions {
   endpoint: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
