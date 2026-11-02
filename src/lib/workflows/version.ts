@@ -58,24 +58,3 @@ export function shouldCreateVersion(
   if (currentHash === snapshotHash(next)) return false;
   return currentHash !== (lastHash ?? null);
 }
-
-/** Counts the nodes and edges of a snapshot, tolerating missing or invalid JSON. */
-export function countGraph(snapshot: {
-  nodes?: string | null;
-  edges?: string | null;
-}): { nodeCount: number; edgeCount: number } {
-  return {
-    nodeCount: countJsonArray(snapshot.nodes),
-    edgeCount: countJsonArray(snapshot.edges),
-  };
-}
-
-function countJsonArray(value: string | null | undefined): number {
-  if (!value) return 0;
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.length : 0;
-  } catch {
-    return 0;
-  }
-}

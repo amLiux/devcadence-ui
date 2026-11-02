@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   buildSnapshot,
-  countGraph,
   MAX_VERSIONS,
   shouldCreateVersion,
   snapshotHash,
@@ -95,19 +94,6 @@ describe("shouldCreateVersion", () => {
 
   it("skips a state that is already the newest stored version", () => {
     expect(shouldCreateVersion(base, { ...base, name: "Renamed" }, snapshotHash(base))).toBe(false);
-  });
-});
-
-describe("countGraph", () => {
-  it("counts nodes and edges", () => {
-    expect(countGraph(base)).toEqual({ nodeCount: 2, edgeCount: 1 });
-  });
-
-  it("returns zero for missing or invalid payloads", () => {
-    expect(countGraph({})).toEqual({ nodeCount: 0, edgeCount: 0 });
-    expect(countGraph({ nodes: null, edges: "" })).toEqual({ nodeCount: 0, edgeCount: 0 });
-    expect(countGraph({ nodes: "not json" })).toEqual({ nodeCount: 0, edgeCount: 0 });
-    expect(countGraph({ nodes: '{"not":"an array"}' })).toEqual({ nodeCount: 0, edgeCount: 0 });
   });
 });
 

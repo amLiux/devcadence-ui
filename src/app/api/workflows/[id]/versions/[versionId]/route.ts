@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { countGraph } from "@/lib/workflows/version";
+import { countGraph } from "@/lib/workflows/graph";
 
 export async function GET(
   _req: Request,

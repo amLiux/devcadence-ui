@@ -331,8 +331,8 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
                   setOpen(
                     <VersionHistoryDrawer
                       workflowId={workflow.id}
-                      currentNodeCount={nodes.length}
-                      currentEdgeCount={edges.length}
+                      currentNodes={JSON.stringify(editor.elements)}
+                      currentEdges={JSON.stringify(edges)}
                       onRestored={() => window.location.reload()}
                     />,
                   )
