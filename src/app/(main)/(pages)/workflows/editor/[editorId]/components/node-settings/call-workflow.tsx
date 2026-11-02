@@ -24,6 +24,7 @@ interface SubWorkflow {
 export function CallWorkflowSettings({
   meta,
   handleChange,
+  updateMeta,
   parentOutput,
   hasParentEdge,
 }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
@@ -51,7 +52,17 @@ export function CallWorkflowSettings({
         <Label className="text-xs">Target Workflow</Label>
         <Select
           value={meta.workflowId || ""}
-          onValueChange={(val) => handleChange("workflowId", val ?? "")}
+          onValueChange={(val) => {
+            const workflowId = val ?? "";
+            // Persist the display name alongside the id so the node card can show
+            // it without an extra fetch. One patch, so it cannot race with itself.
+            const workflowName = workflows.find((wf) => wf.id === workflowId)?.name ?? "";
+            if (updateMeta) {
+              updateMeta({ workflowId, workflowName });
+            } else {
+              handleChange("workflowId", workflowId);
+            }
+          }}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={loading ? "Loading..." : "Select workflow"}>

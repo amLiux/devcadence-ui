@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -51,6 +52,7 @@ interface EditorContextType {
   dirty: boolean;
   markDirty: () => void;
   setDirty: (v: boolean) => void;
+  workflowNames: Record<string, string>;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -149,12 +151,58 @@ const initialHistoryState: HistoryState = {
   currentIndex: 0,
 };
 
+const WORKFLOW_NAMES_TTL_MS = 60_000;
+
+let workflowNamesCache: { at: number; names: Record<string, string> } | null = null;
+
+/** Fetches sub-workflow id → name pairs, reusing a one-minute cache. */
+async function fetchWorkflowNames(): Promise<Record<string, string>> {
+  if (workflowNamesCache && Date.now() - workflowNamesCache.at < WORKFLOW_NAMES_TTL_MS) {
+    return workflowNamesCache.names;
+  }
+
+  const res = await fetch("/api/workflows?type=sub-workflow");
+  const data = (await res.json()) as { workflows?: { id: string; name: string }[] };
+  const names: Record<string, string> = {};
+  for (const wf of data.workflows ?? []) names[wf.id] = wf.name;
+
+  workflowNamesCache = { at: Date.now(), names };
+  return names;
+}
+
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [editor, dispatch] = useReducer(editorReducer, initialEditorState);
   const [history, setHistory] = useState<HistoryState>(initialHistoryState);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("actions");
   const [dirty, setDirty] = useState(false);
+  const [workflowNames, setWorkflowNames] = useState<Record<string, string>>({});
   const isUndoRedo = useRef(false);
+
+  const needsWorkflowNames = useMemo(
+    () =>
+      editor.elements.some(
+        (node) => node.data.title === "Call Workflow" && Boolean(node.data.metadata?.workflowId),
+      ),
+    [editor.elements],
+  );
+
+  // Used by node cards to resolve a Call Workflow target id into its name.
+  // Only fetched when the canvas actually has a Call Workflow node, and cached
+  // for a minute so moving between editors does not refetch.
+  useEffect(() => {
+    if (!needsWorkflowNames) return;
+    let cancelled = false;
+    fetchWorkflowNames()
+      .then((names) => {
+        if (!cancelled) setWorkflowNames(names);
+      })
+      .catch(() => {
+        /* the card falls back to the persisted name */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsWorkflowNames]);
 
   const markDirty = useCallback(() => {
     setDirty(true);
@@ -235,6 +283,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         dirty,
         markDirty,
         setDirty,
+        workflowNames,
       }}
     >
       {children}
