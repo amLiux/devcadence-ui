@@ -20,10 +20,12 @@ import { EditorCanvasCard } from "./editor-canvas-card";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
 import { useWorkflowDirty } from "@/hooks/use-workflow-dirty";
-import { Save, Play, Download } from "lucide-react";
+import { Save, Play, Download, History } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { DebugModal } from "@/components/composed/debug-modal";
 import { useDebugLogs } from "@/hooks/use-debug-logs";
+import { useModal } from "@/providers/modal-provider";
+import { VersionHistoryDrawer } from "./version-history";
 import type { Workflow, WorkflowContext, EditorNode } from "@/lib/types";
 import { createDefaultSubWorkflowNodes } from "@/lib/types";
 
@@ -39,6 +41,7 @@ interface Props {
 export function EditorCanvas({ workflow, onSaveRef }: Props) {
   const { editor, dispatch, setEdges: setEditorEdges, selectNode, setSidebarTab, setContext } = useEditor();
   const { request } = useApi();
+  const { setOpen } = useModal();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
@@ -320,6 +323,23 @@ export function EditorCanvas({ workflow, onSaveRef }: Props) {
               >
                 <Download className="h-3.5 w-3.5 mr-1" />
                 Export
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setOpen(
+                    <VersionHistoryDrawer
+                      workflowId={workflow.id}
+                      currentNodeCount={nodes.length}
+                      currentEdgeCount={edges.length}
+                      onRestored={() => window.location.reload()}
+                    />,
+                  )
+                }
+              >
+                <History className="h-3.5 w-3.5 mr-1" />
+                Versions
               </Button>
             </div>
             <div className="flex-1 overflow-auto">
