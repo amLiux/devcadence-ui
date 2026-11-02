@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { countGraph, VERSIONS_PAGE_SIZE } from "@/lib/workflows/version";
+import { countGraph } from "@/lib/workflows/graph";
+import { VERSIONS_PAGE_SIZE } from "@/lib/workflows/version";
 
 const MAX_PAGE_SIZE = 25;
 

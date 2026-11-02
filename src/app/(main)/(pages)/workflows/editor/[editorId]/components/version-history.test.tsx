@@ -1,10 +1,34 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import type { ComponentProps } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { formatRelativeTime, VersionHistoryPanel } from "./version-history";
 
 const NOW = Date.now();
+
+const CURRENT_NODES = JSON.stringify([
+  { id: "a", data: { title: "Webhook", type: "Trigger", metadata: {} } },
+  {
+    id: "b",
+    data: { title: "Send Slack Message", type: "Slack", metadata: { channel: "#new" } },
+  },
+  { id: "c", data: { title: "Conditional", type: "Action", metadata: { expression: "x > 1" } } },
+]);
+
+const CURRENT_EDGES = JSON.stringify([
+  { id: "e1", source: "a", target: "b" },
+  { id: "e2", source: "b", target: "c" },
+]);
+
+const OLD_NODES = JSON.stringify([
+  { id: "a", data: { title: "Webhook", type: "Trigger", metadata: {} } },
+  {
+    id: "b",
+    data: { title: "Send Slack Message", type: "Slack", metadata: { channel: "#old" } },
+  },
+]);
+
+const OLD_EDGES = JSON.stringify([{ id: "e1", source: "a", target: "b" }]);
 
 function version(overrides: Record<string, unknown> = {}) {
   return {
@@ -15,9 +39,20 @@ function version(overrides: Record<string, unknown> = {}) {
     type: "workflow",
     status: "draft",
     source: "save",
-    createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
-    nodeCount: 6,
-    edgeCount: 5,
+    createdAt: new Date(NOW - 5 * 60_000).toISOString(),
+    nodeCount: 2,
+    edgeCount: 1,
+    ...overrides,
+  };
+}
+
+function versionDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "ver-1",
+    workflowId: "wf-1",
+    version: 1,
+    nodes: OLD_NODES,
+    edges: OLD_EDGES,
     ...overrides,
   };
 }
@@ -36,8 +71,8 @@ function renderPanel(props: Partial<ComponentProps<typeof VersionHistoryPanel>> 
   render(
     <VersionHistoryPanel
       workflowId="wf-1"
-      currentNodeCount={8}
-      currentEdgeCount={7}
+      currentNodes={CURRENT_NODES}
+      currentEdges={CURRENT_EDGES}
       onRestored={onRestored}
       {...props}
     />,
@@ -63,15 +98,15 @@ describe("VersionHistoryPanel", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the current state next to the stored versions", async () => {
+  it("shows the current canvas next to the stored versions", async () => {
     mockFetch({ versions: [version()], page: 1, pageSize: 10, total: 1, hasMore: false });
 
     renderPanel();
 
     expect(await screen.findByText("v1")).toBeInTheDocument();
     expect(screen.getByText("Current")).toBeInTheDocument();
-    expect(screen.getByText("8 nodes · 7 edges")).toBeInTheDocument();
-    expect(screen.getByText("6 nodes · 5 edges")).toBeInTheDocument();
+    expect(screen.getByText("3 nodes · 2 edges")).toBeInTheDocument();
+    expect(screen.getByText("2 nodes · 1 edges")).toBeInTheDocument();
     expect(screen.getByText("5 min ago")).toBeInTheDocument();
   });
 
@@ -170,5 +205,101 @@ describe("VersionHistoryPanel", () => {
     await userEvent.click(within(row).getByRole("button", { name: /^restore$/i }));
 
     expect(await screen.findByText(/could not restore this version/i)).toBeInTheDocument();
+  });
+
+  it("compares a version with the current canvas", async () => {
+    const fetchMock = mockFetch({
+      versions: [version()],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      hasMore: false,
+    });
+
+    renderPanel();
+    const row = await screen.findByTestId("version-1");
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => versionDetail() });
+    await userEvent.click(within(row).getByRole("button", { name: /compare/i }));
+
+    expect(await screen.findByText("v1 → Current")).toBeInTheDocument();
+    expect(screen.getByText("+1 nodes")).toBeInTheDocument();
+    expect(screen.getByText("~1 nodes")).toBeInTheDocument();
+    expect(screen.getByText("+1 edges")).toBeInTheDocument();
+
+    const before = screen.getByTestId("diff-before");
+    const after = screen.getByTestId("diff-after");
+    expect(within(before).getByText(/nothing removed/i)).toBeInTheDocument();
+    expect(within(after).getByText(/\+ Conditional/)).toBeInTheDocument();
+
+    const changed = screen.getByTestId("changed-b");
+    expect(within(changed).getByText("channel")).toBeInTheDocument();
+    expect(within(changed).getByText("#old")).toBeInTheDocument();
+    expect(within(changed).getByText("#new")).toBeInTheDocument();
+  });
+
+  it("returns to the list from the diff view", async () => {
+    const fetchMock = mockFetch({
+      versions: [version()],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      hasMore: false,
+    });
+
+    renderPanel();
+    const row = await screen.findByTestId("version-1");
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => versionDetail() });
+
+    await userEvent.click(within(row).getByRole("button", { name: /compare/i }));
+    await screen.findByText("v1 → Current");
+
+    await userEvent.click(screen.getByRole("button", { name: /all versions/i }));
+
+    expect(screen.getByTestId("version-1")).toBeInTheDocument();
+  });
+
+  it("says so when the version matches the current canvas", async () => {
+    const fetchMock = mockFetch({
+      versions: [version({ nodeCount: 3, edgeCount: 2 })],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      hasMore: false,
+    });
+
+    renderPanel();
+    const row = await screen.findByTestId("version-1");
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => versionDetail({ nodes: CURRENT_NODES, edges: CURRENT_EDGES }),
+    });
+
+    await userEvent.click(within(row).getByRole("button", { name: /compare/i }));
+
+    expect(await screen.findByText(/no differences between v1/i)).toBeInTheDocument();
+  });
+
+  it("surfaces a failed compare", async () => {
+    const fetchMock = mockFetch({
+      versions: [version()],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      hasMore: false,
+    });
+
+    renderPanel();
+    const row = await screen.findByTestId("version-1");
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Failed to fetch version" }),
+    });
+
+    await userEvent.click(within(row).getByRole("button", { name: /compare/i }));
+
+    expect(await screen.findByText(/could not load this version/i)).toBeInTheDocument();
   });
 });
