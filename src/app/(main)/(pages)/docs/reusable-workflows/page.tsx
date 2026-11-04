@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node, type Edge } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronLeft, Check, RotateCcw, ArrowRightLeft, LogIn, LogOut, Settings, Terminal, X } from "lucide-react";
+import { ArrowRight, Check, RotateCcw, ArrowRightLeft, LogIn, LogOut, Settings, Terminal, X } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Sub-workflow modal canvas ──────────────────────────────────────────
@@ -209,18 +210,12 @@ export default function ReusableWorkflowsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      {/* Back to docs */}
-      <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-        <ChevronLeft className="h-3 w-3" />
-        Back to docs
-      </Link>
-
-      <div>
-        <h1 className="text-2xl font-bold">Reusable Workflows</h1>
-        <p className="text-muted-foreground mt-1">
-          Use workflows as nodes. Write auth once, call everywhere.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Reusable Workflows"
+        description="Use workflows as nodes. Write auth once, call everywhere."
+      />
 
       {/* Completion banner */}
       {phase === "done" && (

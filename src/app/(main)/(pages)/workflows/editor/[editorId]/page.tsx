@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Repeat, FileEdit, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workflow; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const router = useRouter();
   const { request } = useApi();
-  const { dirty, editor } = useEditor();
+  const { dirty, editor, setSidebarTab } = useEditor();
+  const searchParams = useSearchParams();
+  const initialRunId = searchParams.get("run");
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+
+  useEffect(() => {
+    if (initialRunId) setSidebarTab("history");
+  }, [initialRunId, setSidebarTab]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -135,6 +141,7 @@ function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workfl
         <EditorCanvas
           workflow={workflow}
           onSaveRef={saveRef}
+          initialRunId={initialRunId}
         />
       </div>
 

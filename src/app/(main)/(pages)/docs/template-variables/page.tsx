@@ -2,12 +2,13 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Settings, RotateCcw, ChevronLeft, Check, X, Terminal, Zap, Lightbulb } from "lucide-react";
+import { ArrowRight, Settings, RotateCcw, Check, X, Terminal, Zap, Lightbulb } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Quiz data ──────────────────────────────────────────────────────────
@@ -185,16 +186,17 @@ export default function TemplateVariablesPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Template Variables</h1>
-        <p className="text-muted-foreground mt-1">
-          Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> to reference data from previous nodes in any text field.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Template Variables"
+        description={
+          <>
+            Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> to reference data
+            from previous nodes in any text field.
+          </>
+        }
+      />
 
       {/* Completion banner */}
       {allDone && (

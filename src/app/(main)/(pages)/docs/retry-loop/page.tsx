@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import ReactFlow, { Handle, Position, Background, type Node, type Edge } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, ChevronLeft, RotateCcw, Zap, Check, X, Clock, Settings } from "lucide-react";
+import { ArrowRight, RotateCcw, Zap, Check, X, Clock, Settings } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Scenarios ──────────────────────────────────────────────────────────
@@ -381,16 +382,12 @@ export default function RetryLoopDocsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Retry Loop</h1>
-        <p className="text-muted-foreground mt-1">
-          Make an HTTP request and retry until a condition is met. Poll async jobs, wait for deploys, or handle rate limits.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Retry Loop"
+        description="Make an HTTP request and retry until a condition is met. Poll async jobs, wait for deploys, or handle rate limits."
+      />
 
       {/* How it works */}
       <div className="rounded-lg border p-4 space-y-3">

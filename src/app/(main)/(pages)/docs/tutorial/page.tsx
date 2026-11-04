@@ -17,11 +17,12 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, GripVertical, Zap, Settings, Sparkles,
+  GripVertical, Zap, Settings, Sparkles,
   GitBranch, Check, RotateCcw, ArrowRight, Database,
   MessageCircle, Rocket,
 } from "lucide-react";
@@ -333,16 +334,13 @@ export default function TutorialPage() {
 
   return (
     <div className="p-6 h-full flex flex-col max-w-full">
-      <div className="max-w-3xl mb-4">
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Build Your First Workflow</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Follow the guide. Drag, connect, and watch it come together.
-        </p>
-      </div>
+      <SubpageHeader
+        className="max-w-3xl mb-4"
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Build Your First Workflow"
+        description="Follow the guide. Drag, connect, and watch it come together."
+      />
 
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Canvas */}
