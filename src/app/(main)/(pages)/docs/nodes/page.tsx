@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
-  ChevronLeft,
   ChevronDown,
   ChevronRight,
   Globe,
@@ -655,17 +655,18 @@ export default function NodesDocsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Node Types</h1>
-        <p className="text-muted-foreground mt-1">
-          Every node receives output from its parent via <code className="bg-muted px-1 rounded">previousStep</code>.
-          Expand any node to see its settings and examples.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Node Types"
+        description={
+          <>
+            Every node receives output from its parent via{" "}
+            <code className="bg-muted px-1 rounded">previousStep</code>. Expand any node to see its
+            settings and examples.
+          </>
+        }
+      />
 
       {/* Search and filters */}
       <div className="space-y-3">

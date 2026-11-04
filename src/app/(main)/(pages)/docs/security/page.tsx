@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ChevronLeft, Lock, Unlock, Database, Key, Shield, Eye, EyeOff, RefreshCcw } from "lucide-react";
+import { ArrowRight, Lock, Unlock, Database, Key, Shield, Eye, EyeOff, RefreshCcw } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 type Stage = "idle" | "typing" | "encrypting" | "stored" | "decrypting" | "revealed";
@@ -106,16 +107,12 @@ export default function SecurityDocsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">How does devdock handle your secrets?</h1>
-        <p className="text-muted-foreground mt-1">
-          Connection secrets are encrypted with AES-256-GCM before they reach the database. The plaintext never leaves the server unprotected.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="How does devdock handle your secrets?"
+        description="Connection secrets are encrypted with AES-256-GCM before they reach the database. The plaintext never leaves the server unprotected."
+      />
 
       {/* Interactive animation */}
       <div className="space-y-3">

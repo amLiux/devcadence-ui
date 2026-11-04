@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Zap, Globe, Sparkles, RotateCcw, ChevronLeft, Check, MessageCircle } from "lucide-react";
+import { ArrowRight, Play, Zap, Globe, Sparkles, RotateCcw, Check, MessageCircle } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface SimNode {
@@ -166,16 +167,12 @@ export default function WorkflowDocsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Interactive Workflow</h1>
-        <p className="text-muted-foreground mt-1">
-          A workflow is a chain of nodes. Each node receives output from the previous step.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Interactive Workflow"
+        description="A workflow is a chain of nodes. Each node receives output from the previous step."
+      />
 
       {hasRun && (
         <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/5 px-4 py-2.5">

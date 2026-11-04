@@ -17,6 +17,8 @@ const menuOptions = [
 
 export default function Sidebar() {
   const path = usePathname();
+  // Subroutes such as /settings/notifications and /docs/nodes keep their parent active.
+  const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
 
   return (
     <nav className="h-screen w-16 border-r border-border flex flex-col items-center py-4 bg-background shrink-0">
@@ -29,9 +31,9 @@ export default function Sidebar() {
             render={
               <Link
                 href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
                 className={`p-3 rounded-lg mb-2 transition-colors ${
-                  path === item.href ||
-                  (item.href === "/workflows" && path.startsWith("/workflows"))
+                  isActive(item.href)
                     ? "bg-primary/10 text-primary"
                     : item.name === "AI"
                       ? "text-purple-500 hover:text-purple-400 hover:bg-purple-500/10"

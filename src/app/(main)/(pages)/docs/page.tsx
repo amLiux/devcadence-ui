@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
+import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
+import { SectionCard } from "@/components/composed/section-card";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
 const topics: { title: string; description: string; href: string; icon: React.ReactNode; tag: string; tagColor?: string; page: DocsPage }[] = [
@@ -128,38 +127,43 @@ export default function DocsPage() {
         {topics.map((topic) => {
           const done = isPageDone(topic.page);
           return (
-            <Link key={topic.href} href={topic.href}>
-              <Card
-                className={`group hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer ${
-                  done
-                    ? "border-green-500/30 bg-green-500/5"
-                    : topic.page === "tutorial" && !allDone
-                      ? "border-primary/30 bg-primary/5"
-                      : ""
-                }`}
-              >
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="shrink-0">
-                    {done ? (
-                      <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-white" />
-                      </div>
-                    ) : (
-                      <span className={iconColors[topic.page]}>{topic.icon}</span>
-                    )}
+            <SectionCard
+              key={topic.href}
+              href={topic.href}
+              title={topic.title}
+              description={topic.description}
+              icon={topic.icon}
+              leading={
+                done ? (
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="h-3 w-3 text-white" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm flex items-center gap-2">
-                      {topic.title}
-                      {done && <span className="text-[10px] text-green-500 font-medium">Completed</span>}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{topic.description}</div>
-                  </div>
-                  <span className={`text-[10px] shrink-0 font-medium ${topic.tagColor || "text-muted-foreground"}`}>{topic.tag}</span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                </CardContent>
-              </Card>
-            </Link>
+                ) : (
+                  <span className={iconColors[topic.page]}>{topic.icon}</span>
+                )
+              }
+              status={
+                done ? (
+                  <span className="text-[10px] text-green-500 font-medium">Completed</span>
+                ) : undefined
+              }
+              badge={
+                <span
+                  className={`text-[10px] shrink-0 font-medium ${
+                    topic.tagColor || "text-muted-foreground"
+                  }`}
+                >
+                  {topic.tag}
+                </span>
+              }
+              className={
+                done
+                  ? "border-green-500/30 bg-green-500/5"
+                  : topic.page === "tutorial" && !allDone
+                    ? "border-primary/30 bg-primary/5"
+                    : ""
+              }
+            />
           );
         })}
       </div>

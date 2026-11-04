@@ -2,11 +2,12 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import ReactFlow, { Handle, Position, Background, useNodesState, useEdgesState, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Settings, Link2, RotateCcw, ChevronLeft, Check, MessageCircle, Terminal } from "lucide-react";
+import { ArrowRight, Settings, Link2, RotateCcw, Check, MessageCircle, Terminal } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 // ── Node data ──────────────────────────────────────────────────────────
@@ -280,16 +281,12 @@ export default function ConnectingNodesPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
-      <div>
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Connecting Nodes</h1>
-        <p className="text-muted-foreground mt-1">
-          Link nodes to pass data between them. The output of one node becomes the input of the next.
-        </p>
-      </div>
+      <SubpageHeader
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Connecting Nodes"
+        description="Link nodes to pass data between them. The output of one node becomes the input of the next."
+      />
 
       {/* Completion banner */}
       {hasRun && (

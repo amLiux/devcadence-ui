@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { SubpageHeader } from "@/components/composed/subpage-header";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, ChevronLeft, Zap, Plug, Database, Sparkles, Mail, Terminal, GitBranch, Lock, ArrowDown, Check } from "lucide-react";
+import { ArrowRight, Zap, Plug, Database, Sparkles, Mail, Terminal, GitBranch, Lock, ArrowDown, Check } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 import { integrationConfigs, connectionIcons } from "@/lib/constants";
 import type { ConnectionType } from "@/lib/types";
@@ -164,16 +165,13 @@ export default function ConnectionsDocsPage() {
 
   return (
     <div className="p-6 h-full max-w-full">
-      <div className="max-w-3xl mb-6">
-        <Link href="/docs" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3">
-          <ChevronLeft className="h-3 w-3" />
-          Back to docs
-        </Link>
-        <h1 className="text-2xl font-bold">Connections & Triggers</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Select a connection to see how to configure it and which nodes it unlocks.
-        </p>
-      </div>
+      <SubpageHeader
+        className="max-w-3xl mb-6"
+        backHref="/docs"
+        backLabel="Back to docs"
+        title="Connections & Triggers"
+        description="Select a connection to see how to configure it and which nodes it unlocks."
+      />
 
       {/* Split panel */}
       <div className="flex gap-6 min-h-[500px]">
