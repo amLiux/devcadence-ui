@@ -6,8 +6,14 @@ import { Button } from "@/components/ui/button";
 import { useModal } from "@/providers/modal-provider";
 import { CustomModal } from "@/components/composed/custom-modal";
 import { WorkflowForm } from "@/components/forms/workflow-form";
+import type { Project } from "@/lib/types";
 
-export function WorkflowButton() {
+interface Props {
+  projects?: Project[];
+  defaultProjectId?: string;
+}
+
+export function WorkflowButton({ projects, defaultProjectId }: Props = {}) {
   const { setOpen } = useModal();
 
   return (
@@ -18,7 +24,7 @@ export function WorkflowButton() {
             title="New Workflow"
             subheading="Create a new workflow to automate your tasks."
           >
-            <WorkflowForm />
+            <WorkflowForm projects={projects} defaultProjectId={defaultProjectId} />
           </CustomModal>,
         )
       }

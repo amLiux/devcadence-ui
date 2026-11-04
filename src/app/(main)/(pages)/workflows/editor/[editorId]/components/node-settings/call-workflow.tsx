@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -14,11 +16,13 @@ import { JsonEditor, formatJson } from "@/components/ui/json-editor";
 import { AlignLeft } from "lucide-react";
 import { NodeSettingsProps } from "./types";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
+import { groupReusableWorkflows } from "@/lib/workflows/projects";
+import type { Project } from "@/lib/types";
 
 interface SubWorkflow {
   id: string;
   name: string;
-  description: string;
+  projectId: string;
 }
 
 export function CallWorkflowSettings({
@@ -27,19 +31,27 @@ export function CallWorkflowSettings({
   updateMeta,
   parentOutput,
   hasParentEdge,
+  currentProjectId,
 }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   const [workflows, setWorkflows] = useState<SubWorkflow[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/workflows?type=sub-workflow&compact=1")
-      .then((res) => res.json())
-      .then((data) => {
-        setWorkflows(data.workflows || []);
-        setLoading(false);
+    Promise.all([
+      fetch("/api/workflows?type=sub-workflow&compact=1").then((res) => res.json()),
+      fetch("/api/projects").then((res) => res.json()),
+    ])
+      .then(([workflowData, projectData]) => {
+        setWorkflows(workflowData.workflows || []);
+        setProjects(projectData.projects || []);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  // Only the current project and Shared can be called from here.
+  const groups = groupReusableWorkflows(workflows, projects, currentProjectId);
 
   return (
     <div className="space-y-3">
@@ -70,14 +82,19 @@ export function CallWorkflowSettings({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {workflows.map((wf) => (
-              <SelectItem key={wf.id} value={wf.id}>
-                {wf.name}
-              </SelectItem>
+            {groups.map((group) => (
+              <SelectGroup key={group.project.id}>
+                <SelectLabel>{group.project.name}</SelectLabel>
+                {group.workflows.map((wf) => (
+                  <SelectItem key={wf.id} value={wf.id}>
+                    {wf.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
-        {workflows.length === 0 && !loading && (
+        {groups.length === 0 && !loading && (
           <p className="text-[10px] text-muted-foreground">
             No reusable workflows found. Mark a workflow as &quot;Reusable&quot; to use it here.
           </p>

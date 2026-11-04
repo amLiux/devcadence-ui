@@ -11,10 +11,10 @@ import { useApi } from "@/hooks/use-api";
 import { EditorProvider, useEditor } from "@/providers/editor-provider";
 import { EditorCanvas } from "./components/editor-canvas";
 import { inferTriggerType, TRIGGER_TYPE_LABELS } from "@/lib/types";
-import type { Workflow, WorkflowStatus } from "@/lib/types";
+import type { Project, Workflow, WorkflowStatus } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
-function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workflow; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
+function EditorShell({ workflow, projectName, onWorkflowUpdate, saveRef }: { workflow: Workflow; projectName?: string; onWorkflowUpdate: (w: Workflow) => void; saveRef: React.MutableRefObject<(() => Promise<void>) | null> }) {
   const router = useRouter();
   const { request } = useApi();
   const { dirty, editor, setSidebarTab } = useEditor();
@@ -98,6 +98,14 @@ function EditorShell({ workflow, onWorkflowUpdate, saveRef }: { workflow: Workfl
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
+            {projectName && (
+              <>
+                <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                  {projectName}
+                </span>
+                <span className="text-xs text-muted-foreground">/</span>
+              </>
+            )}
             <h1 className="text-sm font-semibold">{workflow.name}</h1>
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">
               {TRIGGER_TYPE_LABELS[triggerType]}
@@ -176,6 +184,7 @@ export default function EditorPage() {
   const router = useRouter();
   const { request, loading } = useApi();
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const saveRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -190,6 +199,16 @@ export default function EditorPage() {
     }
   }, [params.editorId, request, router]);
 
+  useEffect(() => {
+    request<{ projects: Project[] }>({ endpoint: "/api/projects" })
+      .then((data) => {
+        if (data?.projects) setProjects(data.projects);
+      })
+      .catch(() => {
+        /* the breadcrumb simply falls back to the workflow name */
+      });
+  }, [request]);
+
   if (loading || !workflow) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -200,7 +219,12 @@ export default function EditorPage() {
 
   return (
     <EditorProvider>
-      <EditorShell workflow={workflow} onWorkflowUpdate={setWorkflow} saveRef={saveRef} />
+      <EditorShell
+        workflow={workflow}
+        projectName={projects.find((project) => project.id === workflow.projectId)?.name}
+        onWorkflowUpdate={setWorkflow}
+        saveRef={saveRef}
+      />
     </EditorProvider>
   );
 }

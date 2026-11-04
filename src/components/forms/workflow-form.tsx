@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useApi } from "@/hooks/use-api";
 import { useModal } from "@/providers/modal-provider";
-import type { Workflow } from "@/lib/types";
+import type { Project, Workflow } from "@/lib/types";
 
 export interface WorkflowFormValues {
   name: string;
@@ -18,9 +18,16 @@ export interface WorkflowFormValues {
 interface Props {
   initialData?: Workflow;
   onUpdate?: (id: string, data: WorkflowFormValues) => Promise<void>;
+  projects?: Project[];
+  defaultProjectId?: string;
 }
 
-export function WorkflowForm({ initialData, onUpdate }: Props = {}) {
+export function WorkflowForm({
+  initialData,
+  onUpdate,
+  projects,
+  defaultProjectId,
+}: Props = {}) {
   const router = useRouter();
   const { request } = useApi();
   const { setClose } = useModal();
@@ -28,8 +35,14 @@ export function WorkflowForm({ initialData, onUpdate }: Props = {}) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [reusable, setReusable] = useState(false);
+  const [projectId, setProjectId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const sharedProjectId = projects?.find((project) => project.isShared)?.id;
+  // Keep the project select controlled without an effect: the rail selection wins,
+  // then Shared, and the user's explicit choice wins over both.
+  const selectedProjectId = projectId || defaultProjectId || sharedProjectId || "";
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
@@ -53,6 +66,7 @@ export function WorkflowForm({ initialData, onUpdate }: Props = {}) {
           name: trimmedName,
           description: description.trim(),
           type: reusable ? "sub-workflow" : "workflow",
+          ...(selectedProjectId && { projectId: selectedProjectId }),
         },
       });
       if (workflow) {
@@ -86,6 +100,23 @@ export function WorkflowForm({ initialData, onUpdate }: Props = {}) {
           placeholder="What does this workflow do?"
         />
       </div>
+      {!isEdit && projects && projects.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="workflow-project">Project</Label>
+          <select
+            id="workflow-project"
+            className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            value={selectedProjectId}
+            onChange={(event) => setProjectId(event.target.value)}
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {!isEdit && (
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">

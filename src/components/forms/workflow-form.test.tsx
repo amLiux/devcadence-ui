@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkflowForm } from "./workflow-form";
-import type { Workflow } from "@/lib/types";
+import type { Project, Workflow } from "@/lib/types";
 
 const requestMock = vi.fn();
 const setCloseMock = vi.fn();
@@ -14,6 +14,25 @@ vi.mock("@/hooks/use-api", () => ({
 vi.mock("@/providers/modal-provider", () => ({
   useModal: () => ({ setClose: setCloseMock, setOpen: vi.fn(), isOpen: false, data: {} }),
 }));
+
+const projects: Project[] = [
+  {
+    id: "shared",
+    name: "Shared",
+    description: "",
+    isShared: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "proj-dashboard",
+    name: "devcadence-ui",
+    description: "",
+    isShared: false,
+    createdAt: "",
+    updatedAt: "",
+  },
+];
 
 const workflow: Workflow = {
   id: "wf-123",
@@ -39,6 +58,28 @@ describe("WorkflowForm in create mode", () => {
 
     expect(screen.getByRole("switch")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /create workflow/i })).toBeInTheDocument();
+  });
+
+  it("defaults the project to Shared and submits the chosen one", async () => {
+    requestMock.mockResolvedValue({ ...workflow, id: "wf-new" });
+    render(<WorkflowForm projects={projects} defaultProjectId="shared" />);
+
+    expect(screen.getByLabelText("Project")).toHaveValue("shared");
+
+    await userEvent.selectOptions(screen.getByLabelText("Project"), "proj-dashboard");
+    await userEvent.type(screen.getByLabelText("Name"), "New Flow");
+    await userEvent.click(screen.getByRole("button", { name: /create workflow/i }));
+
+    expect(requestMock).toHaveBeenCalledWith({
+      endpoint: "/api/workflows",
+      method: "POST",
+      data: {
+        name: "New Flow",
+        description: "",
+        type: "workflow",
+        projectId: "proj-dashboard",
+      },
+    });
   });
 
   it("posts a new workflow and navigates to its editor", async () => {

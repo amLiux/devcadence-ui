@@ -185,7 +185,7 @@ function NodeCategorySection({
   );
 }
 
-function NodeSettingsForm() {
+function NodeSettingsForm({ currentProjectId }: { currentProjectId?: string }) {
   const { editor, updateNode, markDirty } = useEditor();
   const node = editor.selectedNode;
   if (!node) return null;
@@ -207,7 +207,16 @@ function NodeSettingsForm() {
 
   const SettingsComponent = SETTINGS_REGISTRY[title];
   if (SettingsComponent) {
-    return <SettingsComponent meta={meta} handleChange={handleChange} updateMeta={updateMeta} parentOutput={parentOutput} hasParentEdge={!!parentEdge} />;
+    return (
+      <SettingsComponent
+        meta={meta}
+        handleChange={handleChange}
+        updateMeta={updateMeta}
+        parentOutput={parentOutput}
+        hasParentEdge={!!parentEdge}
+        currentProjectId={currentProjectId}
+      />
+    );
   }
 
   return <p className="text-xs text-muted-foreground">No configuration available for this node type.</p>;
@@ -215,9 +224,11 @@ function NodeSettingsForm() {
 
 export function EditorCanvasSidebar({
   workflowId,
+  projectId,
   initialRunId,
 }: {
   workflowId?: string;
+  projectId?: string;
   initialRunId?: string | null;
 }) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
@@ -336,7 +347,7 @@ export function EditorCanvasSidebar({
                   {editor.selectedNode.data.description}
                 </p>
               </div>
-              <NodeSettingsForm />
+              <NodeSettingsForm currentProjectId={projectId} />
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
