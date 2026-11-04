@@ -60,11 +60,22 @@ export interface IntegrationConfig {
 
 export type WorkflowStatus = "draft" | "active" | "paused";
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  isShared: boolean;
+  workflowCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Workflow {
   id: string;
   name: string;
   description: string;
   type: string;
+  projectId: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;

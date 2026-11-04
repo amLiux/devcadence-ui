@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
+import { getProject } from "@/lib/db/projects";
 import { recordVersion } from "@/lib/workflows/version-store";
 import { serializeWorkflow } from "@/lib/workflows/serialize";
 import type { WorkflowStatus } from "@/lib/types";
@@ -9,6 +10,7 @@ interface UpdateWorkflowBody {
   name?: string;
   description?: string;
   type?: string;
+  projectId?: string;
   nodes?: string;
   edges?: string;
   flowPath?: string;
@@ -46,6 +48,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
     }
 
+    if (body.projectId !== undefined) {
+      const project = await getProject(body.projectId);
+      if (!project) {
+        return NextResponse.json({ error: "Project not found" }, { status: 400 });
+      }
+    }
+
     // The version stores the state being replaced, so a restore is always
     // possible. It only lands when the content actually changed.
     const workflow = await prisma.$transaction(async (tx) => {
@@ -54,6 +63,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         ...(body.name !== undefined && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
         ...(body.type !== undefined && { type: body.type }),
+        ...(body.projectId !== undefined && { projectId: body.projectId }),
         ...(body.nodes !== undefined && { nodes: body.nodes }),
         ...(body.edges !== undefined && { edges: body.edges }),
         ...(body.status !== undefined && { status: body.status }),
@@ -67,6 +77,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           ...(body.name !== undefined && { name: body.name }),
           ...(body.description !== undefined && { description: body.description }),
           ...(body.type !== undefined && { type: body.type }),
+          ...(body.projectId !== undefined && { projectId: body.projectId }),
           ...(body.nodes !== undefined && { nodes: body.nodes }),
           ...(body.edges !== undefined && { edges: body.edges }),
           ...(body.flowPath !== undefined && { flowPath: body.flowPath }),

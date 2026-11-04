@@ -1,18 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "./route";
+import { GET, POST } from "./route";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  create: vi.fn(),
+  getProject: vi.fn(),
+  getDefaultProjectId: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    workflow: { findMany: mocks.findMany },
+    workflow: { findMany: mocks.findMany, create: mocks.create },
   },
+}));
+
+vi.mock("@/lib/db/projects", () => ({
+  getProject: mocks.getProject,
+  getDefaultProjectId: mocks.getDefaultProjectId,
 }));
 
 function get(query = "") {
   return GET(new Request(`http://localhost/api/workflows${query}`));
+}
+
+function post(body: unknown) {
+  return POST(
+    new Request("http://localhost/api/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
 }
 
 const row = {
@@ -20,6 +38,7 @@ const row = {
   name: "Deploy alerts",
   description: "notify",
   type: "sub-workflow",
+  projectId: "shared",
   nodes: "[]",
   edges: "[]",
   flowPath: null,
@@ -30,8 +49,15 @@ const row = {
 
 beforeEach(() => {
   mocks.findMany.mockReset();
-  mocks.findMany.mockResolvedValue([row]);
+  mocks.create.mockReset();
+  mocks.getProject.mockReset();
+  mocks.getDefaultProjectId.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => {});
+
+  mocks.findMany.mockResolvedValue([row]);
+  mocks.create.mockResolvedValue(row);
+  mocks.getDefaultProjectId.mockResolvedValue("shared");
+  mocks.getProject.mockResolvedValue({ id: "proj-1" });
 });
 
 describe("GET /api/workflows", () => {
@@ -43,7 +69,12 @@ describe("GET /api/workflows", () => {
       where: { type: "sub-workflow" },
       orderBy: { updatedAt: "desc" },
     });
-    expect(body.workflows[0]).toMatchObject({ id: "wf-1", nodes: "[]", edges: "[]" });
+    expect(body.workflows[0]).toMatchObject({
+      id: "wf-1",
+      projectId: "shared",
+      nodes: "[]",
+      edges: "[]",
+    });
   });
 
   it("selects only id and name in compact mode", async () => {
@@ -60,11 +91,20 @@ describe("GET /api/workflows", () => {
     expect(body).toEqual({ workflows: [{ id: "wf-1", name: "Deploy alerts" }] });
   });
 
-  it("omits the type filter when it is not provided", async () => {
+  it("filters by project", async () => {
+    await get("?projectId=proj-1");
+
+    expect(mocks.findMany).toHaveBeenCalledWith({
+      where: { projectId: "proj-1" },
+      orderBy: { updatedAt: "desc" },
+    });
+  });
+
+  it("sends an empty filter when nothing is provided", async () => {
     await get("?compact=1");
 
     expect(mocks.findMany).toHaveBeenCalledWith({
-      where: undefined,
+      where: {},
       orderBy: { updatedAt: "desc" },
       select: { id: true, name: true },
     });
@@ -74,6 +114,43 @@ describe("GET /api/workflows", () => {
     mocks.findMany.mockRejectedValue(new Error("db down"));
 
     const response = await get("?compact=1");
+
+    expect(response.status).toBe(500);
+  });
+});
+
+describe("POST /api/workflows", () => {
+  it("defaults to the shared project", async () => {
+    const response = await post({ name: "Deploy alerts" });
+
+    expect(response.status).toBe(201);
+    expect(mocks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ name: "Deploy alerts", projectId: "shared" }),
+    });
+  });
+
+  it("uses the requested project", async () => {
+    await post({ name: "Deploy alerts", projectId: "proj-1" });
+
+    expect(mocks.getProject).toHaveBeenCalledWith("proj-1");
+    expect(mocks.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ projectId: "proj-1" }),
+    });
+  });
+
+  it("rejects an unknown project", async () => {
+    mocks.getProject.mockResolvedValue(null);
+
+    const response = await post({ name: "Deploy alerts", projectId: "ghost" });
+
+    expect(response.status).toBe(400);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the insert fails", async () => {
+    mocks.create.mockRejectedValue(new Error("db down"));
+
+    const response = await post({ name: "Deploy alerts" });
 
     expect(response.status).toBe(500);
   });

@@ -24,6 +24,7 @@ const mockWorkflow: Workflow = {
   edges: "[]",
   flowPath: null,
   type: "workflow",
+  projectId: "shared",
   status: "active",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

@@ -26,10 +26,24 @@ model Workflow {
   edges       String?
   flowPath    String?
   status      String        @default("draft")
+  projectId   String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  project     Project       @relation(fields: [projectId], references: [id])
   runs        WorkflowRun[]
   versions    WorkflowVersion[]
+
+  @@index([projectId])
+}
+
+model Project {
+  id          String     @id @default(uuid())
+  name        String
+  description String     @default("")
+  isShared    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  workflows   Workflow[]
 }
 
 model WorkflowVersion {
