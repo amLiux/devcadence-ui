@@ -77,8 +77,10 @@ describe("GET /api/workflows", () => {
     });
   });
 
-  it("selects only id and name in compact mode", async () => {
-    mocks.findMany.mockResolvedValue([{ id: "wf-1", name: "Deploy alerts" }]);
+  it("selects the id, name and project for the picker in compact mode", async () => {
+    mocks.findMany.mockResolvedValue([
+      { id: "wf-1", name: "Deploy alerts", projectId: "shared" },
+    ]);
 
     const response = await get("?type=sub-workflow&compact=1");
     const body = await response.json();
@@ -86,9 +88,11 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { type: "sub-workflow" },
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, projectId: true },
     });
-    expect(body).toEqual({ workflows: [{ id: "wf-1", name: "Deploy alerts" }] });
+    expect(body).toEqual({
+      workflows: [{ id: "wf-1", name: "Deploy alerts", projectId: "shared" }],
+    });
   });
 
   it("filters by project", async () => {
@@ -106,7 +110,7 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: {},
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, projectId: true },
     });
   });
 

@@ -353,7 +353,11 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
               </Button>
             </div>
             <div className="flex-1 overflow-auto">
-              <EditorCanvasSidebar workflowId={workflow.id} initialRunId={initialRunId} />
+              <EditorCanvasSidebar
+                workflowId={workflow.id}
+                projectId={workflow.projectId}
+                initialRunId={initialRunId}
+              />
             </div>
           </div>
         </ResizablePanel>

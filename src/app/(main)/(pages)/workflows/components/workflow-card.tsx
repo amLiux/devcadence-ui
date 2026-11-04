@@ -2,16 +2,17 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause, MessageCircle, Pencil } from "lucide-react";
+import { GitBranch, Webhook, Clock, Hand, Play, Trash2, Repeat, FileEdit, Pause, MessageCircle, Pencil, Folder, FolderInput } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { DebugModal } from "@/components/composed/debug-modal";
 import { CustomModal } from "@/components/composed/custom-modal";
 import { WorkflowForm, type WorkflowFormValues } from "@/components/forms/workflow-form";
 import { useModal } from "@/providers/modal-provider";
 import { inferTriggerType, TRIGGER_TYPE_LABELS, type WorkflowTriggerType } from "@/lib/types";
-import type { Workflow, NodeDebugLog, LogEntry } from "@/lib/types";
+import type { Workflow, NodeDebugLog, LogEntry, Project } from "@/lib/types";
 
 const triggerIcons: Record<WorkflowTriggerType, React.ReactNode> = {
   webhook: <Webhook className="h-5 w-5" />,
@@ -33,11 +34,75 @@ const triggerColors: Record<WorkflowTriggerType, string> = {
 
 interface Props {
   workflow: Workflow;
+  projects: Project[];
+  projectName?: string;
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: WorkflowFormValues) => Promise<void>;
+  onMove: (id: string, projectId: string) => Promise<void>;
 }
 
-export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
+export function MoveWorkflowForm({
+  workflow,
+  projects,
+  onMove,
+}: {
+  workflow: Workflow;
+  projects: Project[];
+  onMove: (id: string, projectId: string) => Promise<void>;
+}) {
+  const { setClose } = useModal();
+  const [projectId, setProjectId] = useState(workflow.projectId);
+  const [moving, setMoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleMove = async () => {
+    setMoving(true);
+    setError(null);
+    try {
+      await onMove(workflow.id, projectId);
+      setClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not move the workflow.");
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 px-4 pb-4">
+      <div className="space-y-2">
+        <Label htmlFor="move-project">Project</Label>
+        <select
+          id="move-project"
+          className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          value={projectId}
+          onChange={(event) => setProjectId(event.target.value)}
+        >
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleMove}
+          disabled={moving || projectId === workflow.projectId}
+        >
+          {moving ? "Moving..." : "Move"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function WorkflowCard({ workflow, projects, projectName, onDelete, onUpdate, onMove }: Props) {
   const triggerType = inferTriggerType(workflow.nodes, workflow.type);
   const { setOpen } = useModal();
   const [testing, setTesting] = useState(false);
@@ -50,6 +115,16 @@ export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
     setOpen(
       <CustomModal title="Edit Workflow" subheading={`Update ${workflow.name}`}>
         <WorkflowForm initialData={workflow} onUpdate={onUpdate} />
+      </CustomModal>,
+    );
+  };
+
+  const handleOpenMove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(
+      <CustomModal title="Move Workflow" subheading={workflow.name}>
+        <MoveWorkflowForm workflow={workflow} projects={projects} onMove={onMove} />
       </CustomModal>,
     );
   };
@@ -170,6 +245,12 @@ export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   {TRIGGER_TYPE_LABELS[triggerType]}
                 </Badge>
+                {projectName && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-0.5">
+                    <Folder className="h-3 w-3" />
+                    {projectName}
+                  </Badge>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {new Date(workflow.updatedAt).toLocaleDateString()}
                 </span>
@@ -184,6 +265,15 @@ export function WorkflowCard({ workflow, onDelete, onUpdate }: Props) {
                 onClick={handleOpenEdit}
               >
                 <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 px-0"
+                aria-label={`Move ${workflow.name}`}
+                onClick={handleOpenMove}
+              >
+                <FolderInput className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
