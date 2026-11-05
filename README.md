@@ -64,17 +64,17 @@ Connect to external services once, reuse them across workflows:
 
 ## Tech Stack
 
-| Layer | Tech |
-|-------|------|
-| Framework | Next.js 16 (App Router) + React 19 |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4 + shadcn/ui + Geist font |
-| Database | PostgreSQL + Prisma 7 |
-| Queue/Cache | Redis + BullMQ |
-| Canvas | @xyflow/react (ReactFlow) |
-| Validation | Zod + AJV |
-| Charts | Recharts |
-| DevOps | Docker Compose + Makefile |
+| Layer       | Tech                                     |
+| ----------- | ---------------------------------------- |
+| Framework   | Next.js 16 (App Router) + React 19       |
+| Language    | TypeScript 5                             |
+| Styling     | Tailwind CSS v4 + shadcn/ui + Geist font |
+| Database    | PostgreSQL + Prisma 7                    |
+| Queue/Cache | Redis + BullMQ                           |
+| Canvas      | @xyflow/react (ReactFlow)                |
+| Validation  | Zod + AJV                                |
+| Charts      | Recharts                                 |
+| DevOps      | Docker Compose + Makefile                |
 
 ---
 
@@ -83,7 +83,7 @@ Connect to external services once, reuse them across workflows:
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 26+
-- [Docker](https://www.docker.com/) + Docker Compose (for PostgreSQL + Redis + MailHog)
+- [Docker](https://www.docker.com/) or Podman with Compose (for PostgreSQL + Redis + MailHog)
 - [npm](https://www.npmjs.com/) or compatible package manager
 
 ### 1. Clone and install
@@ -108,27 +108,20 @@ This starts:
 
 ### 3. Configure environment
 
-Create a `.env` file in the project root:
-
 ```bash
-cp .env .env.local   # optional
+cp .env.example .env   # or: make env-init
 ```
 
-The default local database URL is already in `.env`:
+The defaults point at the Docker services from step 2. Add real secrets through
+the UI, or in `.env` for local development.
 
-```env
-DATABASE_URL="postgresql://devdock:devdock@localhost:5432/devdock?schema=public"
-```
-
-Add other secrets as needed (GitHub token, AI keys, Discord bot token, etc.) through the UI or `.env.local`.
-
-> ⚠️ `.env*` files are gitignored. Never commit secrets.
+> ⚠️ `.env*` files are gitignored; `.env.example` is the tracked template.
+> Never commit secrets.
 
 ### 4. Set up the database
 
 ```bash
-npx prisma generate
-npx prisma migrate dev
+make db-migrate   # first run only; make dev tells you if migrations are pending
 ```
 
 ### 5. Run the app
@@ -136,6 +129,11 @@ npx prisma migrate dev
 ```bash
 make dev
 ```
+
+`make dev` starts PostgreSQL and Redis, regenerates the Prisma client, checks
+that the database matches the migrations, and then starts Next.js. See
+[DEVELOPMENT.md](DEVELOPMENT.md) for the migration doctor and the recovery
+recipes.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -157,7 +155,9 @@ make up   # starts services + dev server + worker together
 make help           # Show all available commands
 make compose-up     # Start PostgreSQL + Redis + MailHog
 make compose-down   # Stop all services
-make dev            # Start Next.js dev server
+make dev            # Services + client + migration check + dev server
+make doctor         # Check the Prisma client and migrations match this branch
+make env-init       # Create .env from .env.example when missing
 make worker         # Start BullMQ worker
 make up             # Start services + dev server + worker
 make build          # Production build
@@ -167,6 +167,9 @@ make db-migrate     # Run Prisma migrations
 make db-studio      # Open Prisma Studio
 make db-reset       # ⚠️ Drop and recreate DB
 ```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the migration doctor, branch-switch
+checklist and recovery steps.
 
 ### Project structure
 
@@ -178,7 +181,7 @@ src/
   hooks/            # Custom React hooks
   providers/        # Context providers
 prisma/             # Prisma schema and migrations
-docs/               # Project documentation and testing guides
+scripts/            # Developer tooling (migration doctor)
 ```
 
 ### Key entry points
