@@ -13,7 +13,7 @@ REDIS_PORT  := 6379
 DOCKER_NAME := devdock-postgres
 REDIS_DOCKER_NAME := devdock-redis
 COMPOSE_FILE := docker-compose.yml
-CONTAINER_RUNTIME ?= docker
+CONTAINER_RUNTIME ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 NODE_IMG    := node:26-alpine
 PG_IMG      := postgres:16-alpine
 
@@ -117,9 +117,20 @@ redis-shell: ## Open redis-cli
 	@$(CONTAINER_RUNTIME) exec -it $(REDIS_DOCKER_NAME) redis-cli
 
 # --- App --------------------------------------------------------------------
+.PHONY: env-init
+env-init: ## Create .env from .env.example when it is missing
+	@test -f .env || (cp .env.example .env && echo "$(YELLOW)Created .env from .env.example$(NC)")
+
+.PHONY: doctor
+doctor: ## Check that the Prisma client and migrations match this branch
+	@node --env-file-if-exists=.env scripts/dev-doctor.ts
+
 .PHONY: dev
-dev: ## Start the Next.js dev server
-	@echo "$(GREEN)Starting devdock...$(NC)"
+dev: env-init ## Start services, verify migrations and run the dev server
+	@echo "$(GREEN)Starting devcadence...$(NC)"
+	@$(CONTAINER_RUNTIME) compose -f $(COMPOSE_FILE) up -d postgres redis
+	@npx prisma generate
+	@node --env-file-if-exists=.env scripts/dev-doctor.ts
 	npm run dev
 
 .PHONY: build
@@ -135,10 +146,13 @@ lint: ## Run ESLint
 	npm run lint
 
 .PHONY: dev-and-worker
-dev-and-worker: ## Start dev server and worker simultaneously
+dev-and-worker: env-init ## Start dev server and worker simultaneously
 	@echo "$(GREEN)Starting dev server and worker...$(NC)"
+	@$(CONTAINER_RUNTIME) compose -f $(COMPOSE_FILE) up -d postgres redis
+	@npx prisma generate
+	@node --env-file-if-exists=.env scripts/dev-doctor.ts
 	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
-	@echo "$(GREEN)devdock and worker are running$(NC)"
+	@echo "$(GREEN)devcadence and worker are running$(NC)"
 
 # --- Database (Prisma) ------------------------------------------------------
 .PHONY: db-migrate
@@ -181,19 +195,19 @@ colima-status: ## Check Colima status
 
 # --- Full Stack -------------------------------------------------------------
 .PHONY: up
-up: compose-up ## Start everything: database + Redis + dev server + worker
+up: compose-up env-init ## Start everything: database + Redis + dev server + worker
 	@echo "$(GREEN)Starting dev server and worker...$(NC)"
+	@npx prisma generate
+	@node --env-file-if-exists=.env scripts/dev-doctor.ts
 	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
-	@echo "$(GREEN)devdock is running at http://localhost:3000$(NC)"
+	@echo "$(GREEN)devcadence is running at http://localhost:3000$(NC)"
 
 .PHONY: setup
-setup: ## First-time setup: install deps, generate client, run migrations, seed
-	@echo "$(GREEN)Setting up devdock...$(NC)"
+setup: env-init ## First-time setup: install deps, start services, apply migrations
+	@echo "$(GREEN)Setting up devcadence...$(NC)"
 	npm install
-	npx prisma generate
 	@make compose-up
-	@sleep 2
-	npx prisma migrate dev --name init
+	npx prisma migrate deploy
 	@echo "$(GREEN)Setup complete! Run 'make dev' to start$(NC)"
 
 # --- Worker -----------------------------------------------------------------
