@@ -31,15 +31,25 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
   },
   AI: {
     inputs: [
-      { key: "provider", type: "select", label: "Provider", options: [
+      { key: "provider", type: "select", label: "Provider", defaultValue: "deepseek", options: [
+        { value: "deepseek", label: "DeepSeek (default)" },
         { value: "openai", label: "OpenAI" },
         { value: "claude", label: "Claude" },
+        { value: "custom", label: "Custom / local endpoint" },
       ]},
-      { key: "apiKey", type: "password", label: "API Key" },
-      { key: "model", type: "text", label: "Model (optional)" },
+      { key: "baseUrl", type: "text", label: "Base URL", optional: true,
+        requiredWhen: { key: "provider", equals: ["custom"] },
+        placeholder: "https://api.deepseek.com",
+        hint: "Leave empty for the provider default. DeepSeek: https://api.deepseek.com · Ollama: http://localhost:11434/v1" },
+      { key: "apiKey", type: "password", label: "API Key",
+        optionalWhen: { key: "provider", equals: ["custom"] },
+        hint: "Required for hosted providers. Optional for a local endpoint." },
+      { key: "model", type: "text", label: "Model", optional: true,
+        placeholder: "deepseek-flash",
+        hint: "Leave empty for the provider default: DeepSeek uses deepseek-flash." },
     ],
     checkboxes: [],
-    description: "Use AI to process text. Send prompts, classify content into categories, or extract structured data from unstructured text.",
+    description: "Use AI to process text through DeepSeek, OpenAI, Claude, or any local or self-hosted endpoint such as Ollama, vLLM or LM Studio.",
     features: ["Prompt", "Classify", "Extract"],
   },
   SSH: {

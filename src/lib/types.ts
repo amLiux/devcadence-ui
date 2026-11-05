@@ -42,6 +42,14 @@ export interface InputConfig {
   label?: string;
   defaultValue?: string;
   options?: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
+  /** Never required, regardless of the other values. */
+  optional?: boolean;
+  /** Optional only when the referenced field matches one of these values. */
+  optionalWhen?: { key: string; equals: string[] };
+  /** Required only when the referenced field matches one of these values. */
+  requiredWhen?: { key: string; equals: string[] };
 }
 
 export interface CheckboxConfig {

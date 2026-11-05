@@ -243,6 +243,78 @@ describe("AI probe", () => {
     );
   });
 
+  it("validates a DeepSeek key against its models endpoint", async () => {
+    const fetchMock = mockFetch(jsonResponse({ data: [] }));
+
+    const result = await testConnectionConfig({
+      type: "AI",
+      config: { provider: "deepseek", apiKey: "sk-deep" },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe("DeepSeek key valid");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.deepseek.com/models",
+      expect.objectContaining({ headers: { Authorization: "Bearer sk-deep" } }),
+    );
+  });
+
+  it("probes a custom endpoint with no key", async () => {
+    const fetchMock = mockFetch(jsonResponse({ data: [{ id: "llama3.1" }] }));
+
+    const result = await testConnectionConfig({
+      type: "AI",
+      config: { provider: "custom", baseUrl: "http://localhost:11434/v1/", model: "llama3.1" },
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      message: "Endpoint reachable at http://localhost:11434/v1",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:11434/v1/models",
+      expect.objectContaining({ headers: {} }),
+    );
+  });
+
+  it("sends the key to a custom endpoint when one is configured", async () => {
+    const fetchMock = mockFetch(jsonResponse({ data: [] }));
+
+    await testConnectionConfig({
+      type: "AI",
+      config: { provider: "custom", baseUrl: "https://llm.internal/v1", apiKey: "sk-local" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://llm.internal/v1/models",
+      expect.objectContaining({ headers: { Authorization: "Bearer sk-local" } }),
+    );
+  });
+
+  it("requires a URL for a custom endpoint", async () => {
+    const fetchMock = mockFetch(jsonResponse({ data: [] }));
+
+    const result = await testConnectionConfig({
+      type: "AI",
+      config: { provider: "custom" },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "Base URL is required for a custom endpoint",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("requires a key for hosted providers", async () => {
+    const result = await testConnectionConfig({
+      type: "AI",
+      config: { provider: "deepseek" },
+    });
+
+    expect(result).toMatchObject({ ok: false, message: "API Key is missing" });
+  });
+
   it("reports a rejected key", async () => {
     mockFetch(jsonResponse({}, false, 401));
 

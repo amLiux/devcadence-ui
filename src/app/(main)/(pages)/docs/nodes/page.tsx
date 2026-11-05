@@ -278,7 +278,7 @@ const NODE_DOCS: NodeDoc[] = [
     icon: <Sparkles className="h-4 w-4 text-purple-500" />,
     color: "border-purple-500/30",
     description: "Sends a prompt to an AI model and returns the response. System prompt assembled from Persona → Context → Memory → Node instructions.",
-    requires: "AI connection (OpenAI or Claude)",
+    requires: "AI connection (DeepSeek, OpenAI, Claude or a custom endpoint)",
     settings: [
       { key: "systemPrompt", desc: "Base system prompt (used if no persona selected)." },
       { key: "prompt", desc: "User message. Supports {{expression}}." },
@@ -298,7 +298,7 @@ const NODE_DOCS: NodeDoc[] = [
     icon: <Sparkles className="h-4 w-4 text-purple-500" />,
     color: "border-purple-500/30",
     description: "Classifies text into one of the provided categories. Returns only the category name.",
-    requires: "AI connection (OpenAI or Claude)",
+    requires: "AI connection (DeepSeek, OpenAI, Claude or a custom endpoint)",
     settings: [
       { key: "text", desc: "Text to classify. Supports {{expression}}." },
       { key: "categories", desc: "Comma-separated list of categories." },
@@ -312,7 +312,7 @@ const NODE_DOCS: NodeDoc[] = [
     icon: <Sparkles className="h-4 w-4 text-purple-500" />,
     color: "border-purple-500/30",
     description: "Extracts structured data from text. Returns a JSON object with the extracted fields.",
-    requires: "AI connection (OpenAI or Claude)",
+    requires: "AI connection (DeepSeek, OpenAI, Claude or a custom endpoint)",
     settings: [
       { key: "text", desc: "Text to extract from. Supports {{expression}}." },
       { key: "fields", desc: "Comma-separated field names to extract." },
