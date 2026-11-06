@@ -31,8 +31,8 @@ describe("ConnectionForm AI defaults", () => {
     render(<ConnectionForm onSubmit={onSubmit} />);
 
     await openAiForm();
-    await user.type(screen.getByLabelText("Name"), "DeepSeek");
-    await user.type(screen.getByLabelText("API Key"), "sk-test");
+    await user.type(screen.getByLabelText(/Name/i), "DeepSeek");
+    await user.type(screen.getByLabelText(/API Key/i), "sk-test");
     await user.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(onSubmit).toHaveBeenCalledWith(
@@ -52,13 +52,13 @@ describe("ConnectionForm AI defaults", () => {
     render(<ConnectionForm onSubmit={onSubmit} />);
 
     await openAiForm();
-    await user.type(screen.getByLabelText("Name"), "DeepSeek");
-    await user.type(screen.getByLabelText("Base URL"), "https://api.deepseek.com");
+    await user.type(screen.getByLabelText(/Name/i), "DeepSeek");
+    await user.type(screen.getByLabelText(/Base URL/i), "https://api.deepseek.com");
 
     const connectButton = screen.getByRole("button", { name: "Connect" });
     expect(connectButton).toBeDisabled();
 
-    await user.type(screen.getByLabelText("API Key"), "sk-test");
+    await user.type(screen.getByLabelText(/API Key/i), "sk-test");
     expect(connectButton).not.toBeDisabled();
   });
 
@@ -67,13 +67,13 @@ describe("ConnectionForm AI defaults", () => {
     render(<ConnectionForm onSubmit={onSubmit} />);
 
     await openAiForm();
-    await user.selectOptions(screen.getByLabelText("Provider"), "custom");
-    await user.type(screen.getByLabelText("Name"), "Ollama");
+    await user.selectOptions(screen.getByLabelText(/Provider/i), "custom");
+    await user.type(screen.getByLabelText(/Name/i), "Ollama");
 
     const connectButton = screen.getByRole("button", { name: "Connect" });
     expect(connectButton).toBeDisabled();
 
-    await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
+    await user.type(screen.getByLabelText(/Base URL/i), "http://localhost:11434/v1");
     expect(connectButton).not.toBeDisabled();
   });
 
@@ -82,9 +82,9 @@ describe("ConnectionForm AI defaults", () => {
     render(<ConnectionForm onSubmit={onSubmit} />);
 
     await openAiForm();
-    await user.selectOptions(screen.getByLabelText("Provider"), "custom");
-    await user.type(screen.getByLabelText("Name"), "Ollama");
-    await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
+    await user.selectOptions(screen.getByLabelText(/Provider/i), "custom");
+    await user.type(screen.getByLabelText(/Name/i), "Ollama");
+    await user.type(screen.getByLabelText(/Base URL/i), "http://localhost:11434/v1");
 
     const connectButton = screen.getByRole("button", { name: "Connect" });
     expect(connectButton).not.toBeDisabled();
@@ -121,10 +121,10 @@ describe("ConnectionForm AI defaults", () => {
 
     render(<ConnectionForm initialData={initialData} onSubmit={vi.fn()} onUpdate={onUpdate} />);
 
-    await user.selectOptions(screen.getByLabelText("Provider"), "custom");
-    await user.clear(screen.getByLabelText("Base URL"));
-    await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
-    await user.clear(screen.getByLabelText("API Key"));
+    await user.selectOptions(screen.getByLabelText(/Provider/i), "custom");
+    await user.clear(screen.getByLabelText(/Base URL/i));
+    await user.type(screen.getByLabelText(/Base URL/i), "http://localhost:11434/v1");
+    await user.clear(screen.getByLabelText(/API Key/i));
 
     const saveButton = screen.getByRole("button", { name: "Save" });
     expect(saveButton).not.toBeDisabled();
@@ -162,7 +162,7 @@ describe("ConnectionForm AI defaults", () => {
 
     render(<ConnectionForm initialData={initialData} onSubmit={vi.fn()} onUpdate={onUpdate} />);
 
-    const keyInput = screen.getByLabelText("API Key") as HTMLInputElement;
+    const keyInput = screen.getByLabelText(/API Key/i) as HTMLInputElement;
     expect(keyInput.value).toBe("");
     expect(keyInput.placeholder).toBe("Saved — leave blank to keep");
 

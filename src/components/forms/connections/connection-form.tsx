@@ -55,27 +55,29 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
   const hasStoredSecret = (key: string) =>
     typeof storedSecrets[key] === "string" && storedSecrets[key].length > 0;
 
-  const isMissing = (input: InputConfig): boolean => {
+  const getFieldState = (input: InputConfig): { missing: boolean; requirement: "required" | "optional" } => {
     const current = (key: string) => values[key] ?? "";
 
     if (input.type === "password" && hasStoredSecret(input.key) && !current(input.key)) {
-      return false;
+      return { missing: false, requirement: "optional" };
     }
 
     if (input.requiredWhen) {
       const required = input.requiredWhen.equals.includes(current(input.requiredWhen.key));
-      return required && !current(input.key);
+      return { missing: required && !current(input.key), requirement: required ? "required" : "optional" };
     }
 
     if (input.optionalWhen) {
-      if (input.optionalWhen.equals.includes(current(input.optionalWhen.key))) return false;
-      return !current(input.key) && input.defaultValue === undefined;
+      const optional = input.optionalWhen.equals.includes(current(input.optionalWhen.key));
+      if (optional) return { missing: false, requirement: "optional" };
+      return { missing: !current(input.key) && input.defaultValue === undefined, requirement: "required" };
     }
 
-    if (input.optional) return false;
-    return !current(input.key) && input.defaultValue === undefined;
+    if (input.optional) return { missing: false, requirement: "optional" };
+    const required = input.defaultValue === undefined;
+    return { missing: required && !current(input.key), requirement: required ? "required" : "optional" };
   };
-  const hasMissing = inputs.some(isMissing);
+  const hasMissing = inputs.some((input) => getFieldState(input).missing);
 
   const allTypes = (Object.keys(integrationConfigs) as ConnectionType[]).sort((a, b) => {
     const aSoon = !!integrationConfigs[a].comingSoon;
@@ -264,9 +266,18 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
                 placeholder="Optional description"
               />
             </div>
-            {inputs.map(({ key, type, label, options, placeholder, hint }) => (
+            {inputs.map((input) => {
+              const { key, type, label, options, placeholder, hint } = input;
+              const { requirement } = getFieldState(input);
+              return (
               <div key={key} className={`space-y-2 ${!compact && type === "select" ? "md:col-span-2" : ""}`}>
-                <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
+                <Label htmlFor={key}>
+                  {label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
+                  {requirement === "required" && <span className="text-destructive ml-0.5">*</span>}
+                  {requirement === "optional" && (
+                    <span className="text-muted-foreground ml-1 text-[10px]">(optional)</span>
+                  )}
+                </Label>
                 {type === "select" && options ? (
                   <select
                     id={key}
@@ -292,7 +303,8 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
                 )}
                 {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
               </div>
-            ))}
+            );
+          })}
           </div>
         );
       })()}
