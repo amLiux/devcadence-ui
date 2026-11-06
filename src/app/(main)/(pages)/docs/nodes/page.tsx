@@ -281,7 +281,8 @@ const NODE_DOCS: NodeDoc[] = [
     requires: "AI connection (DeepSeek, OpenAI, Claude or a custom endpoint)",
     settings: [
       { key: "systemPrompt", desc: "Base system prompt (used if no persona selected)." },
-      { key: "prompt", desc: "User message. Supports {{expression}}." },
+      { key: "promptId", desc: "Select a saved prompt template. When set, its template is used as the user message." },
+      { key: "prompt", desc: "User message. Supports {{expression}}. Used when no saved prompt is selected." },
       { key: "personaId", desc: "Select a persona for identity and tone." },
       { key: "contextIds", desc: "Comma-separated context IDs for project knowledge." },
       { key: "memoryIds", desc: "Comma-separated memory IDs for persistent instructions." },

@@ -174,10 +174,12 @@ export async function handlePrompt(
 ): Promise<NodeHandlerResult> {
   const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "AI connection is required" };
-  if (!meta.prompt) return { success: false, message: "Prompt is required" };
+
+  const userPromptTemplate = await resolveUserPromptTemplate(meta);
+  if (!userPromptTemplate) return { success: false, message: "Prompt is required" };
 
   const config = await getAIConfig(connectionId);
-  const resolvedPrompt = resolveTemplates(meta.prompt, ancestorChain);
+  const resolvedPrompt = resolveTemplates(userPromptTemplate, ancestorChain);
   const baseSystemPrompt = await buildSystemPrompt(meta, "prompt");
   const resolvedSystemPrompt = resolveTemplates(baseSystemPrompt, ancestorChain);
 
@@ -187,6 +189,14 @@ export async function handlePrompt(
     message: `Prompt completed (${response.length} chars)`,
     data: { response },
   };
+}
+
+async function resolveUserPromptTemplate(meta: Record<string, string>): Promise<string | null> {
+  if (meta.promptId) {
+    const saved = await prisma.aIPrompt.findUnique({ where: { id: meta.promptId } });
+    if (saved) return saved.template;
+  }
+  return meta.prompt || null;
 }
 
 /** Classify node — classifies input text into categories. */

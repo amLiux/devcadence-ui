@@ -9,6 +9,7 @@ import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nod
 import type { NodeSettingsProps } from "./types";
 
 interface AIPersona { id: string; name: string; description: string; }
+interface AIPrompt { id: string; name: string; template: string; description: string; }
 interface AIContext { id: string; name: string; description: string; }
 interface AIMemory { id: string; name: string; description: string; }
 
@@ -31,6 +32,22 @@ function PersonaSelect({ value, onChange }: { value: string; onChange: (v: strin
     >
       <option value="">No persona (default)</option>
       {personas.map((p) => (
+        <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function PromptSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const prompts = useAIList<AIPrompt>("/api/ai/prompts");
+  return (
+    <select
+      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">Type prompt inline</option>
+      {prompts.map((p) => (
         <option key={p.id} value={p.id}>{p.name}</option>
       ))}
     </select>
@@ -93,6 +110,10 @@ function AISelectors({ meta, handleChange }: { meta: Record<string, string>; han
 }
 
 export function PromptSettings({ meta, handleChange, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
+  const prompts = useAIList<AIPrompt>("/api/ai/prompts");
+  const selectedPrompt = prompts.find((p) => p.id === meta.promptId);
+  const usingSavedPrompt = Boolean(meta.promptId && selectedPrompt);
+
   return (
     <div className="space-y-3">
       {hasParentEdge && (
@@ -109,8 +130,31 @@ export function PromptSettings({ meta, handleChange, parentOutput, hasParentEdge
         <Textarea className="min-h-[80px] text-xs font-mono" placeholder="You are a helpful assistant." value={meta.systemPrompt || ""} onChange={(e) => handleChange("systemPrompt", e.target.value)} />
       </div>
       <div className="space-y-1.5">
+        <Label className="text-xs">Saved Prompt</Label>
+        <PromptSelect
+          value={meta.promptId || ""}
+          onChange={(v) => {
+            handleChange("promptId", v);
+            const prompt = prompts.find((p) => p.id === v);
+            handleChange("prompt", prompt ? prompt.template : "");
+          }}
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Selecting a saved prompt fills the Prompt field. Choose &quot;Type prompt inline&quot; to write your own.
+        </p>
+      </div>
+      <div className="space-y-1.5">
         <Label className="text-xs">Prompt</Label>
-        <Textarea className="min-h-[100px] text-xs font-mono" placeholder="Summarize the following: {{previousStep.content}}" value={meta.prompt || ""} onChange={(e) => handleChange("prompt", e.target.value)} />
+        <Textarea
+          className="min-h-[100px] text-xs font-mono"
+          placeholder="Summarize the following: {{previousStep.content}}"
+          value={meta.prompt || ""}
+          disabled={usingSavedPrompt}
+          onChange={(e) => handleChange("prompt", e.target.value)}
+        />
+        {usingSavedPrompt && (
+          <p className="text-[10px] text-muted-foreground">Loaded from saved prompt. Clear the Saved Prompt selection to edit inline.</p>
+        )}
       </div>
     </div>
   );
