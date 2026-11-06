@@ -228,6 +228,12 @@ export default function AIPage() {
   const [selectedContext, setSelectedContext] = useState<string | null>(null);
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
 
+  // Drafts for the forms
+  const [draftPersona, setDraftPersona] = useState<Partial<AIPersona>>({});
+  const [draftPrompt, setDraftPrompt] = useState<Partial<AIPrompt>>({});
+  const [draftContext, setDraftContext] = useState<Partial<AIContent>>({});
+  const [draftMemory, setDraftMemory] = useState<Partial<AIContent>>({});
+
   // Check for AI connection
   useEffect(() => {
     const checkConnection = async () => {
@@ -261,6 +267,23 @@ export default function AIPage() {
     loadAll();
   }, [hasAIConnection, request]);
 
+  // Sync drafts with selection
+  useEffect(() => {
+    setDraftPersona(personas.find((p) => p.id === selectedPersona) || {});
+  }, [selectedPersona, personas]);
+
+  useEffect(() => {
+    setDraftPrompt(prompts.find((p) => p.id === selectedPrompt) || {});
+  }, [selectedPrompt, prompts]);
+
+  useEffect(() => {
+    setDraftContext(contexts.find((c) => c.id === selectedContext) || {});
+  }, [selectedContext, contexts]);
+
+  useEffect(() => {
+    setDraftMemory(memories.find((m) => m.id === selectedMemory) || {});
+  }, [selectedMemory, memories]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -286,39 +309,63 @@ export default function AIPage() {
     );
   }
 
-  const handleSavePersona = async (data: Partial<AIPersona>) => {
+  const handleSubmitPersona = async () => {
+    const data = draftPersona;
+    if (!data.name?.trim() || !data.systemPrompt?.trim()) return;
     if (data.id) {
       await request({ endpoint: `/api/ai/personas/${data.id}`, method: "PUT", data });
+      setPersonas((prev) => prev.map((p) => (p.id === data.id ? ({ ...p, ...data } as AIPersona) : p)));
     } else {
       const created = await request<AIPersona>({ endpoint: "/api/ai/personas", method: "POST", data });
-      if (created) setPersonas((prev) => [created, ...prev]);
+      if (created) {
+        setPersonas((prev) => [created, ...prev]);
+        setSelectedPersona(created.id);
+      }
     }
   };
 
-  const handleSavePrompt = async (data: Partial<AIPrompt>) => {
+  const handleSubmitPrompt = async () => {
+    const data = draftPrompt;
+    if (!data.name?.trim() || !data.template?.trim()) return;
     if (data.id) {
       await request({ endpoint: `/api/ai/prompts/${data.id}`, method: "PUT", data });
+      setPrompts((prev) => prev.map((p) => (p.id === data.id ? ({ ...p, ...data } as AIPrompt) : p)));
     } else {
       const created = await request<AIPrompt>({ endpoint: "/api/ai/prompts", method: "POST", data });
-      if (created) setPrompts((prev) => [created, ...prev]);
+      if (created) {
+        setPrompts((prev) => [created, ...prev]);
+        setSelectedPrompt(created.id);
+      }
     }
   };
 
-  const handleSaveContext = async (data: Partial<AIContent>) => {
+  const handleSubmitContext = async () => {
+    const data = draftContext;
+    if (!data.name?.trim() || !data.content?.trim()) return;
     if (data.id) {
       await request({ endpoint: `/api/ai/context/${data.id}`, method: "PUT", data });
+      setContexts((prev) => prev.map((c) => (c.id === data.id ? ({ ...c, ...data } as AIContent) : c)));
     } else {
       const created = await request<AIContent>({ endpoint: "/api/ai/context", method: "POST", data });
-      if (created) setContexts((prev) => [created, ...prev]);
+      if (created) {
+        setContexts((prev) => [created, ...prev]);
+        setSelectedContext(created.id);
+      }
     }
   };
 
-  const handleSaveMemory = async (data: Partial<AIContent>) => {
+  const handleSubmitMemory = async () => {
+    const data = draftMemory;
+    if (!data.name?.trim() || !data.content?.trim()) return;
     if (data.id) {
       await request({ endpoint: `/api/ai/memory/${data.id}`, method: "PUT", data });
+      setMemories((prev) => prev.map((m) => (m.id === data.id ? ({ ...m, ...data } as AIContent) : m)));
     } else {
       const created = await request<AIContent>({ endpoint: "/api/ai/memory", method: "POST", data });
-      if (created) setMemories((prev) => [created, ...prev]);
+      if (created) {
+        setMemories((prev) => [created, ...prev]);
+        setSelectedMemory(created.id);
+      }
     }
   };
 
@@ -361,13 +408,10 @@ export default function AIPage() {
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <PersonaForm
-                  persona={personas.find((p) => p.id === selectedPersona) || {}}
-                  onChange={handleSavePersona}
+                  persona={draftPersona}
+                  onChange={setDraftPersona}
                 />
-                <Button size="sm" className="mt-4" onClick={() => {
-                  const persona = personas.find((p) => p.id === selectedPersona);
-                  if (persona) handleSavePersona(persona);
-                }}>
+                <Button size="sm" className="mt-4" onClick={handleSubmitPersona}>
                   <Save className="h-3 w-3 mr-1" /> Save
                 </Button>
               </div>
@@ -387,13 +431,10 @@ export default function AIPage() {
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <PromptForm
-                  prompt={prompts.find((p) => p.id === selectedPrompt) || {}}
-                  onChange={handleSavePrompt}
+                  prompt={draftPrompt}
+                  onChange={setDraftPrompt}
                 />
-                <Button size="sm" className="mt-4" onClick={() => {
-                  const prompt = prompts.find((p) => p.id === selectedPrompt);
-                  if (prompt) handleSavePrompt(prompt);
-                }}>
+                <Button size="sm" className="mt-4" onClick={handleSubmitPrompt}>
                   <Save className="h-3 w-3 mr-1" /> Save
                 </Button>
               </div>
@@ -413,14 +454,11 @@ export default function AIPage() {
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <ContentForm
-                  item={contexts.find((c) => c.id === selectedContext) || {}}
-                  onChange={handleSaveContext}
+                  item={draftContext}
+                  onChange={setDraftContext}
                   label="Context"
                 />
-                <Button size="sm" className="mt-4" onClick={() => {
-                  const ctx = contexts.find((c) => c.id === selectedContext);
-                  if (ctx) handleSaveContext(ctx);
-                }}>
+                <Button size="sm" className="mt-4" onClick={handleSubmitContext}>
                   <Save className="h-3 w-3 mr-1" /> Save
                 </Button>
               </div>
@@ -440,14 +478,11 @@ export default function AIPage() {
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <ContentForm
-                  item={memories.find((m) => m.id === selectedMemory) || {}}
-                  onChange={handleSaveMemory}
+                  item={draftMemory}
+                  onChange={setDraftMemory}
                   label="Memory"
                 />
-                <Button size="sm" className="mt-4" onClick={() => {
-                  const mem = memories.find((m) => m.id === selectedMemory);
-                  if (mem) handleSaveMemory(mem);
-                }}>
+                <Button size="sm" className="mt-4" onClick={handleSubmitMemory}>
                   <Save className="h-3 w-3 mr-1" /> Save
                 </Button>
               </div>
