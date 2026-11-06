@@ -172,6 +172,9 @@ export function PromptSettings({ meta, handleChange, updateMeta, parentOutput, h
       <div className="space-y-1.5">
         <Label className="text-xs">Node System Prompt</Label>
         <Textarea className="min-h-[80px] text-xs font-mono" placeholder="Additional system instructions for this node..." value={meta.systemPrompt || ""} onChange={(e) => handleChange("systemPrompt", e.target.value)} />
+        <p className="text-[10px] text-muted-foreground">
+          Final layer of the system prompt. Use it for node-specific instructions without editing the reusable Persona, Context, or Memory from /ai.
+        </p>
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Saved Prompt *</Label>
