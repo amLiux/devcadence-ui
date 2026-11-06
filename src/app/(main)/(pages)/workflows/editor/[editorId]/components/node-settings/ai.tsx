@@ -46,7 +46,7 @@ function PromptSelect({ value, onChange }: { value: string; onChange: (v: string
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">Type prompt inline</option>
+      <option value="">Select a saved prompt...</option>
       {prompts.map((p) => (
         <option key={p.id} value={p.id}>{p.name}</option>
       ))}
@@ -109,10 +109,54 @@ function AISelectors({ meta, handleChange }: { meta: Record<string, string>; han
   );
 }
 
-export function PromptSettings({ meta, handleChange, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
+function LLMInputPreview({ meta, prompts }: { meta: Record<string, string>; prompts: AIPrompt[] }) {
+  const personas = useAIList<AIPersona>("/api/ai/personas");
+  const contexts = useAIList<AIContext>("/api/ai/context");
+  const memories = useAIList<AIMemory>("/api/ai/memory");
+
+  const selectedPrompt = prompts.find((p) => p.id === meta.promptId);
+  const personaName = personas.find((p) => p.id === meta.personaId)?.name;
+  const contextNames = contexts.filter((c) => meta.contextIds?.split(",").includes(c.id)).map((c) => c.name);
+  const memoryNames = memories.filter((m) => meta.memoryIds?.split(",").includes(m.id)).map((m) => m.name);
+
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed border-border/50 p-3">
+      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">LLM Input Preview</p>
+      <div className="space-y-1">
+        <p className="text-[10px] font-medium text-muted-foreground">System prompt layers:</p>
+        <ul className="text-[10px] text-muted-foreground list-disc list-inside">
+          {personaName ? <li>Persona: {personaName}</li> : <li>Default identity (no persona)</li>}
+          {contextNames.length > 0 ? <li>Context: {contextNames.join(", ")}</li> : <li>No context selected</li>}
+          {memoryNames.length > 0 ? <li>Memory: {memoryNames.join(", ")}</li> : <li>No memory selected</li>}
+          {meta.systemPrompt ? <li>Node system prompt</li> : <li>No node system prompt</li>}
+        </ul>
+      </div>
+      <div className="space-y-1">
+        <p className="text-[10px] font-medium text-muted-foreground">User prompt:</p>
+        {selectedPrompt ? (
+          <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap">{selectedPrompt.template}</pre>
+        ) : (
+          <p className="text-[10px] text-destructive">No saved prompt selected</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function PromptSettings({ meta, handleChange, updateMeta, parentOutput, hasParentEdge }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   const prompts = useAIList<AIPrompt>("/api/ai/prompts");
   const selectedPrompt = prompts.find((p) => p.id === meta.promptId);
-  const usingSavedPrompt = Boolean(meta.promptId && selectedPrompt);
+
+  const onPromptChange = (promptId: string) => {
+    const prompt = prompts.find((p) => p.id === promptId);
+    const patch = { promptId, prompt: prompt ? prompt.template : "" };
+    if (updateMeta) {
+      updateMeta(patch);
+    } else {
+      handleChange("promptId", patch.promptId);
+      handleChange("prompt", patch.prompt);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -126,36 +170,23 @@ export function PromptSettings({ meta, handleChange, parentOutput, hasParentEdge
         Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> to reference data from previous steps. E.g. <code className="bg-muted px-1 rounded">{"{{previousStep.title}}"}</code>.
       </p>
       <div className="space-y-1.5">
-        <Label className="text-xs">System Prompt</Label>
-        <Textarea className="min-h-[80px] text-xs font-mono" placeholder="You are a helpful assistant." value={meta.systemPrompt || ""} onChange={(e) => handleChange("systemPrompt", e.target.value)} />
+        <Label className="text-xs">Node System Prompt</Label>
+        <Textarea className="min-h-[80px] text-xs font-mono" placeholder="Additional system instructions for this node..." value={meta.systemPrompt || ""} onChange={(e) => handleChange("systemPrompt", e.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Saved Prompt</Label>
-        <PromptSelect
-          value={meta.promptId || ""}
-          onChange={(v) => {
-            handleChange("promptId", v);
-            const prompt = prompts.find((p) => p.id === v);
-            handleChange("prompt", prompt ? prompt.template : "");
-          }}
-        />
-        <p className="text-[10px] text-muted-foreground">
-          Selecting a saved prompt fills the Prompt field. Choose &quot;Type prompt inline&quot; to write your own.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Prompt</Label>
-        <Textarea
-          className="min-h-[100px] text-xs font-mono"
-          placeholder="Summarize the following: {{previousStep.content}}"
-          value={meta.prompt || ""}
-          disabled={usingSavedPrompt}
-          onChange={(e) => handleChange("prompt", e.target.value)}
-        />
-        {usingSavedPrompt && (
-          <p className="text-[10px] text-muted-foreground">Loaded from saved prompt. Clear the Saved Prompt selection to edit inline.</p>
+        <Label className="text-xs">Saved Prompt *</Label>
+        <PromptSelect value={meta.promptId || ""} onChange={onPromptChange} />
+        {prompts.length === 0 && (
+          <p className="text-[10px] text-destructive">Create a prompt in /ai first.</p>
         )}
       </div>
+      {selectedPrompt && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">User Prompt Template</Label>
+          <Textarea className="min-h-[100px] text-xs font-mono bg-muted" value={selectedPrompt.template} disabled />
+        </div>
+      )}
+      <LLMInputPreview meta={meta} prompts={prompts} />
     </div>
   );
 }

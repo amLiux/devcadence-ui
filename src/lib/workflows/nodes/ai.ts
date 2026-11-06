@@ -192,11 +192,9 @@ export async function handlePrompt(
 }
 
 async function resolveUserPromptTemplate(meta: Record<string, string>): Promise<string | null> {
-  if (meta.promptId) {
-    const saved = await prisma.aIPrompt.findUnique({ where: { id: meta.promptId } });
-    if (saved) return saved.template;
-  }
-  return meta.prompt || null;
+  if (!meta.promptId) return null;
+  const saved = await prisma.aIPrompt.findUnique({ where: { id: meta.promptId } });
+  return saved?.template ?? null;
 }
 
 /** Classify node — classifies input text into categories. */

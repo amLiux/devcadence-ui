@@ -280,9 +280,8 @@ const NODE_DOCS: NodeDoc[] = [
     description: "Sends a prompt to an AI model and returns the response. System prompt assembled from Persona → Context → Memory → Node instructions.",
     requires: "AI connection (DeepSeek, OpenAI, Claude or a custom endpoint)",
     settings: [
-      { key: "systemPrompt", desc: "Base system prompt (used if no persona selected)." },
-      { key: "promptId", desc: "Select a saved prompt template. When set, its template is used as the user message." },
-      { key: "prompt", desc: "User message. Supports {{expression}}. Used when no saved prompt is selected." },
+      { key: "systemPrompt", desc: "Additional system instructions for this node." },
+      { key: "promptId", desc: "Required. Select a saved prompt template from /ai. Its template becomes the user message." },
       { key: "personaId", desc: "Select a persona for identity and tone." },
       { key: "contextIds", desc: "Comma-separated context IDs for project knowledge." },
       { key: "memoryIds", desc: "Comma-separated memory IDs for persistent instructions." },
