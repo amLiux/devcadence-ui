@@ -102,6 +102,47 @@ describe("ConnectionForm AI defaults", () => {
     );
   });
 
+  it("allows switching an existing connection to a custom endpoint without a key", async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const initialData: Connection = {
+      id: "conn-1",
+      type: "AI",
+      name: "Hosted",
+      description: "",
+      config: {
+        provider: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        apiKey: "sk-stored",
+        model: "deepseek-flash",
+      },
+      createdAt: "",
+      updatedAt: "",
+    };
+
+    render(<ConnectionForm initialData={initialData} onSubmit={vi.fn()} onUpdate={onUpdate} />);
+
+    await user.selectOptions(screen.getByLabelText("Provider"), "custom");
+    await user.clear(screen.getByLabelText("Base URL"));
+    await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
+    await user.clear(screen.getByLabelText("API Key"));
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    expect(saveButton).not.toBeDisabled();
+
+    await user.click(saveButton);
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "conn-1",
+      expect.objectContaining({
+        config: expect.objectContaining({
+          provider: "custom",
+          baseUrl: "http://localhost:11434/v1",
+          apiKey: "",
+        }),
+      }),
+    );
+  });
+
   it("does not render a stored key and keeps it when saving", async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     const initialData: Connection = {

@@ -38,6 +38,7 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
     for (const key of passwordKeys) delete stored[key];
     return stored;
   });
+  const [touchedPasswordKeys, setTouchedPasswordKeys] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(0);
   const { setClose } = useModal();
@@ -88,6 +89,10 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
 
   const handleInputChange = (key: string, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
+    const input = inputs.find((i) => i.key === key);
+    if (input?.type === "password") {
+      setTouchedPasswordKeys((prev) => new Set(prev).add(key));
+    }
   };
 
   const handleSubmit = async () => {
@@ -96,7 +101,12 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
     try {
       const merged = { ...fieldDefaults, ...config };
       for (const input of inputs) {
-        if (input.type === "password" && !merged[input.key] && hasStoredSecret(input.key)) {
+        if (
+          input.type === "password" &&
+          !merged[input.key] &&
+          hasStoredSecret(input.key) &&
+          !touchedPasswordKeys.has(input.key)
+        ) {
           merged[input.key] = storedSecrets[input.key];
         }
       }
@@ -276,6 +286,7 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
                     type={type}
                     value={values[key] ?? ""}
                     onChange={(e) => handleInputChange(key, e.target.value)}
+                    onFocus={() => setTouchedPasswordKeys((prev) => new Set(prev).add(key))}
                     placeholder={placeholder ?? (type === "password" ? (hasStoredSecret(key) ? "Saved — leave blank to keep" : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022") : "")}
                   />
                 )}
