@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getConnection } from "@/lib/db/connections";
 import {
   aiConfigProblem,
   chatCompletionsUrl,
@@ -66,7 +67,7 @@ export async function buildSystemPrompt(
 }
 
 async function getAIConfig(connectionId: string): Promise<ResolvedAIConfig> {
-  const conn = await prisma.connection.findUnique({ where: { id: connectionId } });
+  const conn = await getConnection(connectionId);
   if (!conn) throw new Error("AI connection not found");
   if (conn.type !== "AI") throw new Error("Connection is not an AI connection");
 
