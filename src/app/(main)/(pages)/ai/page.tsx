@@ -234,6 +234,23 @@ export default function AIPage() {
   const [draftContext, setDraftContext] = useState<Partial<AIContent>>({});
   const [draftMemory, setDraftMemory] = useState<Partial<AIContent>>({});
 
+  const selectPersona = (id: string | null) => {
+    setSelectedPersona(id);
+    setDraftPersona(id ? personas.find((p) => p.id === id) || {} : {});
+  };
+  const selectPrompt = (id: string | null) => {
+    setSelectedPrompt(id);
+    setDraftPrompt(id ? prompts.find((p) => p.id === id) || {} : {});
+  };
+  const selectContext = (id: string | null) => {
+    setSelectedContext(id);
+    setDraftContext(id ? contexts.find((c) => c.id === id) || {} : {});
+  };
+  const selectMemory = (id: string | null) => {
+    setSelectedMemory(id);
+    setDraftMemory(id ? memories.find((m) => m.id === id) || {} : {});
+  };
+
   // Check for AI connection
   useEffect(() => {
     const checkConnection = async () => {
@@ -266,23 +283,6 @@ export default function AIPage() {
     };
     loadAll();
   }, [hasAIConnection, request]);
-
-  // Sync drafts with selection
-  useEffect(() => {
-    setDraftPersona(personas.find((p) => p.id === selectedPersona) || {});
-  }, [selectedPersona, personas]);
-
-  useEffect(() => {
-    setDraftPrompt(prompts.find((p) => p.id === selectedPrompt) || {});
-  }, [selectedPrompt, prompts]);
-
-  useEffect(() => {
-    setDraftContext(contexts.find((c) => c.id === selectedContext) || {});
-  }, [selectedContext, contexts]);
-
-  useEffect(() => {
-    setDraftMemory(memories.find((m) => m.id === selectedMemory) || {});
-  }, [selectedMemory, memories]);
 
   if (loading) {
     return (
@@ -319,7 +319,7 @@ export default function AIPage() {
       const created = await request<AIPersona>({ endpoint: "/api/ai/personas", method: "POST", data });
       if (created) {
         setPersonas((prev) => [created, ...prev]);
-        setSelectedPersona(created.id);
+        selectPersona(created.id);
       }
     }
   };
@@ -334,7 +334,7 @@ export default function AIPage() {
       const created = await request<AIPrompt>({ endpoint: "/api/ai/prompts", method: "POST", data });
       if (created) {
         setPrompts((prev) => [created, ...prev]);
-        setSelectedPrompt(created.id);
+        selectPrompt(created.id);
       }
     }
   };
@@ -349,7 +349,7 @@ export default function AIPage() {
       const created = await request<AIContent>({ endpoint: "/api/ai/context", method: "POST", data });
       if (created) {
         setContexts((prev) => [created, ...prev]);
-        setSelectedContext(created.id);
+        selectContext(created.id);
       }
     }
   };
@@ -364,17 +364,29 @@ export default function AIPage() {
       const created = await request<AIContent>({ endpoint: "/api/ai/memory", method: "POST", data });
       if (created) {
         setMemories((prev) => [created, ...prev]);
-        setSelectedMemory(created.id);
+        selectMemory(created.id);
       }
     }
   };
 
   const handleDelete = async (type: string, id: string) => {
     await request({ endpoint: `/api/ai/${type}/${id}`, method: "DELETE" });
-    if (type === "personas") setPersonas((prev) => prev.filter((p) => p.id !== id));
-    if (type === "prompts") setPrompts((prev) => prev.filter((p) => p.id !== id));
-    if (type === "context") setContexts((prev) => prev.filter((c) => c.id !== id));
-    if (type === "memory") setMemories((prev) => prev.filter((m) => m.id !== id));
+    if (type === "personas") {
+      setPersonas((prev) => prev.filter((p) => p.id !== id));
+      if (selectedPersona === id) selectPersona(null);
+    }
+    if (type === "prompts") {
+      setPrompts((prev) => prev.filter((p) => p.id !== id));
+      if (selectedPrompt === id) selectPrompt(null);
+    }
+    if (type === "context") {
+      setContexts((prev) => prev.filter((c) => c.id !== id));
+      if (selectedContext === id) selectContext(null);
+    }
+    if (type === "memory") {
+      setMemories((prev) => prev.filter((m) => m.id !== id));
+      if (selectedMemory === id) selectMemory(null);
+    }
   };
 
   return (
@@ -400,11 +412,11 @@ export default function AIPage() {
               <div className="col-span-1 border rounded-lg p-3 overflow-auto">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium">Personas</h3>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedPersona(null)}>
+                  <Button size="sm" variant="outline" onClick={() => selectPersona(null)}>
                     <Plus className="h-3 w-3 mr-1" /> New
                   </Button>
                 </div>
-                <ItemList items={personas} selected={selectedPersona} onSelect={setSelectedPersona} onDelete={(id) => handleDelete("personas", id)} />
+                <ItemList items={personas} selected={selectedPersona} onSelect={selectPersona} onDelete={(id) => handleDelete("personas", id)} />
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <PersonaForm
@@ -423,11 +435,11 @@ export default function AIPage() {
               <div className="col-span-1 border rounded-lg p-3 overflow-auto">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium">Prompts</h3>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedPrompt(null)}>
+                  <Button size="sm" variant="outline" onClick={() => selectPrompt(null)}>
                     <Plus className="h-3 w-3 mr-1" /> New
                   </Button>
                 </div>
-                <ItemList items={prompts} selected={selectedPrompt} onSelect={setSelectedPrompt} onDelete={(id) => handleDelete("prompts", id)} />
+                <ItemList items={prompts} selected={selectedPrompt} onSelect={selectPrompt} onDelete={(id) => handleDelete("prompts", id)} />
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <PromptForm
@@ -446,11 +458,11 @@ export default function AIPage() {
               <div className="col-span-1 border rounded-lg p-3 overflow-auto">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium">Context</h3>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedContext(null)}>
+                  <Button size="sm" variant="outline" onClick={() => selectContext(null)}>
                     <Plus className="h-3 w-3 mr-1" /> New
                   </Button>
                 </div>
-                <ItemList items={contexts} selected={selectedContext} onSelect={setSelectedContext} onDelete={(id) => handleDelete("context", id)} />
+                <ItemList items={contexts} selected={selectedContext} onSelect={selectContext} onDelete={(id) => handleDelete("context", id)} />
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <ContentForm
@@ -470,11 +482,11 @@ export default function AIPage() {
               <div className="col-span-1 border rounded-lg p-3 overflow-auto">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium">Memory</h3>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedMemory(null)}>
+                  <Button size="sm" variant="outline" onClick={() => selectMemory(null)}>
                     <Plus className="h-3 w-3 mr-1" /> New
                   </Button>
                 </div>
-                <ItemList items={memories} selected={selectedMemory} onSelect={setSelectedMemory} onDelete={(id) => handleDelete("memory", id)} />
+                <ItemList items={memories} selected={selectedMemory} onSelect={selectMemory} onDelete={(id) => handleDelete("memory", id)} />
               </div>
               <div className="col-span-2 border rounded-lg p-4 overflow-auto">
                 <ContentForm
