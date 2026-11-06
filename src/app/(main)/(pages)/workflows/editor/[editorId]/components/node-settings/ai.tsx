@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useApi } from "@/hooks/use-api";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
+import type { Connection } from "@/lib/types";
 
 interface AIPersona { id: string; name: string; description: string; }
 interface AIPrompt { id: string; name: string; template: string; description: string; }
@@ -49,6 +50,28 @@ function PromptSelect({ value, onChange }: { value: string; onChange: (v: string
       <option value="">Select a saved prompt...</option>
       {prompts.map((p) => (
         <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function AIConnectionSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { request } = useApi();
+  const [connections, setConnections] = useState<Connection[]>([]);
+  useEffect(() => {
+    request<Connection[]>({ endpoint: "/api/connections" }).then((data) => {
+      if (data) setConnections(data.filter((c) => c.type === "AI"));
+    });
+  }, [request]);
+  return (
+    <select
+      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">Select AI connection...</option>
+      {connections.map((c) => (
+        <option key={c.id} value={c.id}>{c.name}</option>
       ))}
     </select>
   );
@@ -165,6 +188,10 @@ export function PromptSettings({ meta, handleChange, updateMeta, parentOutput, h
           ? <InheritedDataPanel output={parentOutput} />
           : <InheritedDataPanelDisabled />
       )}
+      <div className="space-y-1.5">
+        <Label className="text-xs">AI Connection *</Label>
+        <AIConnectionSelect value={meta.connectionId || ""} onChange={(v) => handleChange("connectionId", v)} />
+      </div>
       <AISelectors meta={meta} handleChange={handleChange} />
       <p className="text-[10px] text-muted-foreground">
         Use <code className="bg-muted px-1 rounded">{"{{expression}}"}</code> to reference data from previous steps. E.g. <code className="bg-muted px-1 rounded">{"{{previousStep.title}}"}</code>.
@@ -202,6 +229,10 @@ export function ClassifySettings({ meta, handleChange, parentOutput, hasParentEd
           ? <InheritedDataPanel output={parentOutput} />
           : <InheritedDataPanelDisabled />
       )}
+      <div className="space-y-1.5">
+        <Label className="text-xs">AI Connection *</Label>
+        <AIConnectionSelect value={meta.connectionId || ""} onChange={(v) => handleChange("connectionId", v)} />
+      </div>
       <AISelectors meta={meta} handleChange={handleChange} />
       <p className="text-[10px] text-muted-foreground">
         Classify text into one of the provided categories.
@@ -226,6 +257,10 @@ export function ExtractSettings({ meta, handleChange, parentOutput, hasParentEdg
           ? <InheritedDataPanel output={parentOutput} />
           : <InheritedDataPanelDisabled />
       )}
+      <div className="space-y-1.5">
+        <Label className="text-xs">AI Connection *</Label>
+        <AIConnectionSelect value={meta.connectionId || ""} onChange={(v) => handleChange("connectionId", v)} />
+      </div>
       <AISelectors meta={meta} handleChange={handleChange} />
       <p className="text-[10px] text-muted-foreground">
         Extract structured data from text. Returns a JSON object with the extracted fields.
