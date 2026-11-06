@@ -47,6 +47,36 @@ describe("ConnectionForm AI defaults", () => {
     );
   });
 
+  it("requires an API key for hosted providers", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ConnectionForm onSubmit={onSubmit} />);
+
+    await openAiForm();
+    await user.type(screen.getByLabelText("Name"), "DeepSeek");
+    await user.type(screen.getByLabelText("Base URL"), "https://api.deepseek.com");
+
+    const connectButton = screen.getByRole("button", { name: "Connect" });
+    expect(connectButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("API Key"), "sk-test");
+    expect(connectButton).not.toBeDisabled();
+  });
+
+  it("requires Base URL for a custom endpoint", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<ConnectionForm onSubmit={onSubmit} />);
+
+    await openAiForm();
+    await user.selectOptions(screen.getByLabelText("Provider"), "custom");
+    await user.type(screen.getByLabelText("Name"), "Ollama");
+
+    const connectButton = screen.getByRole("button", { name: "Connect" });
+    expect(connectButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
+    expect(connectButton).not.toBeDisabled();
+  });
+
   it("allows a custom endpoint without a key when the URL is set", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<ConnectionForm onSubmit={onSubmit} />);
@@ -55,7 +85,11 @@ describe("ConnectionForm AI defaults", () => {
     await user.selectOptions(screen.getByLabelText("Provider"), "custom");
     await user.type(screen.getByLabelText("Name"), "Ollama");
     await user.type(screen.getByLabelText("Base URL"), "http://localhost:11434/v1");
-    await user.click(screen.getByRole("button", { name: "Connect" }));
+
+    const connectButton = screen.getByRole("button", { name: "Connect" });
+    expect(connectButton).not.toBeDisabled();
+
+    await user.click(connectButton);
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
