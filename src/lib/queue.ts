@@ -73,9 +73,11 @@ async function prepareDiscordListenBody(
     { channelId: config.channelId, limit: config.limit ?? 50, after: lastId ?? undefined },
   );
 
-  if (messages.length === 0) return null;
+  // Ignore messages from bots (including our own) to prevent reply loops.
+  const filtered = messages.filter((m) => !m.author.bot);
+  if (filtered.length === 0) return null;
 
-  const sorted = [...messages].sort((a, b) => (a.id > b.id ? 1 : -1));
+  const sorted = [...filtered].sort((a, b) => (a.id > b.id ? 1 : -1));
   const newestId = sorted[sorted.length - 1].id;
   await setTriggerState(workflowId, "discord-listen", config.channelId, newestId);
 
