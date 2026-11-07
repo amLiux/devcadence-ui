@@ -85,6 +85,8 @@ model WorkflowRun {
   logs           WorkflowLog[]
 
   @@index([workflowId, notifiedAt])
+  @@index([startedAt])
+  @@index([workflowId, startedAt])
   @@index([status, nextRetryAt])
   @@index([retryOfRunId])
 }
@@ -116,6 +118,9 @@ model WorkflowLog {
   finishedAt  DateTime
   elapsedMs   Int
   run         WorkflowRun @relation(fields: [runId], references: [id])
+
+  @@index([startedAt])
+  @@index([status, nodeType])
 }
 
 model AIPersona {
