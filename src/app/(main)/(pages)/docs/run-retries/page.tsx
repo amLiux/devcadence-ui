@@ -39,10 +39,10 @@ const TRIGGERS = [
     tone: "text-purple-500 bg-purple-500/10 border-purple-500/30",
   },
   {
-    name: "Discord listen",
+    name: "Channel listener",
     icon: Repeat,
     mode: "queue",
-    text: "New messages are collected, then executed by the worker.",
+    text: "Watches a channel and runs when new messages arrive.",
     tone: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30",
   },
   {
