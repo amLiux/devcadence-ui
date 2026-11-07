@@ -52,21 +52,3 @@ export function JsonEditor({ value, onChange, placeholder, minHeight = 80, error
     </div>
   );
 }
-
-export function formatJson(value: string): string {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
-}
-
-export function validateJson(value: string): string | null {
-  if (!value.trim()) return null;
-  try {
-    JSON.parse(value);
-    return null;
-  } catch (e) {
-    return e instanceof Error ? e.message : "Invalid JSON";
-  }
-}
