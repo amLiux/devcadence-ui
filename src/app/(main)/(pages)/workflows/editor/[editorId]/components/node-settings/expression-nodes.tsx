@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Info, AlignLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { JsonEditor, formatJson } from "@/components/ui/json-editor";
+import { JsonField } from "@/components/composed/json-field";
 import type { NodeSettingsProps } from "./types";
 
 export function InheritedDataPanel({ output }: { output: unknown }) {
@@ -123,27 +123,13 @@ export function TransformDataSettings({ meta, handleChange, parentOutput, hasPar
       <p className="text-[10px] text-muted-foreground">
         Name this output to reference it directly in downstream nodes. If you name it <code className="bg-muted px-1 rounded">step1</code>, downstream nodes can use <code className="bg-muted px-1 rounded">step1.field</code> instead of chaining <code className="bg-muted px-1 rounded">previousStep.previousStep.field</code>.
       </p>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Sample Input (JSON, for standalone test)</Label>
-          {meta.body && (
-            <button
-              type="button"
-              onClick={() => handleChange("body", formatJson(meta.body))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.body || ""}
-          onChange={(v) => handleChange("body", v)}
-          placeholder='{"rows": [{"id": 1, "name": "test"}], "rowCount": 1}'
-          minHeight={60}
-        />
-      </div>
+      <JsonField
+        label="Sample Input (JSON, for standalone test)"
+        value={meta.body || ""}
+        onChange={(v) => handleChange("body", v)}
+        placeholder='{"rows": [{"id": 1, "name": "test"}], "rowCount": 1}'
+        minHeight={60}
+      />
     </div>
   );
 }
@@ -166,27 +152,13 @@ export function ConditionalSettings({ meta, handleChange, parentOutput, hasParen
         and the <span className="text-red-500 font-medium">red handle</span> for failure.
         Use <code className="bg-muted px-1 rounded">previousStep.status</code> to access HTTP status.
       </p>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Sample Input (JSON, for standalone test)</Label>
-          {meta.body && (
-            <button
-              type="button"
-              onClick={() => handleChange("body", formatJson(meta.body))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.body || ""}
-          onChange={(v) => handleChange("body", v)}
-          placeholder='{"status": 200, "body": {...}}'
-          minHeight={60}
-        />
-      </div>
+      <JsonField
+        label="Sample Input (JSON, for standalone test)"
+        value={meta.body || ""}
+        onChange={(v) => handleChange("body", v)}
+        placeholder='{"status": 200, "body": {...}}'
+        minHeight={60}
+      />
     </div>
   );
 }

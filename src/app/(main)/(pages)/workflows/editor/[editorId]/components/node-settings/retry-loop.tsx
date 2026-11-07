@@ -2,8 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { JsonEditor, formatJson } from "@/components/ui/json-editor";
-import { AlignLeft } from "lucide-react";
+import { JsonField } from "@/components/composed/json-field";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import type { NodeSettingsProps } from "./types";
 
@@ -51,48 +50,20 @@ export function RetryLoopSettings({
           <option value="DELETE">DELETE</option>
         </select>
       </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Headers (JSON)</Label>
-          {meta.headers && (
-            <button
-              type="button"
-              onClick={() => handleChange("headers", formatJson(meta.headers))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.headers || ""}
-          onChange={(v) => handleChange("headers", v)}
-          placeholder='{"Authorization": "Bearer token"}'
-          minHeight={60}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Body (JSON)</Label>
-          {meta.body && (
-            <button
-              type="button"
-              onClick={() => handleChange("body", formatJson(meta.body))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.body || ""}
-          onChange={(v) => handleChange("body", v)}
-          placeholder='{"key": "value"}'
-          minHeight={60}
-        />
-      </div>
+      <JsonField
+        label="Headers (JSON)"
+        value={meta.headers || ""}
+        onChange={(v) => handleChange("headers", v)}
+        placeholder='{"Authorization": "Bearer token"}'
+        minHeight={60}
+      />
+      <JsonField
+        label="Body (JSON)"
+        value={meta.body || ""}
+        onChange={(v) => handleChange("body", v)}
+        placeholder='{"key": "value"}'
+        minHeight={60}
+      />
 
       {/* Retry Config */}
       <div className="rounded-md bg-muted/50 p-3 space-y-3">

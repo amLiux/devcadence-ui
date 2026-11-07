@@ -3,8 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { JsonEditor, formatJson } from "@/components/ui/json-editor";
-import { AlignLeft } from "lucide-react";
+import { JsonField } from "@/components/composed/json-field";
 import {
   DEFAULT_CACHE_TTL_SECONDS,
   MAX_CACHE_TTL_SECONDS,
@@ -45,48 +44,20 @@ export function HttpRequestSettings({ meta, handleChange, parentOutput, hasParen
           <option value="DELETE">DELETE</option>
         </select>
       </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Headers (JSON)</Label>
-          {meta.headers && (
-            <button
-              type="button"
-              onClick={() => handleChange("headers", formatJson(meta.headers))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.headers || ""}
-          onChange={(v) => handleChange("headers", v)}
-          placeholder='{"Authorization": "Bearer {{previousStep.token}}"}'
-          minHeight={80}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Body (JSON)</Label>
-          {meta.body && (
-            <button
-              type="button"
-              onClick={() => handleChange("body", formatJson(meta.body))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.body || ""}
-          onChange={(v) => handleChange("body", v)}
-          placeholder='{"key": "{{previousStep.value}}"}'
-          minHeight={80}
-        />
-      </div>
+      <JsonField
+        label="Headers (JSON)"
+        value={meta.headers || ""}
+        onChange={(v) => handleChange("headers", v)}
+        placeholder='{"Authorization": "Bearer {{previousStep.token}}"}'
+        minHeight={80}
+      />
+      <JsonField
+        label="Body (JSON)"
+        value={meta.body || ""}
+        onChange={(v) => handleChange("body", v)}
+        placeholder='{"key": "{{previousStep.value}}"}'
+        minHeight={80}
+      />
       <div className="space-y-2 rounded-lg border border-border p-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="space-y-0.5">

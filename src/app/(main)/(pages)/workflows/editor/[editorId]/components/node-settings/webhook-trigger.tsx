@@ -4,8 +4,8 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApi } from "@/hooks/use-api";
-import { Copy, Check, Wand2, AlignLeft } from "lucide-react";
-import { JsonEditor, formatJson, validateJson } from "@/components/ui/json-editor";
+import { Copy, Check, Wand2 } from "lucide-react";
+import { JsonField } from "@/components/composed/json-field";
 import type { NodeSettingsProps } from "./types";
 import type { Connection } from "@/lib/types";
 import { inferSchemaFromPayload } from "@/lib/json-schema";
@@ -92,69 +92,35 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Test Payload (optional)</Label>
-          {meta.testPayload && (
+      <JsonField
+        label="Test Payload (optional)"
+        value={meta.testPayload || ""}
+        onChange={(v) => handleChange("testPayload", v)}
+        placeholder='{"event": "push", "data": {...}}'
+        minHeight={80}
+        hint="JSON payload used when testing this trigger. Leave empty for a default test payload."
+      />
+
+      <JsonField
+        label="JSON Schema (optional)"
+        value={meta.schemaJson || ""}
+        onChange={(v) => handleChange("schemaJson", v)}
+        placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
+        minHeight={100}
+        hint="Incoming webhook payloads are validated against this schema. Empty = no validation."
+        actions={
+          meta.testPayload ? (
             <button
               type="button"
-              onClick={() => handleChange("testPayload", formatJson(meta.testPayload))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              onClick={handleInferSchema}
+              className="flex items-center gap-1 text-[10px] text-primary hover:underline"
             >
-              <AlignLeft className="h-3 w-3" />
-              Format
+              <Wand2 className="h-3 w-3" />
+              Infer
             </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.testPayload || ""}
-          onChange={(v) => handleChange("testPayload", v)}
-          placeholder='{"event": "push", "data": {...}}'
-          minHeight={80}
-          error={validateJson(meta.testPayload || "")}
-        />
-        <p className="text-[10px] text-muted-foreground">
-          JSON payload used when testing this trigger. Leave empty for a default test payload.
-        </p>
-      </div>
-
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">JSON Schema (optional)</Label>
-          <div className="flex items-center gap-2">
-            {meta.testPayload && (
-              <button
-                type="button"
-                onClick={handleInferSchema}
-                className="flex items-center gap-1 text-[10px] text-primary hover:underline"
-              >
-                <Wand2 className="h-3 w-3" />
-                Infer
-              </button>
-            )}
-            {meta.schemaJson && (
-              <button
-                type="button"
-                onClick={() => handleChange("schemaJson", formatJson(meta.schemaJson))}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                <AlignLeft className="h-3 w-3" />
-                Format
-              </button>
-            )}
-          </div>
-        </div>
-        <JsonEditor
-          value={meta.schemaJson || ""}
-          onChange={(v) => handleChange("schemaJson", v)}
-          placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
-          minHeight={100}
-          error={validateJson(meta.schemaJson || "")}
-        />
-        <p className="text-[10px] text-muted-foreground">
-          Incoming webhook payloads are validated against this schema. Empty = no validation.
-        </p>
-      </div>
+          ) : null
+        }
+      />
 
       <div className="space-y-1.5 rounded-md border p-2">
         <Label className="text-xs">Rate Limiting</Label>

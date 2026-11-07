@@ -12,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { JsonEditor, formatJson } from "@/components/ui/json-editor";
-import { AlignLeft } from "lucide-react";
+import { JsonField } from "@/components/composed/json-field";
 import { NodeSettingsProps } from "./types";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import { groupReusableWorkflows } from "@/lib/workflows/projects";
@@ -101,30 +100,14 @@ export function CallWorkflowSettings({
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Input (JSON)</Label>
-          {meta.input && (
-            <button
-              type="button"
-              onClick={() => handleChange("input", formatJson(meta.input))}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-            >
-              <AlignLeft className="h-3 w-3" />
-              Format
-            </button>
-          )}
-        </div>
-        <JsonEditor
-          value={meta.input || "{}"}
-          onChange={(v) => handleChange("input", v)}
-          placeholder={'{"key": "value"}'}
-          minHeight={80}
-        />
-        <p className="text-[10px] text-muted-foreground">
-          Values passed to the target workflow&apos;s Input node as {'{{input.*}}'}
-        </p>
-      </div>
+      <JsonField
+        label="Input (JSON)"
+        value={meta.input || "{}"}
+        onChange={(v) => handleChange("input", v)}
+        placeholder={'{"key": "value"}'}
+        minHeight={80}
+        hint={<>Values passed to the target workflow&apos;s Input node as {"{{input.*}}"}</>}
+      />
 
       <div className="space-y-1.5">
         <Label className="text-xs">Output Name (optional)</Label>
