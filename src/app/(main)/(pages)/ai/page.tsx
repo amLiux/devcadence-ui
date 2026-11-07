@@ -10,29 +10,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApi } from "@/hooks/use-api";
 import type { Connection } from "@/lib/types";
 
-interface AIPersona {
+interface NamedItem {
   id: string;
   name: string;
+  description: string;
+}
+
+interface AIPersona extends NamedItem {
   systemPrompt: string;
   tone: string;
-  description: string;
 }
 
-interface AIPrompt {
-  id: string;
-  name: string;
+interface AIPrompt extends NamedItem {
   template: string;
-  description: string;
 }
 
-interface AIContent {
-  id: string;
-  name: string;
+interface AIContent extends NamedItem {
   content: string;
-  description: string;
 }
 
-function ItemList<T extends { id: string; name: string; description: string }>({
+function useAiCollection<T extends NamedItem>(endpoint: string, requiredKey: keyof T) {
+  const { request } = useApi();
+  const [items, setItems] = useState<T[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Partial<T>>({});
+
+  const select = (id: string | null) => {
+    setSelected(id);
+    setDraft(id ? items.find((item) => item.id === id) ?? {} : {});
+  };
+
+  const submit = async () => {
+    const data = draft;
+    const required = data[requiredKey];
+    if (!data.name?.trim() || typeof required !== "string" || !required.trim()) return;
+
+    if (data.id) {
+      await request({ endpoint: `${endpoint}/${data.id}`, method: "PUT", data });
+      setItems((prev) => prev.map((item) => (item.id === data.id ? ({ ...item, ...data } as T) : item)));
+      return;
+    }
+
+    const created = await request<T>({ endpoint, method: "POST", data });
+    if (!created) return;
+    setItems((prev) => [created, ...prev]);
+    setSelected(created.id);
+    setDraft(created);
+  };
+
+  const remove = async (id: string) => {
+    await request({ endpoint: `${endpoint}/${id}`, method: "DELETE" });
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    if (selected === id) {
+      setSelected(null);
+      setDraft({});
+    }
+  };
+
+  return { items, setItems, selected, draft, setDraft, select, submit, remove };
+}
+
+function ItemList<T extends NamedItem>({
   items,
   selected,
   onSelect,
@@ -73,6 +111,41 @@ function ItemList<T extends { id: string; name: string; description: string }>({
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function CollectionTab<T extends NamedItem>({
+  title,
+  collection,
+  form,
+}: {
+  title: string;
+  collection: ReturnType<typeof useAiCollection<T>>;
+  form: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      <div className="col-span-1 border rounded-lg p-3 overflow-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium">{title}</h3>
+          <Button size="sm" variant="outline" onClick={() => collection.select(null)}>
+            <Plus className="h-3 w-3 mr-1" /> New
+          </Button>
+        </div>
+        <ItemList
+          items={collection.items}
+          selected={collection.selected}
+          onSelect={collection.select}
+          onDelete={collection.remove}
+        />
+      </div>
+      <div className="col-span-2 border rounded-lg p-4 overflow-auto">
+        {form}
+        <Button size="sm" className="mt-4" onClick={collection.submit}>
+          <Save className="h-3 w-3 mr-1" /> Save
+        </Button>
+      </div>
     </div>
   );
 }
@@ -216,40 +289,16 @@ export default function AIPage() {
   const [hasAIConnection, setHasAIConnection] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Data
-  const [personas, setPersonas] = useState<AIPersona[]>([]);
-  const [prompts, setPrompts] = useState<AIPrompt[]>([]);
-  const [contexts, setContexts] = useState<AIContent[]>([]);
-  const [memories, setMemories] = useState<AIContent[]>([]);
+  const personas = useAiCollection<AIPersona>("/api/ai/personas", "systemPrompt");
+  const prompts = useAiCollection<AIPrompt>("/api/ai/prompts", "template");
+  const contexts = useAiCollection<AIContent>("/api/ai/context", "content");
+  const memories = useAiCollection<AIContent>("/api/ai/memory", "content");
 
-  // Selection
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
-  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  const [selectedContext, setSelectedContext] = useState<string | null>(null);
-  const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
-
-  // Drafts for the forms
-  const [draftPersona, setDraftPersona] = useState<Partial<AIPersona>>({});
-  const [draftPrompt, setDraftPrompt] = useState<Partial<AIPrompt>>({});
-  const [draftContext, setDraftContext] = useState<Partial<AIContent>>({});
-  const [draftMemory, setDraftMemory] = useState<Partial<AIContent>>({});
-
-  const selectPersona = (id: string | null) => {
-    setSelectedPersona(id);
-    setDraftPersona(id ? personas.find((p) => p.id === id) || {} : {});
-  };
-  const selectPrompt = (id: string | null) => {
-    setSelectedPrompt(id);
-    setDraftPrompt(id ? prompts.find((p) => p.id === id) || {} : {});
-  };
-  const selectContext = (id: string | null) => {
-    setSelectedContext(id);
-    setDraftContext(id ? contexts.find((c) => c.id === id) || {} : {});
-  };
-  const selectMemory = (id: string | null) => {
-    setSelectedMemory(id);
-    setDraftMemory(id ? memories.find((m) => m.id === id) || {} : {});
-  };
+  // Setters are stable, so the load effect can depend on them directly.
+  const { setItems: setPersonas } = personas;
+  const { setItems: setPrompts } = prompts;
+  const { setItems: setContexts } = contexts;
+  const { setItems: setMemories } = memories;
 
   // Check for AI connection
   useEffect(() => {
@@ -282,7 +331,7 @@ export default function AIPage() {
       setMemories(m ?? []);
     };
     loadAll();
-  }, [hasAIConnection, request]);
+  }, [hasAIConnection, request, setPersonas, setPrompts, setContexts, setMemories]);
 
   if (loading) {
     return (
@@ -309,86 +358,6 @@ export default function AIPage() {
     );
   }
 
-  const handleSubmitPersona = async () => {
-    const data = draftPersona;
-    if (!data.name?.trim() || !data.systemPrompt?.trim()) return;
-    if (data.id) {
-      await request({ endpoint: `/api/ai/personas/${data.id}`, method: "PUT", data });
-      setPersonas((prev) => prev.map((p) => (p.id === data.id ? ({ ...p, ...data } as AIPersona) : p)));
-    } else {
-      const created = await request<AIPersona>({ endpoint: "/api/ai/personas", method: "POST", data });
-      if (created) {
-        setPersonas((prev) => [created, ...prev]);
-        selectPersona(created.id);
-      }
-    }
-  };
-
-  const handleSubmitPrompt = async () => {
-    const data = draftPrompt;
-    if (!data.name?.trim() || !data.template?.trim()) return;
-    if (data.id) {
-      await request({ endpoint: `/api/ai/prompts/${data.id}`, method: "PUT", data });
-      setPrompts((prev) => prev.map((p) => (p.id === data.id ? ({ ...p, ...data } as AIPrompt) : p)));
-    } else {
-      const created = await request<AIPrompt>({ endpoint: "/api/ai/prompts", method: "POST", data });
-      if (created) {
-        setPrompts((prev) => [created, ...prev]);
-        selectPrompt(created.id);
-      }
-    }
-  };
-
-  const handleSubmitContext = async () => {
-    const data = draftContext;
-    if (!data.name?.trim() || !data.content?.trim()) return;
-    if (data.id) {
-      await request({ endpoint: `/api/ai/context/${data.id}`, method: "PUT", data });
-      setContexts((prev) => prev.map((c) => (c.id === data.id ? ({ ...c, ...data } as AIContent) : c)));
-    } else {
-      const created = await request<AIContent>({ endpoint: "/api/ai/context", method: "POST", data });
-      if (created) {
-        setContexts((prev) => [created, ...prev]);
-        selectContext(created.id);
-      }
-    }
-  };
-
-  const handleSubmitMemory = async () => {
-    const data = draftMemory;
-    if (!data.name?.trim() || !data.content?.trim()) return;
-    if (data.id) {
-      await request({ endpoint: `/api/ai/memory/${data.id}`, method: "PUT", data });
-      setMemories((prev) => prev.map((m) => (m.id === data.id ? ({ ...m, ...data } as AIContent) : m)));
-    } else {
-      const created = await request<AIContent>({ endpoint: "/api/ai/memory", method: "POST", data });
-      if (created) {
-        setMemories((prev) => [created, ...prev]);
-        selectMemory(created.id);
-      }
-    }
-  };
-
-  const handleDelete = async (type: string, id: string) => {
-    await request({ endpoint: `/api/ai/${type}/${id}`, method: "DELETE" });
-    if (type === "personas") {
-      setPersonas((prev) => prev.filter((p) => p.id !== id));
-      if (selectedPersona === id) selectPersona(null);
-    }
-    if (type === "prompts") {
-      setPrompts((prev) => prev.filter((p) => p.id !== id));
-      if (selectedPrompt === id) selectPrompt(null);
-    }
-    if (type === "context") {
-      setContexts((prev) => prev.filter((c) => c.id !== id));
-      if (selectedContext === id) selectContext(null);
-    }
-    if (type === "memory") {
-      setMemories((prev) => prev.filter((m) => m.id !== id));
-      if (selectedMemory === id) selectMemory(null);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col">
       <div className="p-6 border-b">
@@ -408,97 +377,35 @@ export default function AIPage() {
           </TabsList>
 
           <TabsContent value="personas" className="mt-4">
-            <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
-              <div className="col-span-1 border rounded-lg p-3 overflow-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Personas</h3>
-                  <Button size="sm" variant="outline" onClick={() => selectPersona(null)}>
-                    <Plus className="h-3 w-3 mr-1" /> New
-                  </Button>
-                </div>
-                <ItemList items={personas} selected={selectedPersona} onSelect={selectPersona} onDelete={(id) => handleDelete("personas", id)} />
-              </div>
-              <div className="col-span-2 border rounded-lg p-4 overflow-auto">
-                <PersonaForm
-                  persona={draftPersona}
-                  onChange={setDraftPersona}
-                />
-                <Button size="sm" className="mt-4" onClick={handleSubmitPersona}>
-                  <Save className="h-3 w-3 mr-1" /> Save
-                </Button>
-              </div>
-            </div>
+            <CollectionTab
+              title="Personas"
+              collection={personas}
+              form={<PersonaForm persona={personas.draft} onChange={personas.setDraft} />}
+            />
           </TabsContent>
 
           <TabsContent value="prompts" className="mt-4">
-            <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
-              <div className="col-span-1 border rounded-lg p-3 overflow-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Prompts</h3>
-                  <Button size="sm" variant="outline" onClick={() => selectPrompt(null)}>
-                    <Plus className="h-3 w-3 mr-1" /> New
-                  </Button>
-                </div>
-                <ItemList items={prompts} selected={selectedPrompt} onSelect={selectPrompt} onDelete={(id) => handleDelete("prompts", id)} />
-              </div>
-              <div className="col-span-2 border rounded-lg p-4 overflow-auto">
-                <PromptForm
-                  prompt={draftPrompt}
-                  onChange={setDraftPrompt}
-                />
-                <Button size="sm" className="mt-4" onClick={handleSubmitPrompt}>
-                  <Save className="h-3 w-3 mr-1" /> Save
-                </Button>
-              </div>
-            </div>
+            <CollectionTab
+              title="Prompts"
+              collection={prompts}
+              form={<PromptForm prompt={prompts.draft} onChange={prompts.setDraft} />}
+            />
           </TabsContent>
 
           <TabsContent value="context" className="mt-4">
-            <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
-              <div className="col-span-1 border rounded-lg p-3 overflow-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Context</h3>
-                  <Button size="sm" variant="outline" onClick={() => selectContext(null)}>
-                    <Plus className="h-3 w-3 mr-1" /> New
-                  </Button>
-                </div>
-                <ItemList items={contexts} selected={selectedContext} onSelect={selectContext} onDelete={(id) => handleDelete("context", id)} />
-              </div>
-              <div className="col-span-2 border rounded-lg p-4 overflow-auto">
-                <ContentForm
-                  item={draftContext}
-                  onChange={setDraftContext}
-                  label="Context"
-                />
-                <Button size="sm" className="mt-4" onClick={handleSubmitContext}>
-                  <Save className="h-3 w-3 mr-1" /> Save
-                </Button>
-              </div>
-            </div>
+            <CollectionTab
+              title="Context"
+              collection={contexts}
+              form={<ContentForm item={contexts.draft} onChange={contexts.setDraft} label="Context" />}
+            />
           </TabsContent>
 
           <TabsContent value="memory" className="mt-4">
-            <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
-              <div className="col-span-1 border rounded-lg p-3 overflow-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">Memory</h3>
-                  <Button size="sm" variant="outline" onClick={() => selectMemory(null)}>
-                    <Plus className="h-3 w-3 mr-1" /> New
-                  </Button>
-                </div>
-                <ItemList items={memories} selected={selectedMemory} onSelect={selectMemory} onDelete={(id) => handleDelete("memory", id)} />
-              </div>
-              <div className="col-span-2 border rounded-lg p-4 overflow-auto">
-                <ContentForm
-                  item={draftMemory}
-                  onChange={setDraftMemory}
-                  label="Memory"
-                />
-                <Button size="sm" className="mt-4" onClick={handleSubmitMemory}>
-                  <Save className="h-3 w-3 mr-1" /> Save
-                </Button>
-              </div>
-            </div>
+            <CollectionTab
+              title="Memory"
+              collection={memories}
+              form={<ContentForm item={memories.draft} onChange={memories.setDraft} label="Memory" />}
+            />
           </TabsContent>
         </Tabs>
       </div>
