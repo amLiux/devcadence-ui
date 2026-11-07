@@ -97,6 +97,12 @@ describe("planAutoRetry", () => {
     expect(plan.reason).toBe("failure is not retryable");
   });
 
+  it("stops when automatic retries are disabled", () => {
+    const plan = planAutoRetry({ attempt: 1, failure: { status: 503 }, enabled: false });
+    expect(plan.retry).toBe(false);
+    expect(plan.reason).toBe("automatic retries are disabled");
+  });
+
   it("rejects an invalid attempt number", () => {
     expect(planAutoRetry({ attempt: 0, failure: { status: 503 } }).retry).toBe(false);
   });
@@ -138,5 +144,18 @@ describe("canRetryRun", () => {
       now,
     );
     expect(decision.allowed).toBe(true);
+  });
+
+  it("honors a custom chain limit and cooldown", () => {
+    expect(canRetryRun({ status: "error", chainLength: 3 }, now, { maxChain: 3 }).allowed).toBe(
+      false,
+    );
+    expect(
+      canRetryRun(
+        { status: "error", chainLength: 1, lastRetryAt: now - 5_000 },
+        now,
+        { cooldownMs: 1_000 },
+      ).allowed,
+    ).toBe(true);
   });
 });

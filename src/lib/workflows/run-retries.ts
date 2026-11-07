@@ -7,6 +7,7 @@
  */
 import { prisma } from "@/lib/db";
 import { canRetryRun, planAutoRetry, type FailureInput } from "./retry";
+import { getRetryPolicy } from "./retry-store";
 
 /** Sources whose runs can be replayed from their stored trigger payload. */
 const REPLAYABLE_SOURCES = new Set(["manual", "schedule", "webhook", "discord-listen"]);
@@ -89,7 +90,11 @@ export async function retryRunManually(
 
   const chainLength = await loadRetryChainLength(runId);
   const lastRetryAt = await getLastRetryAt(runId);
-  const decision = canRetryRun({ status: run.status, chainLength, lastRetryAt }, now);
+  const policy = await getRetryPolicy();
+  const decision = canRetryRun({ status: run.status, chainLength, lastRetryAt }, now, {
+    cooldownMs: policy.manualCooldownMs,
+    maxChain: policy.maxChain,
+  });
   if (!decision.allowed) {
     return { ok: false, status: 409, error: decision.reason };
   }
@@ -126,7 +131,14 @@ export async function scheduleAutoRetry(
   if (!run || run.status !== "error") return null;
   if (!REPLAYABLE_SOURCES.has(run.source)) return null;
 
-  const plan = planAutoRetry({ attempt: run.attempt, failure });
+  const policy = await getRetryPolicy();
+  const plan = planAutoRetry({
+    attempt: run.attempt,
+    failure,
+    maxAttempts: policy.maxAttempts,
+    baseDelayMs: policy.baseDelayMs,
+    enabled: policy.enabled,
+  });
   if (!plan.retry || plan.nextAttempt === null || plan.delayMs === null) return null;
 
   const nextRetryAt = new Date(Date.now() + plan.delayMs);
