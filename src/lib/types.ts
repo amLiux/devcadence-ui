@@ -212,3 +212,23 @@ export interface ContextStep {
   error: string | null;
   previousStep?: ContextStep;
 }
+
+// AI management (personas, prompts, context, memory)
+export interface NamedItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface AIPersona extends NamedItem {
+  systemPrompt: string;
+  tone: string;
+}
+
+export interface AIPrompt extends NamedItem {
+  template: string;
+}
+
+export interface AIContent extends NamedItem {
+  content: string;
+}
