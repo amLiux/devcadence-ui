@@ -1,4 +1,4 @@
-import "./lib/queue";
+import "./lib/queue-worker";
 import { syncSchedules } from "./lib/scheduler";
 
 syncSchedules().then(() => {

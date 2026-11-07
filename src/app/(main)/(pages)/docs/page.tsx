@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock } from "lucide-react";
+import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock, RefreshCw } from "lucide-react";
 import { SectionCard } from "@/components/composed/section-card";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
@@ -57,6 +57,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     page: "reusable-workflows",
   },
   {
+    title: "Triggers, Queues & Run Retries",
+    description: "How a trigger becomes a run, what BullMQ does, and when a failed run is retried.",
+    href: "/docs/run-retries",
+    icon: <RefreshCw className="h-5 w-5" />,
+    tag: "New",
+    tagColor: "text-emerald-500",
+    page: "run-retries",
+  },
+  {
     title: "Node Types",
     description: "HTTP Request, Transform, AI, Conditional, PostgreSQL — settings and examples for each.",
     href: "/docs/nodes",
@@ -92,6 +101,7 @@ const iconColors: Record<string, string> = {
   "template-variables": "text-cyan-500",
   "conditional-logic": "text-amber-500",
   "reusable-workflows": "text-emerald-500",
+  "run-retries": "text-orange-500",
   security: "text-emerald-500",
 };
 
