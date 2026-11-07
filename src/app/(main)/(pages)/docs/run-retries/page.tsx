@@ -8,84 +8,75 @@ import { Badge } from "@/components/ui/badge";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarClock,
   CheckCircle2,
+  Clock,
   Database,
+  MousePointerClick,
   RefreshCw,
+  Repeat,
   Server,
   Timer,
+  Webhook,
   XCircle,
   Zap,
 } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
-const ENTRY_POINTS = [
+const TRIGGERS = [
   {
     name: "Webhook",
-    path: "src/app/api/webhooks/[connectionId]/route.ts",
-    execution: "Inline in the request",
-    retries: "Yes, queued after failure",
-    worker: "Only for retries",
+    icon: Webhook,
+    mode: "inline",
+    text: "Runs as soon as the payload arrives.",
+    tone: "text-blue-500 bg-blue-500/10 border-blue-500/30",
   },
   {
     name: "Schedule",
-    path: "src/lib/scheduler.ts",
-    execution: "BullMQ job",
-    retries: "Yes, queued after failure",
-    worker: "Required",
+    icon: CalendarClock,
+    mode: "queue",
+    text: "The worker picks it up at the scheduled time.",
+    tone: "text-purple-500 bg-purple-500/10 border-purple-500/30",
   },
   {
-    name: "Listen Discord Messages",
-    path: "src/lib/scheduler.ts",
-    execution: "BullMQ job",
-    retries: "Yes, queued after failure",
-    worker: "Required",
+    name: "Discord listen",
+    icon: Repeat,
+    mode: "queue",
+    text: "New messages are collected, then executed by the worker.",
+    tone: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30",
   },
   {
     name: "Manual retry",
-    path: "src/app/api/workflows/[id]/runs/[runId]/retry/route.ts",
-    execution: "Inline in the request",
-    retries: "Follows the policy",
-    worker: "Not required",
-  },
-  {
-    name: "Test node / test workflow",
-    path: "src/app/api/workflows/test-node, test-workflow",
-    execution: "Inline, streaming",
-    retries: "No",
-    worker: "Not required",
-  },
-  {
-    name: "Sub-workflow",
-    path: "src/app/api/workflows/execute-sub-workflow/route.ts",
-    execution: "Inline in the parent run",
-    retries: "No",
-    worker: "Not required",
+    icon: MousePointerClick,
+    mode: "inline",
+    text: "Replays a failed run from the run history.",
+    tone: "text-orange-500 bg-orange-500/10 border-orange-500/30",
   },
 ];
 
 const RETRYABLE = [
-  "HTTP 408, 425, 429",
-  "HTTP 5xx",
-  "ECONNRESET, ECONNREFUSED, ETIMEDOUT, EAI_AGAIN, ENOTFOUND, EPIPE",
-  "Messages that describe a timeout, network problem or rate limit",
+  "Rate limits (429)",
+  "Server errors (5xx)",
+  "Timeouts and network drops",
 ];
 
 const PERMANENT = [
-  "HTTP 4xx other than 408, 425, 429",
-  "Validation, schema, template and parse errors",
-  "Missing credentials, tokens or connections",
-  "Anything unknown",
+  "Most client errors (4xx)",
+  "Invalid templates or schemas",
+  "Missing credentials",
 ];
 
 const BACKOFF = [
-  { attempt: 2, delay: "2s" },
-  { attempt: 3, delay: "8s" },
-  { attempt: 4, delay: "32s" },
-  { attempt: "5+", delay: "capped at 5 min" },
+  { attempt: "2", delay: "2s", width: "w-[12%]" },
+  { attempt: "3", delay: "8s", width: "w-[35%]" },
+  { attempt: "4", delay: "32s", width: "w-[65%]" },
+  { attempt: "5+", delay: "5 min", width: "w-full" },
 ];
 
-function Code({ children }: { children: React.ReactNode }) {
-  return <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{children}</code>;
+function Arrow() {
+  return (
+    <ArrowRight className="h-4 w-4 shrink-0 rotate-90 text-muted-foreground sm:rotate-0" />
+  );
 }
 
 export default function RunRetriesDocsPage() {
@@ -95,132 +86,175 @@ export default function RunRetriesDocsPage() {
   }, [markPage]);
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-8 max-w-3xl">
       <SubpageHeader
         backHref="/docs"
         backLabel="Documentation"
         title="Triggers, Queues & Run Retries"
-        description="How a trigger becomes a run, what BullMQ actually does, and when a failed run is retried."
+        description="How a trigger becomes a run, what the queue actually does, and when a failed run is retried."
       />
 
-      {/* Path of a run */}
-      <div className="space-y-3">
+      {/* The path of a run */}
+      <section className="space-y-3">
         <h2 className="text-sm font-semibold">The path of a run</h2>
-        <div className="rounded-lg border p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="flex items-center gap-1 rounded bg-blue-500/10 px-2 py-1 text-blue-600">
-              <Zap className="h-3 w-3" /> Trigger
-            </span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <span className="flex items-center gap-1 rounded bg-purple-500/10 px-2 py-1 text-purple-600">
-              <Database className="h-3 w-3" /> WorkflowRun
-            </span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <span className="flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-amber-600">
-              <Server className="h-3 w-3" /> Execute nodes
-            </span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-emerald-600">
-              <CheckCircle2 className="h-3 w-3" /> Success
-            </span>
-            <span className="text-muted-foreground">or</span>
-            <span className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-red-600">
-              <XCircle className="h-3 w-3" /> Error
-            </span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <span className="flex items-center gap-1 rounded bg-orange-500/10 px-2 py-1 text-orange-600">
-              <RefreshCw className="h-3 w-3" /> Retry chain
-            </span>
+        <div className="rounded-xl border bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 p-4">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
+              <Zap className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="text-xs font-medium">Trigger</p>
+                <p className="text-[10px] text-muted-foreground">Something happens</p>
+              </div>
+            </div>
+            <Arrow />
+            <div className="flex flex-1 items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-2">
+              <Database className="h-4 w-4 text-purple-500" />
+              <div>
+                <p className="text-xs font-medium">Run</p>
+                <p className="text-[10px] text-muted-foreground">A record is created</p>
+              </div>
+            </div>
+            <Arrow />
+            <div className="flex flex-1 items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <Server className="h-4 w-4 text-amber-500" />
+              <div>
+                <p className="text-xs font-medium">Execute</p>
+                <p className="text-[10px] text-muted-foreground">Nodes run in order</p>
+              </div>
+            </div>
+            <Arrow />
+            <div className="flex flex-1 flex-col gap-1">
+              <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Success
+              </span>
+              <span className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-600">
+                <XCircle className="h-3.5 w-3.5" /> Error
+              </span>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Every execution writes one <Code>WorkflowRun</Code>. A retry never mutates that row: it
-            creates a new run linked with <Code>retryOfRunId</Code>. History stays append-only.
+          <p className="mt-4 text-xs text-muted-foreground">
+            Every execution writes its own run. A retry never edits that record: it creates a new
+            run linked to the previous one. History stays append-only.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* Entry points */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">Entry points</h2>
-        <div className="rounded-lg border overflow-hidden">
-          <div className="grid grid-cols-4 gap-2 bg-muted/50 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            <span>Trigger</span>
-            <span>Execution</span>
-            <span>Retries</span>
-            <span>Worker</span>
-          </div>
-          {ENTRY_POINTS.map((entry) => (
-            <div key={entry.name} className="grid grid-cols-4 gap-2 px-3 py-2 border-t text-[11px]">
-              <span className="font-medium">{entry.name}</span>
-              <span className="text-muted-foreground">{entry.execution}</span>
-              <span className="text-muted-foreground">{entry.retries}</span>
-              <span className="text-muted-foreground">{entry.worker}</span>
-            </div>
-          ))}
+      {/* Where runs start */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Where runs start</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {TRIGGERS.map((trigger) => {
+            const Icon = trigger.icon;
+            return (
+              <div key={trigger.name} className="rounded-xl border p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-md border ${trigger.tone}`}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="text-xs font-medium">{trigger.name}</span>
+                  <Badge
+                    variant="outline"
+                    className={`ml-auto text-[9px] font-normal ${
+                      trigger.mode === "queue"
+                        ? "border-purple-500/40 text-purple-600"
+                        : "border-blue-500/40 text-blue-600"
+                    }`}
+                  >
+                    {trigger.mode}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{trigger.text}</p>
+              </div>
+            );
+          })}
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          Webhooks and sub-workflows run inline so they never depend on Redis. Only queued triggers
-          and automatic retries need <Code>make worker</Code>.
-        </p>
-      </div>
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <p className="text-[11px] text-muted-foreground">
+            Test runs and sub-workflows never retry. Tests are interactive, and a sub-workflow
+            failure belongs to the parent run.
+          </p>
+        </div>
+      </section>
 
-      {/* BullMQ */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">What BullMQ does — and does not do</h2>
-        <Card>
-          <CardContent className="p-4 space-y-3 text-xs">
-            <div className="flex items-start gap-2">
-              <Server className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-              <p>
-                BullMQ is the <strong>transport</strong>. Queue name{" "}
-                <Code>workflow-execution</Code>, Redis via <Code>REDIS_URL</Code>. The worker lives
-                in <Code>src/lib/queue-worker.ts</Code> and is started by{" "}
-                <Code>src/worker.ts</Code>.
+      {/* Queue vs policy */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Queue vs. policy</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card className="border-blue-500/30">
+            <CardContent className="space-y-2 p-4">
+              <div className="flex items-center gap-2">
+                <Server className="h-4 w-4 text-blue-500" />
+                <span className="text-xs font-medium">The queue moves work</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Redis holds pending jobs. A worker takes them and executes the workflow. It does not
+                decide whether a failed run deserves another attempt.
               </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-              <p>
-                <strong>Node failures do not retry at the queue level.</strong> The processor
-                resolves with a result; it does not throw. BullMQ only retries thrown jobs. Before
-                this change the queue was configured with <Code>attempts: 3</Code>, but that policy
-                never ran.
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-500/30">
+            <CardContent className="space-y-2 p-4">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-emerald-500" />
+                <span className="text-xs font-medium">The policy decides retries</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                It looks at the failure, the attempt number and the time since the last try. Then it
+                creates the next run and schedules it.
               </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
-              <p>
-                The retry policy lives in application code:{" "}
-                <Code>src/lib/workflows/retry.ts</Code> decides,{" "}
-                <Code>src/lib/workflows/run-retries.ts</Code> creates the linked run, and the queue
-                only carries the job. Job-level attempts still cover unexpected transport
-                exceptions.
-              </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <Database className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
-              <p>
-                <Code>src/lib/queue.ts</Code> is a lazy client: importing it does not open Redis and
-                does not start a worker. That is why route handlers can enqueue safely.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="rounded-lg border bg-muted/30 p-3">
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-medium text-foreground">Why it matters:</span> a failed node does
+            not crash the queue job. Before, the queue was configured to retry but never saw a
+            failure. The policy had to move to the run itself.
+          </p>
+        </div>
+      </section>
 
-      {/* Policy */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">Automatic retry policy</h2>
+      {/* Automatic retry */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">Automatic retry</h2>
         <p className="text-xs text-muted-foreground">
-          Three attempts in total: the original run plus two retries. Each attempt is a new run with
-          an incremented <Code>attempt</Code>.
+          Three attempts in total: the original run plus two retries. Each attempt is a new run.
         </p>
+
+        <div className="rounded-xl border p-4">
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-red-600">
+              <XCircle className="h-3 w-3" /> Run 1
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border px-2 py-1 text-muted-foreground">
+              <Timer className="h-3 w-3" /> 2s
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-red-600">
+              <XCircle className="h-3 w-3" /> Run 2
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border px-2 py-1 text-muted-foreground">
+              <Timer className="h-3 w-3" /> 8s
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-red-600">
+              <XCircle className="h-3 w-3" /> Run 3
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border px-2 py-1 font-medium">
+              stop
+            </span>
+          </div>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border p-3 space-y-2">
+          <div className="rounded-xl border border-emerald-500/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs font-medium">Retryable</span>
+              <span className="text-xs font-medium">Retry</span>
             </div>
             <ul className="space-y-1 text-[11px] text-muted-foreground">
               {RETRYABLE.map((item) => (
@@ -231,10 +265,10 @@ export default function RunRetriesDocsPage() {
               ))}
             </ul>
           </div>
-          <div className="rounded-lg border p-3 space-y-2">
+          <div className="rounded-xl border border-red-500/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-500" />
-              <span className="text-xs font-medium">Permanent</span>
+              <span className="text-xs font-medium">Do not retry</span>
             </div>
             <ul className="space-y-1 text-[11px] text-muted-foreground">
               {PERMANENT.map((item) => (
@@ -247,84 +281,129 @@ export default function RunRetriesDocsPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border p-3 space-y-2">
+        <div className="rounded-xl border p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Timer className="h-4 w-4 text-blue-500" />
-            <span className="text-xs font-medium">Backoff</span>
+            <span className="text-xs font-medium">Wait grows with every attempt</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-1.5">
             {BACKOFF.map((row) => (
-              <Badge key={row.attempt} variant="outline" className="text-[10px] font-normal">
-                attempt {row.attempt} → {row.delay}
-              </Badge>
+              <div key={row.attempt} className="flex items-center gap-2 text-[10px]">
+                <span className="w-14 shrink-0 text-muted-foreground">attempt {row.attempt}</span>
+                <div className="h-2 flex-1 rounded-full bg-muted">
+                  <div className={`h-full rounded-full bg-blue-500/60 ${row.width}`} />
+                </div>
+                <span className="w-10 shrink-0 text-right font-medium">{row.delay}</span>
+              </div>
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Exponential, base 2s, factor 4, capped at 5 minutes, with ±20% jitter so many runs do not
-            retry at the same instant. Unknown failures are treated as permanent: retrying blindly is
-            how a broken workflow becomes an unbounded loop.
+            Exponential, capped at five minutes, with a small random jitter so many runs do not
+            retry at the same instant. Unknown failures count as permanent: retrying blindly turns
+            a broken workflow into an endless loop.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Manual retry */}
-      <div className="space-y-3">
+      <section className="space-y-3">
         <h2 className="text-sm font-semibold">Manual retry</h2>
-        <div className="rounded-lg border p-4 space-y-2 text-xs">
-          <p>
-            A failed run can be retried from the run history. Manual retries run{" "}
-            <strong>inline</strong>, so they work without the worker.
-          </p>
-          <ul className="space-y-1 text-[11px] text-muted-foreground">
-            <li>• Not gated by the failure class: you may have fixed the configuration.</li>
-            <li>• One retry per run every 30 seconds.</li>
-            <li>• Maximum chain of 10 runs, so a click loop cannot create unbounded runs.</li>
-            <li>• Creates a linked run; the original stays untouched.</li>
-          </ul>
-          <p className="text-[10px] text-amber-600">
-            The retry replays the payload stored on the original run. Webhook payloads are stored
-            sanitized, so a retry that depended on a redacted secret in the body must be re-triggered
-            from the source.
+        <div className="rounded-xl border p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-red-600">
+              <XCircle className="h-3 w-3" /> Failed run
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-orange-600">
+              <MousePointerClick className="h-3 w-3" /> Retry
+            </span>
+            <Arrow />
+            <span className="flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-blue-600">
+              <RefreshCw className="h-3 w-3" /> Linked run
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs font-medium">30s</p>
+              <p className="text-[10px] text-muted-foreground">between retries of the same run</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs font-medium">10 runs</p>
+              <p className="text-[10px] text-muted-foreground">maximum retry chain</p>
+            </div>
+            <div className="rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs font-medium">Inline</p>
+              <p className="text-[10px] text-muted-foreground">works without the worker</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Manual retries are not blocked by the failure type: you may have fixed the
+            configuration. They replay the payload stored on the original run. Webhook payloads are
+            stored sanitized, so if the retry depended on a redacted secret in the body, trigger it
+            again from the source.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* Data model */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">What the run records</h2>
-        <div className="rounded-lg border p-4 space-y-2 text-xs">
-          <div className="flex items-start gap-2">
-            <Database className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
-            <div className="space-y-1">
+      {/* Run record */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">What a run remembers</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Database className="h-4 w-4 text-purple-500" />
+              <span className="text-xs font-medium">Identity</span>
+            </div>
+            <div className="space-y-1 text-[11px] text-muted-foreground">
               <p>
-                <Code>attempt</Code> — 1 for the original, N for the Nth attempt.
+                <span className="text-foreground">Attempt</span> — 1 for the original, N for the Nth
+                try.
               </p>
               <p>
-                <Code>retryOfRunId</Code> — the run this one retries, empty for originals.
+                <span className="text-foreground">Retry of</span> — the run it replays, empty for
+                originals.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-xl border p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-500" />
+              <span className="text-xs font-medium">Timing and state</span>
+            </div>
+            <div className="space-y-1 text-[11px] text-muted-foreground">
+              <p>
+                <span className="text-foreground">Next retry</span> — when the next automatic
+                attempt is due.
               </p>
               <p>
-                <Code>nextRetryAt</Code> — when the next automatic attempt is due.
-              </p>
-              <p>
-                <Code>status</Code> — <Code>queued</Code> while a retry waits for the worker, then{" "}
-                <Code>running</Code>, <Code>success</Code> or <Code>error</Code>.
+                <span className="text-foreground">Status</span> — queued, running, success or
+                error.
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* UI */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold">What you see in the editor</h2>
-        <div className="rounded-lg border p-4 space-y-2 text-xs text-muted-foreground">
-          <p>Run history shows the attempt badge, the full error and a retry-of link.</p>
-          <p>
-            Failed runs get a <strong>Retry</strong> button with idle, loading and throttled states.
-            Sub-workflow and test runs do not show it.
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold">In the editor</h2>
+        <div className="rounded-xl border p-4 space-y-2 text-[11px] text-muted-foreground">
+          <p className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[9px]">
+              attempt 2
+            </Badge>
+            Run history shows which attempt you are looking at.
+          </p>
+          <p className="flex items-center gap-2">
+            <RefreshCw className="h-3.5 w-3.5 text-orange-500" />
+            Failed runs get a Retry button with idle, loading and throttled states.
+          </p>
+          <p className="flex items-center gap-2">
+            <XCircle className="h-3.5 w-3.5 text-red-500" />
+            The full error is shown before the step logs.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Navigation */}
       <div className="flex gap-4">
