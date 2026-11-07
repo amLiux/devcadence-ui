@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Repeat,
   Server,
+  Settings,
   Timer,
   Webhook,
   XCircle,
@@ -219,8 +220,17 @@ export default function RunRetriesDocsPage() {
       <section className="space-y-3">
         <h2 className="text-sm font-semibold">Automatic retry</h2>
         <p className="text-xs text-muted-foreground">
-          Three attempts in total: the original run plus two retries. Each attempt is a new run.
+          Three attempts in total by default: the original run plus two retries. Each attempt is a
+          new run.
         </p>
+
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <Settings className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <p className="text-[11px] text-muted-foreground">
+            These are the defaults. Change attempts, backoff and the manual limits in{" "}
+            <span className="font-medium text-foreground">Settings → Runs &amp; retries</span>.
+          </p>
+        </div>
 
         <div className="rounded-xl border p-4">
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
@@ -340,7 +350,8 @@ export default function RunRetriesDocsPage() {
             Manual retries are not blocked by the failure type: you may have fixed the
             configuration. They replay the payload stored on the original run. Webhook payloads are
             stored sanitized, so if the retry depended on a redacted secret in the body, trigger it
-            again from the source.
+            again from the source. The 30s cooldown and the 10-run cap are defaults; both are
+            configurable.
           </p>
         </div>
       </section>

@@ -93,9 +93,13 @@ export function classifyFailure(input: FailureInput): FailureClass {
  * next). Attempt 2 waits 2s, attempt 3 waits 8s, attempt 4 waits 32s, capped at
  * 5 minutes. Jitter is +/-20% so retries from many runs do not sync up.
  */
-export function backoffDelayMs(attempt: number, options: { random?: () => number } = {}): number {
+export function backoffDelayMs(
+  attempt: number,
+  options: { random?: () => number; baseMs?: number } = {},
+): number {
   const exponent = Math.max(0, attempt - 2);
-  const base = Math.min(BASE_BACKOFF_MS * BACKOFF_FACTOR ** exponent, MAX_BACKOFF_MS);
+  const baseMs = options.baseMs ?? BASE_BACKOFF_MS;
+  const base = Math.min(baseMs * BACKOFF_FACTOR ** exponent, MAX_BACKOFF_MS);
   const random = options.random ?? Math.random;
   const factor = 1 + (random() * 2 - 1) * BACKOFF_JITTER;
   return Math.min(Math.round(base * factor), MAX_BACKOFF_MS);
@@ -106,11 +110,15 @@ export function planAutoRetry({
   attempt,
   failure,
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
+  baseDelayMs = BASE_BACKOFF_MS,
+  enabled = true,
   random,
 }: {
   attempt: number;
   failure: FailureInput;
   maxAttempts?: number;
+  baseDelayMs?: number;
+  enabled?: boolean;
   random?: () => number;
 }): AutoRetryPlan {
   const stop = (reason: string): AutoRetryPlan => ({
@@ -120,6 +128,7 @@ export function planAutoRetry({
     delayMs: null,
   });
 
+  if (!enabled) return stop("automatic retries are disabled");
   if (!Number.isFinite(attempt) || attempt < 1) return stop("invalid attempt number");
   if (attempt >= maxAttempts) return stop(`max attempts reached (${maxAttempts})`);
   if (classifyFailure(failure) === "permanent") return stop("failure is not retryable");
@@ -129,21 +138,28 @@ export function planAutoRetry({
     retry: true,
     reason: "retryable failure",
     nextAttempt,
-    delayMs: backoffDelayMs(nextAttempt, { random }),
+    delayMs: backoffDelayMs(nextAttempt, { random, baseMs: baseDelayMs }),
   };
 }
 
 /** Decides whether a human may retry a failed run right now. */
-export function canRetryRun(run: ManualRetryState, now = Date.now()): ManualRetryDecision {
+export function canRetryRun(
+  run: ManualRetryState,
+  now = Date.now(),
+  options: { cooldownMs?: number; maxChain?: number } = {},
+): ManualRetryDecision {
+  const maxChain = options.maxChain ?? MAX_RETRY_CHAIN;
+  const cooldownMs = options.cooldownMs ?? MANUAL_RETRY_COOLDOWN_MS;
+
   if (run.status !== "error") return { allowed: false, reason: "only failed runs can be retried" };
-  if (run.chainLength >= MAX_RETRY_CHAIN) {
-    return { allowed: false, reason: `retry chain limit reached (${MAX_RETRY_CHAIN})` };
+  if (run.chainLength >= maxChain) {
+    return { allowed: false, reason: `retry chain limit reached (${maxChain})` };
   }
 
   if (run.lastRetryAt != null) {
     const elapsed = now - run.lastRetryAt;
-    if (elapsed < MANUAL_RETRY_COOLDOWN_MS) {
-      const seconds = Math.ceil((MANUAL_RETRY_COOLDOWN_MS - elapsed) / 1000);
+    if (elapsed < cooldownMs) {
+      const seconds = Math.ceil((cooldownMs - elapsed) / 1000);
       return { allowed: false, reason: `retry cooldown active (${seconds}s left)` };
     }
   }

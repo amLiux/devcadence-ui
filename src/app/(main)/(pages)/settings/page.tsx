@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell, RefreshCw } from "lucide-react";
 import { SectionCard } from "@/components/composed/section-card";
 
 const sections = [
@@ -7,6 +7,12 @@ const sections = [
     title: "Notifications",
     description: "Get a message when a scheduled or webhook run fails.",
     icon: <Bell className="h-5 w-5 text-primary" />,
+  },
+  {
+    href: "/settings/runs",
+    title: "Runs & retries",
+    description: "Default policy for failed runs: attempts, backoff and manual retry limits.",
+    icon: <RefreshCw className="h-5 w-5 text-primary" />,
   },
 ];
 

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   findFirst: vi.fn(),
   create: vi.fn(),
+  retrySettingFindUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -13,6 +14,9 @@ vi.mock("@/lib/db", () => ({
       findUnique: mocks.findUnique,
       findFirst: mocks.findFirst,
       create: mocks.create,
+    },
+    retrySetting: {
+      findUnique: mocks.retrySettingFindUnique,
     },
   },
 }));
@@ -43,7 +47,9 @@ beforeEach(() => {
   mocks.findUnique.mockReset();
   mocks.findFirst.mockReset();
   mocks.create.mockReset();
+  mocks.retrySettingFindUnique.mockReset();
   mocks.findFirst.mockResolvedValue(null);
+  mocks.retrySettingFindUnique.mockResolvedValue(null);
 });
 
 describe("loadRetryChainLength", () => {
