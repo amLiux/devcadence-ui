@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronRight, Clock, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DebugModal } from "@/components/composed/debug-modal";
 import { logToDebug } from "@/hooks/use-debug-logs";
@@ -15,6 +15,8 @@ interface WorkflowRun {
   startedAt: string;
   finishedAt: string | null;
   error: string | null;
+  attempt?: number;
+  retryOfRunId?: string | null;
 }
 
 export interface WorkflowLog {
@@ -52,6 +54,7 @@ function StatusBadge({ status }: { status: string }) {
     success: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
     error: "bg-red-500/10 text-red-600 border-red-500/30",
     running: "bg-blue-500/10 text-blue-600 border-blue-500/30 animate-pulse",
+    queued: "bg-amber-500/10 text-amber-600 border-amber-500/30",
     cancelled: "bg-gray-500/10 text-gray-600 border-gray-500/30",
   };
   return (
@@ -73,11 +76,44 @@ function SourceLabel({ source }: { source: string }) {
 }
 
 
-function RunRow({ run, defaultExpanded }: { run: WorkflowRun; defaultExpanded?: boolean }) {
+function RunRow({
+  run,
+  defaultExpanded,
+  onRetried,
+}: {
+  run: WorkflowRun;
+  defaultExpanded?: boolean;
+  onRetried?: () => void;
+}) {
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [logs, setLogs] = useState<WorkflowLog[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [detailSteps, setDetailSteps] = useState<NodeDebugLog[] | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  const canRetry = run.status === "error" && run.source !== "subWorkflow" && run.source !== "test";
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const response = await fetch(
+        `/api/workflows/${run.workflowId}/runs/${run.id}/retry`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setRetryError(data.error ?? "Retry failed");
+        return;
+      }
+      onRetried?.();
+    } catch {
+      setRetryError("Retry failed");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const fetchLogs = useCallback(async () => {
     if (logs) return logs;
@@ -131,6 +167,9 @@ function RunRow({ run, defaultExpanded }: { run: WorkflowRun; defaultExpanded?: 
             {logs && <span className="text-muted-foreground font-normal ml-1">· {logs.length} step(s)</span>}
           </span>
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            {run.attempt && run.attempt > 1 && (
+              <span className="rounded border px-1 py-0.5">attempt {run.attempt}</span>
+            )}
             {totalMs !== null && <span>{formatDuration(totalMs)}</span>}
             <Clock className="h-3 w-3" />
             <span>{timeAgo(run.startedAt)}</span>
@@ -149,13 +188,43 @@ function RunRow({ run, defaultExpanded }: { run: WorkflowRun; defaultExpanded?: 
                   <span>{formatDuration(new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime())}</span>
                 </>
               )}
-              <button
-                onClick={handleDetails}
-                className="ml-auto text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Details
-              </button>
+              {run.retryOfRunId && (
+                <>
+                  <span>·</span>
+                  <span>retry of {run.retryOfRunId.slice(0, 8)}</span>
+                </>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                {canRetry && (
+                  <button
+                    onClick={handleRetry}
+                    disabled={retrying}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    {retrying ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3 w-3" />
+                    )}
+                    {retrying ? "Retrying..." : "Retry"}
+                  </button>
+                )}
+                <button
+                  onClick={handleDetails}
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Details
+                </button>
+              </div>
             </div>
+
+            {run.error && (
+              <p className="text-[10px] text-red-500 break-words">{run.error}</p>
+            )}
+
+            {retryError && (
+              <p className="text-[10px] text-amber-600">{retryError}</p>
+            )}
 
             {loading && <p className="text-[10px] text-muted-foreground animate-pulse">Loading logs...</p>}
 
@@ -268,7 +337,12 @@ export function ExecutionHistory({
               return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
             })
             .map((run) => (
-              <RunRow key={run.id} run={run} defaultExpanded={run.id === initialRunId} />
+              <RunRow
+                key={run.id}
+                run={run}
+                defaultExpanded={run.id === initialRunId}
+                onRetried={fetchRuns}
+              />
             ))}
         </div>
       )}
