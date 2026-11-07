@@ -42,6 +42,14 @@ export interface InputConfig {
   label?: string;
   defaultValue?: string;
   options?: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
+  /** Never required, regardless of the other values. */
+  optional?: boolean;
+  /** Optional only when the referenced field matches one of these values. */
+  optionalWhen?: { key: string; equals: string[] };
+  /** Required only when the referenced field matches one of these values. */
+  requiredWhen?: { key: string; equals: string[] };
 }
 
 export interface CheckboxConfig {
@@ -203,4 +211,24 @@ export interface ContextStep {
   success: boolean;
   error: string | null;
   previousStep?: ContextStep;
+}
+
+// AI management (personas, prompts, context, memory)
+export interface NamedItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface AIPersona extends NamedItem {
+  systemPrompt: string;
+  tone: string;
+}
+
+export interface AIPrompt extends NamedItem {
+  template: string;
+}
+
+export interface AIContent extends NamedItem {
+  content: string;
 }

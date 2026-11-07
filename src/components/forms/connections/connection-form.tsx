@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 
 import { integrationConfigs, connectionIcons } from "@/lib/constants";
 import { useModal } from "@/providers/modal-provider";
-import type { Connection, ConnectionData, ConnectionType } from "@/lib/types";
+import type { Connection, ConnectionData, ConnectionType, InputConfig } from "@/lib/types";
 import { ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 
 interface Props {
@@ -26,13 +26,58 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
   const [selectedType, setSelectedType] = useState<ConnectionType | "">(initialData?.type ?? "");
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [config, setConfig] = useState<Record<string, string>>(initialData?.config ?? {});
+  const [config, setConfig] = useState<Record<string, string>>(() => {
+    if (!initialData) return {};
+    // Never put stored secrets in the form state: password inputs render empty
+    // and the original value is re-attached on save when the user leaves it blank.
+    const stored = { ...initialData.config };
+    const passwordKeys =
+      integrationConfigs[initialData.type]?.inputs
+        .filter((input) => input.type === "password")
+        .map((input) => input.key) ?? [];
+    for (const key of passwordKeys) delete stored[key];
+    return stored;
+  });
+  const [touchedPasswordKeys, setTouchedPasswordKeys] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(0);
   const { setClose } = useModal();
 
   const config_ = selectedType ? integrationConfigs[selectedType] : undefined;
   const inputs = config_?.inputs ?? [];
+
+  const fieldDefaults = Object.fromEntries(
+    inputs.map(({ key, defaultValue }) => [key, defaultValue ?? ""]),
+  ) as Record<string, string>;
+  const values: Record<string, string> = { ...fieldDefaults, ...config };
+
+  const storedSecrets = initialData?.config ?? {};
+  const hasStoredSecret = (key: string) =>
+    typeof storedSecrets[key] === "string" && storedSecrets[key].length > 0;
+
+  const getFieldState = (input: InputConfig): { missing: boolean; requirement: "required" | "optional" } => {
+    const current = (key: string) => values[key] ?? "";
+
+    if (input.type === "password" && hasStoredSecret(input.key) && !current(input.key)) {
+      return { missing: false, requirement: "optional" };
+    }
+
+    if (input.requiredWhen) {
+      const required = input.requiredWhen.equals.includes(current(input.requiredWhen.key));
+      return { missing: required && !current(input.key), requirement: required ? "required" : "optional" };
+    }
+
+    if (input.optionalWhen) {
+      const optional = input.optionalWhen.equals.includes(current(input.optionalWhen.key));
+      if (optional) return { missing: false, requirement: "optional" };
+      return { missing: !current(input.key) && input.defaultValue === undefined, requirement: "required" };
+    }
+
+    if (input.optional) return { missing: false, requirement: "optional" };
+    const required = input.defaultValue === undefined;
+    return { missing: required && !current(input.key), requirement: required ? "required" : "optional" };
+  };
+  const hasMissing = inputs.some((input) => getFieldState(input).missing);
 
   const allTypes = (Object.keys(integrationConfigs) as ConnectionType[]).sort((a, b) => {
     const aSoon = !!integrationConfigs[a].comingSoon;
@@ -46,13 +91,33 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
 
   const handleInputChange = (key: string, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
+    const input = inputs.find((i) => i.key === key);
+    if (input?.type === "password") {
+      setTouchedPasswordKeys((prev) => new Set(prev).add(key));
+    }
   };
 
   const handleSubmit = async () => {
     if (!selectedType || !name) return;
     setSubmitting(true);
     try {
-      const data = { type: selectedType, name, description, config };
+      const merged = { ...fieldDefaults, ...config };
+      for (const input of inputs) {
+        if (
+          input.type === "password" &&
+          !merged[input.key] &&
+          hasStoredSecret(input.key) &&
+          !touchedPasswordKeys.has(input.key)
+        ) {
+          merged[input.key] = storedSecrets[input.key];
+        }
+      }
+      const data = {
+        type: selectedType,
+        name,
+        description,
+        config: merged,
+      };
       if (initialData && onUpdate) {
         await onUpdate(initialData.id, data);
       } else {
@@ -201,14 +266,23 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
                 placeholder="Optional description"
               />
             </div>
-            {inputs.map(({ key, type, label, defaultValue, options }) => (
+            {inputs.map((input) => {
+              const { key, type, label, options, placeholder, hint } = input;
+              const { requirement } = getFieldState(input);
+              return (
               <div key={key} className={`space-y-2 ${!compact && type === "select" ? "md:col-span-2" : ""}`}>
-                <Label htmlFor={key}>{label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}</Label>
+                <Label htmlFor={key}>
+                  {label || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
+                  {requirement === "required" && <span className="text-destructive ml-0.5">*</span>}
+                  {requirement === "optional" && (
+                    <span className="text-muted-foreground ml-1 text-[10px]">(optional)</span>
+                  )}
+                </Label>
                 {type === "select" && options ? (
                   <select
                     id={key}
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    value={config[key] || defaultValue || ""}
+                    value={values[key] ?? ""}
                     onChange={(e) => handleInputChange(key, e.target.value)}
                   >
                     {options.map((opt) => (
@@ -221,13 +295,16 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
                   <Input
                     id={key}
                     type={type}
-                    value={config[key] || defaultValue || ""}
+                    value={values[key] ?? ""}
                     onChange={(e) => handleInputChange(key, e.target.value)}
-                    placeholder={type === "password" ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : ""}
+                    onFocus={() => setTouchedPasswordKeys((prev) => new Set(prev).add(key))}
+                    placeholder={placeholder ?? (type === "password" ? (hasStoredSecret(key) ? "Saved — leave blank to keep" : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022") : "")}
                   />
                 )}
+                {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
               </div>
-            ))}
+            );
+          })}
           </div>
         );
       })()}
@@ -237,7 +314,7 @@ export function ConnectionForm({ initialData, onSubmit, onUpdate }: Props) {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={submitting || !name || inputs.some(({ key, defaultValue }) => !config[key] && defaultValue === undefined)}
+          disabled={submitting || !name || hasMissing}
         >
           {submitting ? (initialData ? "Saving..." : "Connecting...") : (initialData ? "Save" : "Connect")}
         </Button>

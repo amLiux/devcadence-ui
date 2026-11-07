@@ -1,4 +1,12 @@
 import { prisma } from "@/lib/db";
+import { getConnection } from "@/lib/db/connections";
+import {
+  aiConfigProblem,
+  chatCompletionsUrl,
+  messagesUrl,
+  resolveAIConfig,
+  type ResolvedAIConfig,
+} from "@/lib/ai/providers";
 import { resolveTemplates } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
 
@@ -58,39 +66,37 @@ export async function buildSystemPrompt(
   return parts.join("\n\n---\n\n");
 }
 
-interface AIProviderConfig {
-  provider: string;
-  apiKey: string;
-  model?: string;
+async function getAIConfig(connectionId: string): Promise<ResolvedAIConfig> {
+  const conn = await getConnection(connectionId);
+  if (!conn) throw new Error("AI connection not found");
+  if (conn.type !== "AI") throw new Error("Connection is not an AI connection");
+
+  const config = resolveAIConfig(conn.config as Record<string, string>);
+  const problem = aiConfigProblem(config, { requireModel: true });
+  if (problem) throw new Error(problem);
+
+  return config;
 }
 
-async function getAIConfig(connectionId: string): Promise<AIProviderConfig> {
-  const conn = await prisma.connection.findUnique({ where: { id: connectionId } });
-  if (!conn) throw new Error(`Connection ${connectionId} not found`);
-  if (conn.type !== "AI") throw new Error(`Connection ${connectionId} is not AI`);
-
-  const config = conn.config as Record<string, string>;
-  return {
-    provider: config.provider || "openai",
-    apiKey: config.apiKey,
-    model: config.model,
-  };
+function redact(message: string, secret: string): string {
+  return secret ? message.split(secret).join("***") : message;
 }
 
-async function callOpenAI(
-  apiKey: string,
-  model: string,
+async function callChatCompletions(
+  config: ResolvedAIConfig,
   systemPrompt: string,
   userMessage: string,
 ): Promise<string> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (config.apiKey) {
+    headers.Authorization = `Bearer ${config.apiKey}`;
+  }
+
+  const res = await fetch(chatCompletionsUrl(config.baseUrl), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
-      model,
+      model: config.model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
@@ -100,56 +106,65 @@ async function callOpenAI(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI API error: ${res.status} ${err}`);
+    throw new Error(`${config.label} API error: ${res.status} ${redact(err, config.apiKey)}`);
   }
 
-  const data = await res.json();
-  return data.choices[0].message.content;
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== "string") {
+    throw new Error(`${config.label} returned no message content`);
+  }
+  return content;
 }
 
 async function callClaude(
-  apiKey: string,
-  model: string,
+  config: ResolvedAIConfig,
   systemPrompt: string,
   userMessage: string,
 ): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "anthropic-version": "2023-06-01",
+  };
+  if (config.apiKey) {
+    headers["x-api-key"] = config.apiKey;
+  }
+
+  const res = await fetch(messagesUrl(config.baseUrl), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
+    headers,
     body: JSON.stringify({
-      model,
+      model: config.model,
       max_tokens: 4096,
       system: systemPrompt,
-      messages: [
-        { role: "user", content: userMessage },
-      ],
+      messages: [{ role: "user", content: userMessage }],
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Claude API error: ${res.status} ${err}`);
+    throw new Error(`${config.label} API error: ${res.status} ${redact(err, config.apiKey)}`);
   }
 
-  const data = await res.json();
-  return data.content[0].text;
+  const data = (await res.json()) as { content?: Array<{ text?: string }> };
+  const content = data.content?.[0]?.text;
+  if (typeof content !== "string") {
+    throw new Error(`${config.label} returned no message content`);
+  }
+  return content;
 }
 
-async function callAI(
-  config: AIProviderConfig,
+export async function callAI(
+  config: ResolvedAIConfig,
   systemPrompt: string,
   userMessage: string,
 ): Promise<string> {
-  const model = config.model || (config.provider === "claude" ? "claude-3-5-sonnet-20241022" : "gpt-4o");
-
   if (config.provider === "claude") {
-    return callClaude(config.apiKey, model, systemPrompt, userMessage);
+    return callClaude(config, systemPrompt, userMessage);
   }
-  return callOpenAI(config.apiKey, model, systemPrompt, userMessage);
+  return callChatCompletions(config, systemPrompt, userMessage);
 }
 
 /** Prompt node — sends a prompt to AI and returns the response. */
@@ -160,10 +175,12 @@ export async function handlePrompt(
 ): Promise<NodeHandlerResult> {
   const { connectionId } = meta;
   if (!connectionId) return { success: false, message: "AI connection is required" };
-  if (!meta.prompt) return { success: false, message: "Prompt is required" };
+
+  const userPromptTemplate = await resolveUserPromptTemplate(meta);
+  if (!userPromptTemplate) return { success: false, message: "Prompt is required" };
 
   const config = await getAIConfig(connectionId);
-  const resolvedPrompt = resolveTemplates(meta.prompt, ancestorChain);
+  const resolvedPrompt = resolveTemplates(userPromptTemplate, ancestorChain);
   const baseSystemPrompt = await buildSystemPrompt(meta, "prompt");
   const resolvedSystemPrompt = resolveTemplates(baseSystemPrompt, ancestorChain);
 
@@ -173,6 +190,12 @@ export async function handlePrompt(
     message: `Prompt completed (${response.length} chars)`,
     data: { response },
   };
+}
+
+async function resolveUserPromptTemplate(meta: Record<string, string>): Promise<string | null> {
+  if (!meta.promptId) return null;
+  const saved = await prisma.aIPrompt.findUnique({ where: { id: meta.promptId } });
+  return saved?.template ?? null;
 }
 
 /** Classify node — classifies input text into categories. */

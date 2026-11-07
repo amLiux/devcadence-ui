@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { aiConfigProblem, modelsUrl, resolveAIConfig } from "@/lib/ai/providers";
 import { TESTABLE_CONNECTION_TYPES } from "@/lib/constants";
 import { createSmtpTransporter } from "@/lib/smtp";
 import type { ConnectionTestResult } from "@/lib/types";
@@ -146,26 +147,38 @@ async function probePostgres(config: Record<string, unknown>): Promise<ProbeResu
 }
 
 async function probeAi(config: Record<string, unknown>): Promise<ProbeResult> {
-  const apiKey = text(config, "apiKey");
-  if (!apiKey) return missing("API Key");
+  const resolved = resolveAIConfig({
+    provider: text(config, "provider"),
+    baseUrl: text(config, "baseUrl"),
+    apiKey: text(config, "apiKey"),
+    model: text(config, "model"),
+  });
 
-  const provider = text(config, "provider") || "openai";
+  const problem = aiConfigProblem(resolved);
+  if (problem) return { ok: false, message: problem };
 
-  if (provider === "claude") {
-    const res = await fetch("https://api.anthropic.com/v1/models", {
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!res.ok) return { ok: false, message: `Anthropic responded with ${res.status}` };
-    return { ok: true, message: "Anthropic key valid" };
+  const headers: Record<string, string> = {};
+  if (resolved.provider === "claude") {
+    if (resolved.apiKey) headers["x-api-key"] = resolved.apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  } else if (resolved.apiKey) {
+    headers.Authorization = `Bearer ${resolved.apiKey}`;
   }
 
-  const res = await fetch("https://api.openai.com/v1/models", {
-    headers: { Authorization: `Bearer ${apiKey}` },
+  const res = await fetch(modelsUrl(resolved.baseUrl), {
+    headers,
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  if (!res.ok) return { ok: false, message: `OpenAI responded with ${res.status}` };
-  return { ok: true, message: "OpenAI key valid" };
+
+  if (!res.ok) {
+    return { ok: false, message: `${resolved.label} responded with ${res.status}` };
+  }
+
+  if (resolved.provider === "custom") {
+    return { ok: true, message: `Endpoint reachable at ${resolved.baseUrl}` };
+  }
+
+  return { ok: true, message: `${resolved.label} key valid` };
 }
 
 async function probe(connection: TestableConnection): Promise<ProbeResult> {
