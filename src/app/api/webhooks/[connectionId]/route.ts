@@ -12,6 +12,7 @@ import {
 import { executeNode } from "@/lib/workflows/execute-node";
 import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { notifyRunFailure } from "@/lib/notifications/notify";
+import { enqueueAutoRetry } from "@/lib/workflows/execute-workflow";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { validateSchema } from "@/lib/json-schema";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -284,17 +285,29 @@ async function executeWebhook(
     }
 
     const allPassed = stepResults.every((r) => r.success);
+    const failureMessage =
+      stepResults.find((r) => !r.success)?.logs.find((l) => l.type === "error")?.message ??
+      "One or more nodes failed";
 
     await prisma.workflowRun.update({
       where: { id: run.id },
       data: {
         status: allPassed ? "success" : "error",
         finishedAt: new Date().toISOString(),
-        error: allPassed ? null : "One or more nodes failed",
+        error: allPassed ? null : failureMessage,
       },
     });
 
-    if (!allPassed) await notifyRunFailure(run.id);
+    if (!allPassed) {
+      await notifyRunFailure(run.id);
+      await enqueueAutoRetry({
+        workflowId: workflow.id,
+        source: "webhook",
+        body,
+        failedRunId: run.id,
+        failureMessage,
+      });
+    }
 
     results.push({
       workflowId: workflow.id,

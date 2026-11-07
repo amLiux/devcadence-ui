@@ -76,10 +76,17 @@ model WorkflowRun {
   error          String?
   nodeOutputs    Json?
   notifiedAt     DateTime?
+  attempt        Int           @default(1)
+  retryOfRunId   String?
+  nextRetryAt    DateTime?
   workflow       Workflow      @relation(fields: [workflowId], references: [id])
+  retryOf        WorkflowRun?  @relation("RunRetries", fields: [retryOfRunId], references: [id], onDelete: SetNull)
+  retries        WorkflowRun[] @relation("RunRetries")
   logs           WorkflowLog[]
 
   @@index([workflowId, notifiedAt])
+  @@index([status, nextRetryAt])
+  @@index([retryOfRunId])
 }
 
 model NotificationSetting {
