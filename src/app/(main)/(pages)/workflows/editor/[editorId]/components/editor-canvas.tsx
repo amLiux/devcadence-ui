@@ -23,7 +23,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { DebugModal } from "@/components/composed/debug-modal";
 import { useDebugLogs } from "@/hooks/use-debug-logs";
 import { useModal } from "@/providers/modal-provider";
-import { VersionHistoryDrawer } from "./version-history";
+import { useEditorDrawers } from "./use-editor-drawers";
 import { useCanvasInit } from "./use-canvas-init";
 import { useCanvasEvents } from "./use-canvas-events";
 import { useCanvasDrop } from "./use-canvas-drop";
@@ -52,10 +52,11 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
     setContext,
   } = useEditor();
   const { request } = useApi();
-  const { setOpen } = useModal();
+  const { setOpen, setClose } = useModal();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [variables, setVariables] = useState<Record<string, string>>(workflow.variables ?? {});
 
   const debug = useDebugLogs({
     onWorkflowResult: (context) => setContext(context),
@@ -146,16 +147,15 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
     selectNode(null);
   }, [selectNode]);
 
-  const handleVersions = () => {
-    setOpen(
-      <VersionHistoryDrawer
-        workflowId={workflow.id}
-        currentNodes={JSON.stringify(editor.elements)}
-        currentEdges={JSON.stringify(edges)}
-        onRestored={() => window.location.reload()}
-      />,
-    );
-  };
+  const drawers = useEditorDrawers({
+    workflow,
+    elements: editor.elements,
+    edges,
+    variables,
+    onVariablesSaved: setVariables,
+    setOpen,
+    setClose,
+  });
 
   return (
     <>
@@ -198,7 +198,8 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
               onSave={handleSave}
               onTest={handleTestWorkflow}
               onExport={handleExport}
-              onVersions={handleVersions}
+              onVersions={drawers.openVersions}
+              onVariables={drawers.openVariables}
             />
             <div className="flex-1 overflow-auto">
               <EditorCanvasSidebar

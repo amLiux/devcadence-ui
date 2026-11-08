@@ -89,6 +89,28 @@ export function outputsFromContext(context: WorkflowContext): Map<string, NodeOu
 }
 
 /**
+ * Attaches workflow-level variables to an ancestor chain so handlers can
+ * resolve {{workflow.name}}. A synthetic chain is created for root nodes,
+ * which have no parent output but still need the variables.
+ */
+export function withWorkflowVariables(
+  chain: ContextStep | undefined,
+  variables?: Record<string, string> | null,
+): ContextStep | undefined {
+  if (!variables || Object.keys(variables).length === 0) return chain;
+  if (!chain) {
+    return {
+      name: "",
+      output: undefined,
+      success: false,
+      error: null,
+      workflow: variables,
+    };
+  }
+  return { ...chain, workflow: variables };
+}
+
+/**
  * Evaluate an expression with previousStep as the input.
  * Also destructures any named outputs (from Output Name) as top-level variables.
  * Used by Transform Data and Conditional nodes.
@@ -131,6 +153,7 @@ export function resolveTemplates(text: string, ancestorChain: any, body?: Record
   const input = ancestorChain
     ? buildExpressionChain(ancestorChain)
     : { previousStep: body ?? {} };
+  if (ancestorChain?.workflow) input.workflow = ancestorChain.workflow;
   return resolveTemplateVariables(text, input);
 }
 

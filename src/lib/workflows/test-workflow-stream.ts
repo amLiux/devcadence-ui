@@ -164,11 +164,13 @@ export async function runTestWorkflowStream({
   runId,
   nodes,
   edges,
+  variables = {},
   enqueue,
 }: {
   runId: string;
   nodes: EditorNode[];
   edges: EditorEdge[];
+  variables?: Record<string, string>;
   enqueue: (message: unknown) => void;
 }): Promise<void> {
   const parents = buildParentMap(edges);
@@ -195,6 +197,7 @@ export async function runTestWorkflowStream({
     const { debugLog, data } = await executeNode(node, chain, {
       runId,
       stepNr: ++state.stepNr,
+      variables,
       onLog: (entry) => enqueue({ type: "log", nodeId, entry }),
     });
     state.results.push(debugLog);

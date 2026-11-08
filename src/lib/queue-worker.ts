@@ -42,6 +42,11 @@ async function prepareDiscordListenBody(
   if (!config?.connectionId || !config?.channelId) {
     throw new Error("Invalid discord-listen job body");
   }
+  if (!/^\d{17,20}$/.test(config.channelId)) {
+    throw new Error(
+      `Invalid Discord channel ID "${config.channelId}". Use the numeric channel ID, not a name or template.`,
+    );
+  }
 
   const connection = await getConnection(config.connectionId);
   if (!connection) throw new Error("Discord connection not found");

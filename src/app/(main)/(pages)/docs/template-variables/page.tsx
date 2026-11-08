@@ -350,6 +350,25 @@ export default function TemplateVariablesPage() {
         </div>
       </div>
 
+      {/* Workflow variables */}
+      <div className="rounded-lg border p-4 space-y-2">
+        <h2 className="text-sm font-semibold">Workflow variables</h2>
+        <p className="text-xs text-muted-foreground">
+          Reuse a value across nodes instead of repeating it. Define variables from the editor&apos;s{" "}
+          <strong>Variables</strong> button, then reference them as{" "}
+          <code className="bg-muted px-1 rounded">{"{{workflow.name}}"}</code>.
+        </p>
+        <div className="rounded-md bg-muted/50 p-2 text-[11px] font-mono space-y-1">
+          <p>Channel: {"{{workflow.discordChannel}}"}</p>
+          <p>Repo: {"{{workflow.githubRepo}}"}</p>
+          <p>Branch: {"{{workflow.githubBranch}}"}</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Workflow variables are resolved at runtime, so changing one updates every node that
+          references it.
+        </p>
+      </div>
+
       {/* Navigation */}
       <div className="flex gap-4">
         <Link href="/docs/connecting" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">

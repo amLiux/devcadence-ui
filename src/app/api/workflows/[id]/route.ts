@@ -16,6 +16,7 @@ const updateWorkflowSchema = z.object({
   nodes: z.string().optional(),
   edges: z.string().optional(),
   flowPath: z.string().optional(),
+  variables: z.record(z.string(), z.string()).optional(),
   status: z.enum(["draft", "active", "paused"]).optional(),
 });
 

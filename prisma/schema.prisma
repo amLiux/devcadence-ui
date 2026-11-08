@@ -25,6 +25,7 @@ model Workflow {
   nodes       String?
   edges       String?
   flowPath    String?
+  variables   Json?
   status      String        @default("draft")
   projectId   String
   createdAt   DateTime      @default(now())

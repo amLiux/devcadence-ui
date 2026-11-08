@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { readJsonBody } from "@/lib/api/body";
 import { runTestWorkflowStream } from "@/lib/workflows/test-workflow-stream";
+import { parseWorkflowVariables } from "@/lib/workflows/variables";
 import type { EditorNode, EditorEdge } from "@/lib/types";
 
 const testWorkflowSchema = z.object({
@@ -17,20 +18,23 @@ export async function POST(req: Request) {
     if (!parsed.ok) return parsed.response;
     const { workflowId, nodes: clientNodes, edges: clientEdges } = parsed.data;
 
-    let nodes: EditorNode[];
-    let edges: EditorEdge[];
-
-    if (clientNodes && clientNodes.length > 0) {
-      nodes = clientNodes;
-      edges = clientEdges || [];
-    } else {
-      const workflow = await prisma.workflow.findUnique({ where: { id: workflowId } });
-      if (!workflow) {
-        return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
-      }
-      nodes = workflow.nodes ? JSON.parse(workflow.nodes) : [];
-      edges = workflow.edges ? JSON.parse(workflow.edges) : [];
+    const workflow = await prisma.workflow.findUnique({ where: { id: workflowId } });
+    if (!workflow) {
+      return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
     }
+
+    const nodes: EditorNode[] =
+      clientNodes && clientNodes.length > 0
+        ? clientNodes
+        : workflow.nodes
+          ? JSON.parse(workflow.nodes)
+          : [];
+    const edges: EditorEdge[] =
+      clientNodes && clientNodes.length > 0
+        ? clientEdges || []
+        : workflow.edges
+          ? JSON.parse(workflow.edges)
+          : [];
 
     if (nodes.length === 0) {
       return NextResponse.json({ error: "Workflow has no nodes" }, { status: 400 });
@@ -51,6 +55,7 @@ export async function POST(req: Request) {
           runId: run.id,
           nodes,
           edges,
+          variables: parseWorkflowVariables(workflow.variables),
           enqueue,
         });
 
