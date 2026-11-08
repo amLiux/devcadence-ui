@@ -52,7 +52,7 @@ export function useCanvasEvents({
       const nodeId = (event as CustomEvent).detail.nodeId;
       const node = elements.find((item) => item.id === nodeId);
       if (!node) return;
-      debugRef.current.testNode(node, workflowId, elements, edges, context);
+      debugRef.current.testNode({ node, workflowId, nodes: elements, edges, context });
     };
 
     window.addEventListener("node:edit", handleNodeEdit);

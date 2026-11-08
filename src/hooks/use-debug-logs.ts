@@ -107,13 +107,19 @@ export function useDebugLogs(options?: UseDebugLogsOptions) {
   const [running, setRunning] = useState(false);
 
   const testNode = useCallback(
-    async (
-      node: EditorNode,
-      workflowId: string,
-      nodes: EditorNode[],
-      edges: EditorEdge[],
-      context: WorkflowContext,
-    ) => {
+    async ({
+      node,
+      workflowId,
+      nodes,
+      edges,
+      context,
+    }: {
+      node: EditorNode;
+      workflowId: string;
+      nodes: EditorNode[];
+      edges: EditorEdge[];
+      context: WorkflowContext;
+    }) => {
       setTitle(`Test: ${node.data.title}`);
       setSteps([{ nodeId: node.id, title: node.data.title, success: false, logs: [] }]);
       setOpen(true);
