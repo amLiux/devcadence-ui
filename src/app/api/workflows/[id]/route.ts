@@ -17,6 +17,43 @@ interface UpdateWorkflowBody {
   status?: WorkflowStatus;
 }
 
+function workflowFields(body: UpdateWorkflowBody) {
+  return {
+    ...(body.name !== undefined && { name: body.name }),
+    ...(body.description !== undefined && { description: body.description }),
+    ...(body.type !== undefined && { type: body.type }),
+    ...(body.projectId !== undefined && { projectId: body.projectId }),
+    ...(body.nodes !== undefined && { nodes: body.nodes }),
+    ...(body.edges !== undefined && { edges: body.edges }),
+    ...(body.status !== undefined && { status: body.status }),
+  };
+}
+
+function workflowUpdateFields(body: UpdateWorkflowBody) {
+  return {
+    ...workflowFields(body),
+    ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
+  };
+}
+
+async function syncScheduleAfterUpdate(
+  id: string,
+  body: UpdateWorkflowBody,
+  workflow: { status: string },
+): Promise<void> {
+  const shouldSync = body.status !== undefined || body.nodes !== undefined;
+  if (!shouldSync) return;
+
+  const status = body.status ?? (workflow.status as WorkflowStatus);
+  if (status === "active") {
+    await syncSchedules();
+    return;
+  }
+  if (status === "paused" || status === "draft") {
+    await unregisterSchedule(id);
+  }
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -58,43 +95,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // The version stores the state being replaced, so a restore is always
     // possible. It only lands when the content actually changed.
     const workflow = await prisma.$transaction(async (tx) => {
-      const next = {
-        ...current,
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.type !== undefined && { type: body.type }),
-        ...(body.projectId !== undefined && { projectId: body.projectId }),
-        ...(body.nodes !== undefined && { nodes: body.nodes }),
-        ...(body.edges !== undefined && { edges: body.edges }),
-        ...(body.status !== undefined && { status: body.status }),
-      };
+      const next = { ...current, ...workflowFields(body) };
 
       await recordVersion(tx, current, next, "save");
 
       return tx.workflow.update({
         where: { id },
-        data: {
-          ...(body.name !== undefined && { name: body.name }),
-          ...(body.description !== undefined && { description: body.description }),
-          ...(body.type !== undefined && { type: body.type }),
-          ...(body.projectId !== undefined && { projectId: body.projectId }),
-          ...(body.nodes !== undefined && { nodes: body.nodes }),
-          ...(body.edges !== undefined && { edges: body.edges }),
-          ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
-          ...(body.status !== undefined && { status: body.status }),
-        },
+        data: workflowUpdateFields(body),
       });
     });
 
-    const shouldSyncSchedule = body.status !== undefined || body.nodes !== undefined;
-    if (shouldSyncSchedule) {
-      const status = body.status ?? (workflow.status as WorkflowStatus);
-      if (status === "active") {
-        await syncSchedules();
-      } else if (status === "paused" || status === "draft") {
-        await unregisterSchedule(id);
-      }
-    }
+    await syncScheduleAfterUpdate(id, body, workflow);
 
     return NextResponse.json(serializeWorkflow(workflow));
   } catch (error) {
