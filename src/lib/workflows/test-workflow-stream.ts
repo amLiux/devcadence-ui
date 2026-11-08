@@ -1,25 +1,8 @@
 import { prisma } from "@/lib/db";
-import {
-  buildParentMap,
-  buildForwardMap,
-  buildAncestorChain,
-  findRoots,
-  type NodeOutput,
-} from "@/lib/workflow-context";
-import { executeNode } from "@/lib/workflows/execute-node";
-import { resolveNextNodeIds } from "@/lib/workflows/routing";
+import { runGraph, type SeedContext, type SeedResult } from "./run-graph";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 const now = () => new Date().toISOString();
-
-interface StreamState {
-  stepNr: number;
-  results: NodeDebugLog[];
-  visited: Set<string>;
-  nodeOutputs: Map<string, NodeOutput>;
-}
-
-type ForwardMap = ReturnType<typeof buildForwardMap>;
 
 async function recordInvalidPayload({
   root,
@@ -30,7 +13,7 @@ async function recordInvalidPayload({
   root: EditorNode;
   runId: string;
   enqueue: (message: unknown) => void;
-  state: StreamState;
+  state: SeedContext["state"];
 }): Promise<void> {
   await prisma.workflowRun.update({
     where: { id: runId },
@@ -53,7 +36,7 @@ async function recordInvalidPayload({
   enqueue({ type: "step-start", nodeId: root.id, title: "Webhook" });
   for (const entry of step.logs) enqueue({ type: "log", nodeId: root.id, entry });
   enqueue({ type: "step", step });
-  state.results.push(step);
+  state.stepResults.push(step);
   await prisma.workflowLog.create({
     data: {
       runId,
@@ -81,21 +64,20 @@ async function recordInvalidPayload({
   });
 }
 
-async function processWebhookRoot({
+async function seedWebhookRoot({
   root,
   runId,
-  forward,
-  nodes,
   enqueue,
   state,
-}: {
-  root: EditorNode;
+  queue,
+  forward,
+}: SeedContext & {
   runId: string;
-  forward: ForwardMap;
-  nodes: EditorNode[];
   enqueue: (message: unknown) => void;
-  state: StreamState;
-}): Promise<{ aborted: boolean; rootsToWalk: EditorNode[] }> {
+}): Promise<SeedResult> {
+  const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
+  if (!isWebhookTrigger) return "queue";
+
   const meta = (root.data.metadata || {}) as Record<string, string>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let payload: any;
@@ -105,7 +87,7 @@ async function processWebhookRoot({
       payload = JSON.parse(meta.testPayload);
     } catch {
       await recordInvalidPayload({ root, runId, enqueue, state });
-      return { aborted: true, rootsToWalk: [] };
+      return "abort";
     }
   }
 
@@ -132,7 +114,7 @@ async function processWebhookRoot({
   enqueue({ type: "step-start", nodeId: root.id, title: "Webhook" });
   for (const entry of step.logs) enqueue({ type: "log", nodeId: root.id, entry });
   enqueue({ type: "step", step });
-  state.results.push(step);
+  state.stepResults.push(step);
   await prisma.workflowLog.create({
     data: {
       runId,
@@ -152,12 +134,10 @@ async function processWebhookRoot({
   });
   state.nodeOutputs.set(root.id, { data: payload, success: true, error: null });
 
-  const rootsToWalk: EditorNode[] = [];
   for (const child of forward.get(root.id) || []) {
-    const childNode = nodes.find((item: EditorNode) => item.id === child.targetId);
-    if (childNode) rootsToWalk.push(childNode);
+    queue.push(child.targetId);
   }
-  return { aborted: false, rootsToWalk };
+  return "seeded";
 }
 
 export async function runTestWorkflowStream({
@@ -173,84 +153,30 @@ export async function runTestWorkflowStream({
   variables?: Record<string, string>;
   enqueue: (message: unknown) => void;
 }): Promise<void> {
-  const parents = buildParentMap(edges);
-  const forward = buildForwardMap(edges);
-  const roots = findRoots(nodes, edges);
-
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const state: StreamState = {
-    stepNr: 0,
-    results: [],
-    visited: new Set(),
-    nodeOutputs: new Map(),
-  };
-
-  async function walk(nodeId: string) {
-    if (state.visited.has(nodeId)) return;
-    state.visited.add(nodeId);
-
-    const node = nodes.find((item: EditorNode) => item.id === nodeId);
-    if (!node) return;
-
-    const chain = buildAncestorChain(nodeId, parents, state.nodeOutputs, nodes);
-    enqueue({ type: "step-start", nodeId, title: node.data.title });
-    const { debugLog, data } = await executeNode(node, chain, {
-      runId,
-      stepNr: ++state.stepNr,
-      variables,
-      onLog: (entry) => enqueue({ type: "log", nodeId, entry }),
-    });
-    state.results.push(debugLog);
-    enqueue({ type: "step", step: debugLog });
-
-    state.nodeOutputs.set(nodeId, {
-      data: data ?? null,
-      success: debugLog.success,
-      error: debugLog.success
-        ? null
-        : (debugLog.logs.find((log) => log.type === "error")?.message ?? "Unknown error"),
-    });
-
-    const children = forward.get(nodeId) || [];
-    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
-      await walk(targetId);
-    }
-  }
-
-  const rootsToWalk: EditorNode[] = [];
-  for (const root of roots) {
-    const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
-    if (isWebhookTrigger) {
-      const outcome = await processWebhookRoot({
-        root,
-        runId,
-        forward,
-        nodes,
-        enqueue,
-        state,
-      });
-      if (outcome.aborted) return;
-      rootsToWalk.push(...outcome.rootsToWalk);
-    } else {
-      rootsToWalk.push(root);
-    }
-  }
-
-  for (const root of rootsToWalk) {
-    await walk(root.id);
-  }
+  const state = await runGraph({
+    nodes,
+    edges,
+    runId,
+    variables,
+    order: "dfs",
+    seed: (context) => seedWebhookRoot({ ...context, runId, enqueue }),
+    onStepStart: (node) =>
+      enqueue({ type: "step-start", nodeId: node.id, title: node.data.title }),
+    onLog: (nodeId, entry) => enqueue({ type: "log", nodeId, entry }),
+    onStep: (debugLog) => enqueue({ type: "step", step: debugLog }),
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fullContext: Record<string, any> = {};
   for (const [nodeId, output] of state.nodeOutputs) {
-    const node = nodes.find((item: EditorNode) => item.id === nodeId);
+    const node = nodes.find((item) => item.id === nodeId);
     fullContext[nodeId] = {
       name: node?.data.title ?? "Unknown",
       ...output,
     };
   }
 
-  const allPassed = state.results.every((result) => result.success);
+  const allPassed = state.stepResults.every((result) => result.success);
 
   await prisma.workflowRun.update({
     where: { id: runId },
@@ -260,7 +186,7 @@ export async function runTestWorkflowStream({
       nodeOutputs: fullContext,
       error: allPassed
         ? null
-        : `${state.results.filter((result) => !result.success).length} node(s) failed`,
+        : `${state.stepResults.filter((result) => !result.success).length} node(s) failed`,
     },
   });
 
@@ -269,8 +195,8 @@ export async function runTestWorkflowStream({
     context: fullContext,
     success: allPassed,
     message: allPassed
-      ? `All ${state.results.length} node(s) passed`
-      : `${state.results.filter((result) => result.success).length}/${state.results.length} nodes passed`,
+      ? `All ${state.stepResults.length} node(s) passed`
+      : `${state.stepResults.filter((result) => result.success).length}/${state.stepResults.length} nodes passed`,
     runId,
   });
 }

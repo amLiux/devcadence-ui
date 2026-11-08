@@ -1,19 +1,11 @@
 import { prisma } from "@/lib/db";
-import {
-  buildParentMap,
-  buildForwardMap,
-  buildAncestorChain,
-  findRoots,
-  type NodeOutput,
-} from "@/lib/workflow-context";
-import { executeNode } from "@/lib/workflows/execute-node";
-import { resolveNextNodeIds } from "@/lib/workflows/routing";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { notifyRunFailure } from "@/lib/notifications/notify";
 import { enqueueWorkflow, type WorkflowJobData } from "@/lib/queue";
 import { scheduleAutoRetry } from "./run-retries";
 import { parseWorkflowVariables } from "./variables";
-import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
+import { runGraph, type RunGraphState } from "./run-graph";
+import type { EditorNode, EditorEdge } from "@/lib/types";
 
 export interface ExecuteRunResult {
   success: boolean;
@@ -29,18 +21,6 @@ export interface ExecuteRunOptions {
   runId?: string;
 }
 
-type ForwardMap = ReturnType<typeof buildForwardMap>;
-type ParentsMap = ReturnType<typeof buildParentMap>;
-
-interface RunState {
-  runId: string;
-  nodeOutputs: Map<string, NodeOutput>;
-  stepResults: NodeDebugLog[];
-  visited: Set<string>;
-  stepNr: number;
-  variables: Record<string, string>;
-}
-
 const now = () => new Date().toISOString();
 
 async function failRun(runId: string, error: string): Promise<void> {
@@ -48,117 +28,6 @@ async function failRun(runId: string, error: string): Promise<void> {
     where: { id: runId },
     data: { status: "error", finishedAt: new Date().toISOString(), error },
   });
-}
-
-async function seedTriggerRoots({
-  roots,
-  forward,
-  body,
-  state,
-}: {
-  roots: EditorNode[];
-  forward: ForwardMap;
-  body: unknown;
-  state: RunState;
-}): Promise<string[]> {
-  const queue: string[] = [];
-
-  for (const root of roots) {
-    const isTriggerWithBody = root.data.type === "Trigger" && Boolean(body);
-    if (!isTriggerWithBody) {
-      queue.push(root.id);
-      continue;
-    }
-
-    const title = root.data.title;
-    state.nodeOutputs.set(root.id, { data: body, success: true, error: null });
-    const startedAt = now();
-    state.stepNr++;
-    state.stepResults.push({
-      nodeId: root.id,
-      title,
-      success: true,
-      logs: [
-        { type: "info", message: `Starting ${title}...`, timestamp: startedAt },
-        { type: "success", message: `${title} completed in 0ms`, timestamp: now() },
-      ],
-    });
-    await prisma.workflowLog.create({
-      data: {
-        runId: state.runId,
-        nodeId: root.id,
-        nodeType: title,
-        stepNr: state.stepNr,
-        status: "success",
-        input: undefined,
-        output: sanitize(body).sanitized,
-        error: null,
-        controlFlow: undefined,
-        meta: undefined,
-        startedAt,
-        finishedAt: now(),
-        elapsedMs: 0,
-      },
-    });
-    state.visited.add(root.id);
-    for (const child of forward.get(root.id) || []) queue.push(child.targetId);
-  }
-
-  return queue;
-}
-
-async function walkNodes({
-  queue,
-  nodes,
-  parents,
-  forward,
-  nodeIds,
-  state,
-}: {
-  queue: string[];
-  nodes: EditorNode[];
-  parents: ParentsMap;
-  forward: ForwardMap;
-  nodeIds: Set<string>;
-  state: RunState;
-}): Promise<void> {
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    if (state.visited.has(nodeId)) continue;
-
-    const nodeParents = parents.get(nodeId) || [];
-    if (nodeParents.some((parent) => !state.visited.has(parent))) {
-      queue.push(nodeId);
-      continue;
-    }
-
-    state.visited.add(nodeId);
-    const node = nodes.find((item) => item.id === nodeId);
-    if (!node) continue;
-
-    const chain = buildAncestorChain(nodeId, parents, state.nodeOutputs, nodes);
-    const { debugLog, data } = await executeNode(node, chain, {
-      runId: state.runId,
-      stepNr: ++state.stepNr,
-      variables: state.variables,
-    });
-    state.stepResults.push(debugLog);
-
-    if (!state.nodeOutputs.has(nodeId)) {
-      state.nodeOutputs.set(nodeId, {
-        data: data ?? null,
-        success: debugLog.success,
-        error: debugLog.success
-          ? null
-          : (debugLog.logs.find((log) => log.type === "error")?.message ?? null),
-      });
-    }
-
-    const children = forward.get(nodeId) || [];
-    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
-      queue.push(targetId);
-    }
-  }
 }
 
 async function finalizeRun({
@@ -170,7 +39,7 @@ async function finalizeRun({
   workflowId: string;
   source: WorkflowJobData["source"];
   body: unknown;
-  state: RunState;
+  state: RunGraphState;
 }): Promise<{ success: boolean; failureMessage: string }> {
   const success = state.stepResults.every((result) => result.success);
   const failureMessage =
@@ -231,21 +100,51 @@ export async function executeWorkflowRun({
         },
       });
 
-  const parents = buildParentMap(edges);
-  const forward = buildForwardMap(edges);
-  const roots = findRoots(nodes, edges);
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const state: RunState = {
+  const state = await runGraph({
+    nodes,
+    edges,
     runId: run.id,
-    nodeOutputs: new Map(),
-    stepResults: [],
-    visited: new Set(),
-    stepNr: 0,
     variables: parseWorkflowVariables(workflow.variables),
-  };
+    seed: async ({ root, state: seedState, queue, forward }) => {
+      const isTriggerWithBody = root.data.type === "Trigger" && Boolean(body);
+      if (!isTriggerWithBody) return "queue";
 
-  const queue = await seedTriggerRoots({ roots, forward, body, state });
-  await walkNodes({ queue, nodes, parents, forward, nodeIds, state });
+      const title = root.data.title;
+      seedState.nodeOutputs.set(root.id, { data: body, success: true, error: null });
+      const startedAt = now();
+      seedState.stepNr++;
+      seedState.stepResults.push({
+        nodeId: root.id,
+        title,
+        success: true,
+        logs: [
+          { type: "info", message: `Starting ${title}...`, timestamp: startedAt },
+          { type: "success", message: `${title} completed in 0ms`, timestamp: now() },
+        ],
+      });
+      await prisma.workflowLog.create({
+        data: {
+          runId: seedState.runId,
+          nodeId: root.id,
+          nodeType: title,
+          stepNr: seedState.stepNr,
+          status: "success",
+          input: undefined,
+          output: sanitize(body).sanitized,
+          error: null,
+          controlFlow: undefined,
+          meta: undefined,
+          startedAt,
+          finishedAt: now(),
+          elapsedMs: 0,
+        },
+      });
+      seedState.visited.add(root.id);
+      for (const child of forward.get(root.id) || []) queue.push(child.targetId);
+      return "seeded";
+    },
+  });
+
   const outcome = await finalizeRun({ workflowId, source, body, state });
 
   return {
