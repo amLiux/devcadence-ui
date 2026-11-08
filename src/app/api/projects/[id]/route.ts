@@ -1,31 +1,26 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { readJsonBody } from "@/lib/api/body";
 import { deleteProjectAndReassign, getProject, updateProject } from "@/lib/db/projects";
 import { serializeProject } from "@/lib/projects/serialize";
 
-interface UpdateProjectBody {
-  name?: string;
-  description?: string;
-}
+const updateProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").optional(),
+  description: z.string().optional(),
+});
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = (await req.json()) as UpdateProjectBody;
+    const parsed = await readJsonBody(req, updateProjectSchema);
+    if (!parsed.ok) return parsed.response;
 
     const existing = await getProject(id);
     if (!existing) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (body.name !== undefined && (!body.name.trim() || typeof body.name !== "string")) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-
-    const project = await updateProject(id, {
-      ...(body.name !== undefined && { name: body.name.trim() }),
-      ...(body.description !== undefined && { description: body.description }),
-    });
-
+    const project = await updateProject(id, parsed.data);
     return NextResponse.json(serializeProject(project));
   } catch (error) {
     console.error("PUT /api/projects/[id] error:", error instanceof Error ? error.message : error);

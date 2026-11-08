@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 
 interface SeedRun {
   status: string;
@@ -95,12 +97,15 @@ async function seedRun(
   await seedSteps(created.id, run.status, startedAt);
 }
 
+const seedRunsSchema = z.object({
+  workflowId: z.string().min(1, "workflowId is required"),
+});
+
 export async function POST(req: Request) {
   try {
-    const { workflowId } = await req.json();
-    if (!workflowId) {
-      return NextResponse.json({ error: "workflowId required" }, { status: 400 });
-    }
+    const parsed = await readJsonBody(req, seedRunsSchema);
+    if (!parsed.ok) return parsed.response;
+    const { workflowId } = parsed.data;
 
     const workflow = await prisma.workflow.findUnique({ where: { id: workflowId } });
     if (!workflow) {

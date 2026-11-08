@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { readJsonBody } from "@/lib/api/body";
 import { getConnection, updateConnection, deleteConnection } from "@/lib/db/connections";
 import type { Connection } from "@/lib/types";
 
-interface PutRequestBody {
-  name?: string;
-  description?: string;
-  config?: Record<string, string>;
-}
+const updateConnectionSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
+});
 
 function toResponse(conn: NonNullable<Awaited<ReturnType<typeof getConnection>>>): Connection {
   return {
@@ -34,9 +36,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = (await req.json()) as PutRequestBody;
+    const parsed = await readJsonBody(req, updateConnectionSchema);
+    if (!parsed.ok) return parsed.response;
 
-    const connection = await updateConnection(id, body);
+    const connection = await updateConnection(id, parsed.data);
     return NextResponse.json(toResponse(connection));
   } catch (error) {
     console.error("PUT /api/connections error:", error);

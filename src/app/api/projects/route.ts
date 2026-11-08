@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { readJsonBody } from "@/lib/api/body";
 import { createProject, getProjects } from "@/lib/db/projects";
 import { serializeProject } from "@/lib/projects/serialize";
 
-interface CreateProjectBody {
-  name?: string;
-  description?: string;
-}
+const createProjectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  description: z.string().optional(),
+});
 
 export async function GET() {
   try {
@@ -19,16 +21,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as CreateProjectBody;
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+    const parsed = await readJsonBody(req, createProjectSchema);
+    if (!parsed.ok) return parsed.response;
 
     const project = await createProject({
-      name,
-      description: typeof body.description === "string" ? body.description : "",
+      name: parsed.data.name,
+      description: parsed.data.description ?? "",
     });
 
     return NextResponse.json(serializeProject(project), { status: 201 });

@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import { runTestWorkflowStream } from "@/lib/workflows/test-workflow-stream";
 import type { EditorNode, EditorEdge } from "@/lib/types";
 
-interface TestWorkflowRequest {
-  workflowId: string;
-  nodes?: EditorNode[];
-  edges?: EditorEdge[];
-}
+const testWorkflowSchema = z.object({
+  workflowId: z.string().min(1, "workflowId is required"),
+  nodes: z.array(z.custom<EditorNode>()).optional(),
+  edges: z.array(z.custom<EditorEdge>()).optional(),
+});
 
 export async function POST(req: Request) {
   try {
-    const {
-      workflowId,
-      nodes: clientNodes,
-      edges: clientEdges,
-    } = (await req.json()) as TestWorkflowRequest;
+    const parsed = await readJsonBody(req, testWorkflowSchema);
+    if (!parsed.ok) return parsed.response;
+    const { workflowId, nodes: clientNodes, edges: clientEdges } = parsed.data;
 
     let nodes: EditorNode[];
     let edges: EditorEdge[];

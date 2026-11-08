@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import {
   buildParentMap,
   buildAncestorChain,
@@ -14,32 +16,35 @@ import { executeNode } from "@/lib/workflows/execute-node";
 import { sanitize } from "@/lib/workflows/sanitize";
 import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowContext } from "@/lib/types";
 
-interface TestNodeRequest {
-  node: EditorNode;
-  workflowId?: string;
-  edges?: EditorEdge[];
-  nodes?: EditorNode[];
-  context?: WorkflowContext;
+const testNodeSchema = z.object({
+  node: z.custom<EditorNode>((value) => Boolean(value), "node is required"),
+  workflowId: z.string().optional(),
+  edges: z.array(z.custom<EditorEdge>()).optional(),
+  nodes: z.array(z.custom<EditorNode>()).optional(),
+  context: z.custom<WorkflowContext>().optional(),
+});
+
+async function resolveWorkflowId(requested?: string): Promise<string | null> {
+  if (requested) return requested;
+  const first = await prisma.workflow.findFirst({
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return first?.id ?? null;
 }
 
 export async function POST(req: Request) {
   try {
-    const { node, workflowId: reqWorkflowId, edges, nodes: clientNodes, context } =
-      (await req.json()) as TestNodeRequest;
+    const parsed = await readJsonBody(req, testNodeSchema);
+    if (!parsed.ok) return parsed.response;
+    const { node, workflowId: reqWorkflowId, edges, nodes: clientNodes, context } = parsed.data;
 
     const meta = (node.data.metadata || {}) as Record<string, string>;
     const { title } = node.data;
 
-    // Look up an actual workflow — prefer client-provided ID, or query first available
-    let workflowId: string;
-    if (reqWorkflowId) {
-      workflowId = reqWorkflowId;
-    } else {
-      const first = await prisma.workflow.findFirst({ select: { id: true }, orderBy: { createdAt: "desc" } });
-      if (!first) {
-        return NextResponse.json({ error: "No workflow found" }, { status: 400 });
-      }
-      workflowId = first.id;
+    const workflowId = await resolveWorkflowId(reqWorkflowId);
+    if (!workflowId) {
+      return NextResponse.json({ error: "No workflow found" }, { status: 400 });
     }
 
     // Build ancestor chain from editor context (parents must already be tested)

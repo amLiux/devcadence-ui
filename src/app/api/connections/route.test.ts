@@ -73,7 +73,7 @@ describe("POST /api/connections", () => {
     const response = await POST(postRequest({ name: "No type" }));
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "type and name are required" });
+    expect(await response.json()).toEqual({ error: "type is required" });
     expect(createConnectionMock).not.toHaveBeenCalled();
   });
 

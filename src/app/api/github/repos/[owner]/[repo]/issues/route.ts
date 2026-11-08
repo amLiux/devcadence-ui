@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getGitHubToken, githubFetch } from "@/lib/github";
 import { cacheGet, cacheSet, cacheKey } from "@/lib/cache";
+import { readJsonBody } from "@/lib/api/body";
 
-interface CreateIssueBody {
-  title: string;
-  body?: string;
-  labels?: string[];
-  assignees?: string[];
-}
+const createIssueSchema = z.object({
+  title: z.string().min(1, "title is required"),
+  body: z.string().optional(),
+  labels: z.array(z.string()).optional(),
+  assignees: z.array(z.string()).optional(),
+});
 
 export async function GET(
   _req: Request,
@@ -51,8 +53,12 @@ export async function POST(
     if (!token) {
       return NextResponse.json({ error: "No GitHub connection found" }, { status: 404 });
     }
+
+    const parsed = await readJsonBody(req, createIssueSchema);
+    if (!parsed.ok) return parsed.response;
+
     const { owner, repo } = await params;
-    const body = (await req.json()) as CreateIssueBody;
+    const body = parsed.data;
 
     const issue = await githubFetch(`/repos/${owner}/${repo}/issues`, token, {
       method: "POST",

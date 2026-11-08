@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import { findRoots } from "@/lib/workflow-context";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { runSubWorkflow } from "@/lib/workflows/execute-sub-workflow";
 import type { EditorNode, EditorEdge } from "@/lib/types";
 import type { NodeOutput } from "@/lib/workflow-context";
 
-interface ExecuteSubWorkflowRequest {
-  workflowId: string;
-  input: Record<string, unknown>;
-}
+const executeSubWorkflowSchema = z.object({
+  workflowId: z.string().min(1, "workflowId is required"),
+  input: z.record(z.string(), z.unknown()).default({}),
+});
 
 function injectInput(nodes: EditorNode[], input: Record<string, unknown>): void {
   const inputNode = nodes.find((node) => node.data.title === "Input");
@@ -35,7 +37,9 @@ function returnOutput(
 
 export async function POST(req: Request) {
   try {
-    const { workflowId, input } = (await req.json()) as ExecuteSubWorkflowRequest;
+    const parsed = await readJsonBody(req, executeSubWorkflowSchema);
+    if (!parsed.ok) return parsed.response;
+    const { workflowId, input } = parsed.data;
 
     const workflow = await prisma.workflow.findUnique({ where: { id: workflowId } });
     if (!workflow) {

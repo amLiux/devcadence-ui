@@ -1,40 +1,25 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
 import { getProject } from "@/lib/db/projects";
 import { recordVersion } from "@/lib/workflows/version-store";
 import { serializeWorkflow } from "@/lib/workflows/serialize";
 import type { WorkflowStatus } from "@/lib/types";
 
-interface UpdateWorkflowBody {
-  name?: string;
-  description?: string;
-  type?: string;
-  projectId?: string;
-  nodes?: string;
-  edges?: string;
-  flowPath?: string;
-  status?: WorkflowStatus;
-}
+const updateWorkflowSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").optional(),
+  description: z.string().optional(),
+  type: z.string().optional(),
+  projectId: z.string().optional(),
+  nodes: z.string().optional(),
+  edges: z.string().optional(),
+  flowPath: z.string().optional(),
+  status: z.enum(["draft", "active", "paused"]).optional(),
+});
 
-function workflowFields(body: UpdateWorkflowBody) {
-  return {
-    ...(body.name !== undefined && { name: body.name }),
-    ...(body.description !== undefined && { description: body.description }),
-    ...(body.type !== undefined && { type: body.type }),
-    ...(body.projectId !== undefined && { projectId: body.projectId }),
-    ...(body.nodes !== undefined && { nodes: body.nodes }),
-    ...(body.edges !== undefined && { edges: body.edges }),
-    ...(body.status !== undefined && { status: body.status }),
-  };
-}
-
-function workflowUpdateFields(body: UpdateWorkflowBody) {
-  return {
-    ...workflowFields(body),
-    ...(body.flowPath !== undefined && { flowPath: body.flowPath }),
-  };
-}
+type UpdateWorkflowBody = z.infer<typeof updateWorkflowSchema>;
 
 async function syncScheduleAfterUpdate(
   id: string,
@@ -71,14 +56,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = (await req.json()) as UpdateWorkflowBody;
-
-    if (body.name !== undefined) {
-      if (typeof body.name !== "string" || !body.name.trim()) {
-        return NextResponse.json({ error: "Name is required" }, { status: 400 });
-      }
-      body.name = body.name.trim();
-    }
+    const parsed = await readJsonBody(req, updateWorkflowSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const current = await prisma.workflow.findUnique({ where: { id } });
     if (!current) {
@@ -95,13 +75,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // The version stores the state being replaced, so a restore is always
     // possible. It only lands when the content actually changed.
     const workflow = await prisma.$transaction(async (tx) => {
-      const next = { ...current, ...workflowFields(body) };
+      const snapshot = { ...body };
+      delete snapshot.flowPath;
 
-      await recordVersion(tx, current, next, "save");
+      await recordVersion(tx, current, { ...current, ...snapshot }, "save");
 
       return tx.workflow.update({
         where: { id },
-        data: workflowUpdateFields(body),
+        data: body,
       });
     });
 

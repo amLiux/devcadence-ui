@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import { getConnectionConfigById } from "@/lib/connection-config";
 import { createHmac } from "crypto";
 import { executeWebhook } from "@/lib/workflows/execute-webhook";
@@ -36,14 +38,24 @@ export async function POST(
         return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
       }
 
-      const result = await executeWebhook(connectionId, JSON.parse(rawBody));
+      let body: unknown;
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+
+      const result = await executeWebhook(connectionId, body);
       return NextResponse.json(result.payload, {
         status: result.status,
         headers: result.headers,
       });
     }
 
-    const result = await executeWebhook(connectionId, await req.json());
+    const parsed = await readJsonBody(req, z.unknown());
+    if (!parsed.ok) return parsed.response;
+
+    const result = await executeWebhook(connectionId, parsed.data);
     return NextResponse.json(result.payload, {
       status: result.status,
       headers: result.headers,
