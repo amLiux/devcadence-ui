@@ -68,14 +68,14 @@ such as `no-explicit-any`.
 
 ## Rollout
 
-The rules enter `eslint.config.mjs` as **warnings**. CI passes with warnings.
+The rules are **errors**. `npm run lint` fails on a violation.
 
-1. This ticket: rules + `ARCHITECTURE.md`.
-2. Cleanup tickets: component structure, then logic density.
-3. When lint reports zero warnings, the rules flip to **errors**.
+1. `dd-108`: rules and `ARCHITECTURE.md`, introduced as warnings.
+2. `dd-109` and `dd-112`: cleanup until lint reported zero warnings.
+3. `dd-113`: warnings flipped to errors.
 
-Do not add new warnings. If a change needs to exceed a limit, split the code
-instead of adding an eslint-disable.
+If a change needs to exceed a limit, split the code instead of adding an
+eslint-disable.
 
 ## Review checklist
 
@@ -83,4 +83,4 @@ instead of adding an eslint-disable.
 - Logic in a hook, not in JSX?
 - Page free of fetch chains and business rules?
 - New hook covered by a test?
-- No new lint warnings?
+- `npm run lint` passes?

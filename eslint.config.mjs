@@ -29,22 +29,22 @@ const eslintConfig = defineConfig([
       "**/*.test.{ts,tsx}",
     ],
     rules: {
-      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["error", { max: 300, skipBlankLines: true, skipComments: true }],
       "max-lines-per-function": [
-        "warn",
+        "error",
         { max: 180, skipBlankLines: true, skipComments: true },
       ],
-      complexity: ["warn", 15],
-      "max-statements": ["warn", 30],
-      "max-depth": ["warn", 4],
-      "max-params": ["warn", 4],
+      complexity: ["error", 15],
+      "max-statements": ["error", 30],
+      "max-depth": ["error", 4],
+      "max-params": ["error", 4],
     },
   },
   {
     files: ["src/**/*.tsx"],
     ignores: ["src/components/ui/**", "src/app/**/docs/**", "**/*.test.tsx"],
     rules: {
-      "react/no-multi-comp": ["warn", { ignoreStateless: false }],
+      "react/no-multi-comp": ["error", { ignoreStateless: false }],
     },
   },
 ]);
