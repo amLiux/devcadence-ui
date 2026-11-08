@@ -120,6 +120,11 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return `${(meta.method || "GET").toUpperCase()} ${url}`;
   },
 
+  Scrape: (meta) => {
+    const url = collapse(meta.url);
+    return url ? `GET ${url}` : null;
+  },
+
   "Send Slack Message": (meta) => {
     const channel = formatSlackChannel(meta.channel);
     const text = collapse(meta.text);
