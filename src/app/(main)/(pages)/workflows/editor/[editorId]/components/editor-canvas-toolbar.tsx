@@ -1,7 +1,8 @@
 "use client";
 
-import { Download, History, Braces, Play, Save } from "lucide-react";
+import { Play, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EditorCanvasActionsMenu } from "./editor-canvas-actions-menu";
 
 export function EditorCanvasToolbar({
   saving,
@@ -23,27 +24,27 @@ export function EditorCanvasToolbar({
   onVariables: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 p-2 border-b">
+    <div
+      role="toolbar"
+      aria-label="Workflow actions"
+      className="flex flex-wrap items-center gap-2 border-b p-2"
+    >
       <Button size="sm" onClick={onSave} disabled={saving}>
-        <Save className="h-3.5 w-3.5 mr-1" />
+        <Save className="h-3.5 w-3.5" />
         {saving ? "Saving..." : "Save"}
       </Button>
       <Button size="sm" variant="outline" onClick={onTest} disabled={running || nodeCount === 0}>
-        <Play className="h-3.5 w-3.5 mr-1" />
+        <Play className="h-3.5 w-3.5" />
         {running ? "Testing..." : "Test"}
       </Button>
-      <Button size="sm" variant="outline" onClick={onExport} disabled={nodeCount === 0}>
-        <Download className="h-3.5 w-3.5 mr-1" />
-        Export
-      </Button>
-      <Button size="sm" variant="outline" onClick={onVariables}>
-        <Braces className="h-3.5 w-3.5 mr-1" />
-        Variables
-      </Button>
-      <Button size="sm" variant="outline" onClick={onVersions}>
-        <History className="h-3.5 w-3.5 mr-1" />
-        Versions
-      </Button>
+      <div className="ml-auto">
+        <EditorCanvasActionsMenu
+          nodeCount={nodeCount}
+          onExport={onExport}
+          onVersions={onVersions}
+          onVariables={onVariables}
+        />
+      </div>
     </div>
   );
 }
