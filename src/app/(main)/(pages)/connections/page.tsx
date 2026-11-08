@@ -149,6 +149,7 @@ export default function ConnectionsPage() {
                   size="sm"
                   className="text-muted-foreground h-7 w-7 px-0"
                   onClick={() => openEditConnection(conn)}
+                  aria-label={`Edit ${conn.name}`}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -157,6 +158,7 @@ export default function ConnectionsPage() {
                   size="sm"
                   className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 px-0"
                   onClick={() => handleDelete(conn.id)}
+                  aria-label={`Delete ${conn.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
