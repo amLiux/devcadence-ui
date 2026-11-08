@@ -523,6 +523,29 @@ const NODE_DOCS: NodeDoc[] = [
     provider: "Sub-workflow",
   },
   {
+    title: "For Each",
+    icon: <ArrowRightLeft className="h-4 w-4 text-cyan-500" />,
+    color: "border-cyan-500/30",
+    description:
+      "Runs a reusable sub-workflow once per array item and collects the results. Items run sequentially, with a configurable cap and per-item error policy.",
+    requires: "At least one workflow marked as 'Reusable'",
+    settings: [
+      { key: "workflowId", desc: "Reusable workflow to run for each item." },
+      { key: "items", desc: "Expression that returns an array, e.g. previousStep.items." },
+      { key: "itemName", desc: "Name of the current item inside the loop object (default: item)." },
+      { key: "indexName", desc: "Name of the index inside the loop object (default: index)." },
+      { key: "maxItems", desc: "1-100. The node fails instead of silently dropping items." },
+      { key: "onError", desc: "abort, record and continue, or skip the item." },
+      { key: "input", desc: "Extra JSON merged with the loop fields." },
+    ],
+    examples: [
+      "items: previousStep.items → sub-workflow reads {{loop.item}} and {{loop.index}}",
+      "Abort on the first failure, or continue and inspect the errors array.",
+    ],
+    category: "Actions",
+    provider: "Sub-workflow",
+  },
+  {
     title: "Return",
     icon: <LogOut className="h-4 w-4 text-amber-500" />,
     color: "border-amber-500/30",

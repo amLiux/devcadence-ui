@@ -29,6 +29,7 @@ import {
 import { WebhookSettings } from "./webhook-trigger";
 import { PromptSettings, ClassifySettings, ExtractSettings } from "./ai";
 import { CallWorkflowSettings } from "./call-workflow";
+import { ForEachSettings } from "./for-each";
 import { InputSettings } from "./input";
 import { ReturnSettings } from "./return";
 import { BuildJsonSettings } from "./build-json";
@@ -62,6 +63,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   Classify: ClassifySettings,
   Extract: ExtractSettings,
   "Call Workflow": CallWorkflowSettings,
+  "For Each": ForEachSettings,
   "Build JSON": BuildJsonSettings,
   "Retry Loop": RetryLoopSettings,
   Input: InputSettings,
