@@ -21,4 +21,17 @@ describe("Sidebar", () => {
     );
     expect(container.querySelector('a[href="/docs"]')).not.toHaveAttribute("aria-current");
   });
+
+  it("disables the dashboard item and marks it coming soon", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <Sidebar />
+      </TooltipProvider>,
+    );
+
+    expect(container.querySelector('a[href="/dashboard"]')).toBeNull();
+    const disabled = container.querySelector('[aria-disabled="true"]');
+    expect(disabled).toBeInTheDocument();
+    expect(disabled).toHaveAttribute("aria-label", "Dashboard — coming soon");
+  });
 });
