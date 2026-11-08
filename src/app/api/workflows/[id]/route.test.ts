@@ -86,7 +86,7 @@ describe("PUT /api/workflows/[id]", () => {
     const response = await callPut({ name: "   " });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "Name is required" });
+    expect(await response.json()).toEqual({ error: "name: Name is required" });
     expect(mocks.findUnique).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });

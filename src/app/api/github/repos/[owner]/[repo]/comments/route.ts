@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getGitHubToken, githubFetch } from "@/lib/github";
+import { readJsonBody } from "@/lib/api/body";
 
-interface CommentBody {
-  body: string;
-}
+const commentSchema = z.object({
+  body: z.string().min(1, "body is required"),
+});
 
 export async function POST(
   req: Request,
@@ -14,9 +16,11 @@ export async function POST(
     if (!token) {
       return NextResponse.json({ error: "No GitHub connection found" }, { status: 404 });
     }
-    const { owner, repo } = await params;
-    const body = (await req.json()) as CommentBody;
 
+    const parsed = await readJsonBody(req, commentSchema);
+    if (!parsed.ok) return parsed.response;
+
+    const { owner, repo } = await params;
     // The issue/PR number should be in the query string: ?issue_number=42
     const url = new URL(req.url);
     const issueNumber = url.searchParams.get("issue_number");
@@ -29,7 +33,7 @@ export async function POST(
       token,
       {
         method: "POST",
-        body: JSON.stringify({ body: body.body }),
+        body: JSON.stringify({ body: parsed.data.body }),
       },
     );
 

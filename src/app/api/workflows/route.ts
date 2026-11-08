@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { readJsonBody } from "@/lib/api/body";
 import { getDefaultProjectId, getProject } from "@/lib/db/projects";
 import { serializeWorkflow } from "@/lib/workflows/serialize";
 
-interface CreateWorkflowBody {
-  name: string;
-  description?: string;
-  type?: string;
-  projectId?: string;
-}
+const createWorkflowSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  type: z.string().optional(),
+  projectId: z.string().optional(),
+});
 
 export async function GET(req: Request) {
   try {
@@ -46,7 +48,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as CreateWorkflowBody;
+    const parsed = await readJsonBody(req, createWorkflowSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     let projectId = body.projectId;
     if (projectId) {
