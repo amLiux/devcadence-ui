@@ -10,4 +10,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Architecture
 
-Read `ARCHITECTURE.md` before adding or splitting components. The size and density limits in `eslint.config.mjs` run as warnings until the cleanup lands; do not add new ones.
+Read `ARCHITECTURE.md` before adding or splitting components. The size and density limits in `eslint.config.mjs` are enforced as errors.
