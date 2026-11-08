@@ -1,38 +1,17 @@
 import { prisma } from "@/lib/db";
-import {
-  buildParentMap,
-  buildForwardMap,
-  buildAncestorChain,
-  findRoots,
-  type NodeOutput,
-} from "@/lib/workflow-context";
-import { executeNode } from "@/lib/workflows/execute-node";
-import { resolveNextNodeIds } from "@/lib/workflows/routing";
+import { sanitize } from "@/lib/workflows/sanitize";
 import { notifyRunFailure } from "@/lib/notifications/notify";
 import { enqueueAutoRetry } from "@/lib/workflows/execute-workflow";
-import { sanitize } from "@/lib/workflows/sanitize";
-import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 import {
   filterValidWorkflows,
   findMatchingWorkflows,
-  findWebhookNode,
   type WebhookWorkflow,
 } from "./webhook-selection";
 import { parseWorkflowVariables } from "./variables";
+import { runGraph, type RunGraphState } from "./run-graph";
+import type { EditorNode, EditorEdge } from "@/lib/types";
 
 const now = () => new Date().toISOString();
-
-type ForwardMap = ReturnType<typeof buildForwardMap>;
-type ParentsMap = ReturnType<typeof buildParentMap>;
-
-interface RunState {
-  runId: string;
-  nodeOutputs: Map<string, NodeOutput>;
-  stepResults: NodeDebugLog[];
-  visited: Set<string>;
-  stepNr: number;
-  variables: Record<string, string>;
-}
 
 export interface WebhookExecutionResult {
   status: number;
@@ -44,120 +23,8 @@ interface WebhookWorkflowResult {
   workflowId: string;
   workflowName: string;
   success: boolean;
-  steps: NodeDebugLog[];
+  steps: RunGraphState["stepResults"];
   runId: string;
-}
-
-async function seedRoots({
-  roots,
-  forward,
-  body,
-  state,
-}: {
-  roots: EditorNode[];
-  forward: ForwardMap;
-  body: unknown;
-  state: RunState;
-}): Promise<string[]> {
-  const queue: string[] = [];
-
-  for (const root of roots) {
-    const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
-    if (!isWebhookTrigger) {
-      queue.push(root.id);
-      continue;
-    }
-
-    const startedAt = now();
-    state.stepNr++;
-    const payload = sanitize(body).sanitized;
-    state.stepResults.push({
-      nodeId: root.id,
-      title: "Webhook",
-      success: true,
-      logs: [
-        { type: "info", message: "Starting Webhook...", timestamp: startedAt },
-        { type: "info", message: `Input: ${JSON.stringify(payload)}`, timestamp: startedAt },
-        { type: "success", message: "Webhook completed in 0ms", timestamp: now() },
-        { type: "info", message: `Output: ${JSON.stringify(payload)}`, timestamp: now() },
-      ],
-    });
-    await prisma.workflowLog.create({
-      data: {
-        runId: state.runId,
-        nodeId: root.id,
-        nodeType: "Webhook",
-        stepNr: state.stepNr,
-        status: "success",
-        input: undefined,
-        output: payload,
-        error: null,
-        controlFlow: undefined,
-        meta: undefined,
-        startedAt,
-        finishedAt: now(),
-        elapsedMs: 0,
-      },
-    });
-    state.visited.add(root.id);
-    for (const child of forward.get(root.id) || []) queue.push(child.targetId);
-  }
-
-  return queue;
-}
-
-async function walkNodes({
-  queue,
-  nodes,
-  parents,
-  forward,
-  nodeIds,
-  state,
-}: {
-  queue: string[];
-  nodes: EditorNode[];
-  parents: ParentsMap;
-  forward: ForwardMap;
-  nodeIds: Set<string>;
-  state: RunState;
-}): Promise<void> {
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    if (state.visited.has(nodeId)) continue;
-
-    const nodeParents = parents.get(nodeId) || [];
-    if (nodeParents.some((parent) => !state.visited.has(parent))) {
-      queue.push(nodeId);
-      continue;
-    }
-
-    state.visited.add(nodeId);
-    const node = nodes.find((item) => item.id === nodeId);
-    if (!node) continue;
-
-    const chain = buildAncestorChain(nodeId, parents, state.nodeOutputs, nodes);
-    const { debugLog, data } = await executeNode(node, chain, {
-      runId: state.runId,
-      stepNr: ++state.stepNr,
-      variables: state.variables,
-    });
-    state.stepResults.push(debugLog);
-
-    if (!state.nodeOutputs.has(nodeId)) {
-      state.nodeOutputs.set(nodeId, {
-        data: data ?? null,
-        success: debugLog.success,
-        error: debugLog.success
-          ? null
-          : (debugLog.logs.find((log) => log.type === "error")?.message ?? "Unknown error"),
-      });
-    }
-
-    const children = forward.get(nodeId) || [];
-    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
-      queue.push(targetId);
-    }
-  }
 }
 
 async function finalizeRun({
@@ -167,7 +34,7 @@ async function finalizeRun({
 }: {
   workflow: WebhookWorkflow;
   body: unknown;
-  state: RunState;
+  state: RunGraphState;
 }): Promise<{ success: boolean; failureMessage: string }> {
   const success = state.stepResults.every((result) => result.success);
   const failureMessage =
@@ -213,27 +80,53 @@ async function executeWebhookWorkflow(
     },
   });
 
-  const parents = buildParentMap(edges);
-  const forward = buildForwardMap(edges);
-  const roots = findRoots(nodes, edges);
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const state: RunState = {
+  const state = await runGraph({
+    nodes,
+    edges,
     runId: run.id,
-    nodeOutputs: new Map(),
-    stepResults: [],
-    visited: new Set(),
-    stepNr: 0,
     variables: parseWorkflowVariables(workflow.variables),
-  };
+    seed: async ({ root, state: seedState, queue, forward }) => {
+      const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
+      if (!isWebhookTrigger) return "queue";
 
-  // Store the webhook payload BEFORE walking so downstream nodes can access it.
-  const webhookNode = findWebhookNode(nodes, connectionId);
-  if (webhookNode) {
-    state.nodeOutputs.set(webhookNode.id, { data: body, success: true, error: null });
-  }
+      seedState.nodeOutputs.set(root.id, { data: body, success: true, error: null });
+      const startedAt = now();
+      seedState.stepNr++;
+      const payload = sanitize(body).sanitized;
+      seedState.stepResults.push({
+        nodeId: root.id,
+        title: "Webhook",
+        success: true,
+        logs: [
+          { type: "info", message: "Starting Webhook...", timestamp: startedAt },
+          { type: "info", message: `Input: ${JSON.stringify(payload)}`, timestamp: startedAt },
+          { type: "success", message: "Webhook completed in 0ms", timestamp: now() },
+          { type: "info", message: `Output: ${JSON.stringify(payload)}`, timestamp: now() },
+        ],
+      });
+      await prisma.workflowLog.create({
+        data: {
+          runId: seedState.runId,
+          nodeId: root.id,
+          nodeType: "Webhook",
+          stepNr: seedState.stepNr,
+          status: "success",
+          input: undefined,
+          output: payload,
+          error: null,
+          controlFlow: undefined,
+          meta: undefined,
+          startedAt,
+          finishedAt: now(),
+          elapsedMs: 0,
+        },
+      });
+      seedState.visited.add(root.id);
+      for (const child of forward.get(root.id) || []) queue.push(child.targetId);
+      return "seeded";
+    },
+  });
 
-  const queue = await seedRoots({ roots, forward, body, state });
-  await walkNodes({ queue, nodes, parents, forward, nodeIds, state });
   const outcome = await finalizeRun({ workflow, body, state });
 
   return {
