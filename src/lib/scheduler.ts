@@ -1,5 +1,7 @@
 import { Queue } from "bullmq";
 import { prisma } from "@/lib/db";
+import { parseWorkflowVariables } from "@/lib/workflows/variables";
+import { resolveTriggerMetadata } from "@/lib/workflows/trigger-metadata";
 import type { EditorNode } from "@/lib/types";
 
 const QUEUE_NAME = "workflow-execution";
@@ -23,16 +25,27 @@ interface DiscordListenTrigger {
 
 type TriggerConfig = ScheduleTrigger | DiscordListenTrigger;
 
-function findTriggerNodes(nodes: EditorNode[]): TriggerConfig | null {
+function findTriggerNodes(
+  nodes: EditorNode[],
+  variables: Record<string, string>,
+): TriggerConfig | null {
   for (const node of nodes) {
     if (node.data.type !== "Trigger") continue;
-    const meta = (node.data.metadata || {}) as Record<string, string>;
+    const meta = resolveTriggerMetadata(
+      (node.data.metadata || {}) as Record<string, string>,
+      variables,
+    );
 
     if (node.data.title === "Schedule" && meta.cron) {
       return { type: "schedule", cron: meta.cron };
     }
 
-    if (node.data.title === "Listen Discord Messages" && meta.cron && meta.channelId && meta.connectionId) {
+    if (
+      node.data.title === "Listen Discord Messages" &&
+      meta.cron &&
+      meta.channelId &&
+      meta.connectionId
+    ) {
       return {
         type: "discord-listen",
         cron: meta.cron,
@@ -100,7 +113,7 @@ export async function syncSchedules(): Promise<void> {
   for (const workflow of workflows) {
     if (!workflow.nodes) continue;
     const nodes: EditorNode[] = JSON.parse(workflow.nodes);
-    const trigger = findTriggerNodes(nodes);
+    const trigger = findTriggerNodes(nodes, parseWorkflowVariables(workflow.variables));
     if (trigger) {
       const name = jobName(workflow.id, trigger);
       desired.set(name, { workflowId: workflow.id, cron: trigger.cron, trigger });
