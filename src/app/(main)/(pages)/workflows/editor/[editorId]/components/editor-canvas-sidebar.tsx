@@ -11,11 +11,9 @@ import { useNodeCatalog } from "./sidebar/use-node-catalog";
 
 export function EditorCanvasSidebar({
   workflowId,
-  projectId,
   initialRunId,
 }: {
   workflowId?: string;
-  projectId?: string;
   initialRunId?: string | null;
 }) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
@@ -60,7 +58,7 @@ export function EditorCanvasSidebar({
                   {editor.selectedNode.data.description}
                 </p>
               </div>
-              <NodeSettingsForm currentProjectId={projectId} />
+              <NodeSettingsForm />
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">

@@ -11,6 +11,7 @@ interface WorkflowRow {
   edges: string | null;
   flowPath: string | null;
   variables?: unknown;
+  project?: { name: string } | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -24,6 +25,7 @@ export function serializeWorkflow(workflow: WorkflowRow): Workflow {
     description: workflow.description,
     type: workflow.type,
     projectId: workflow.projectId,
+    projectName: workflow.project?.name,
     nodes: workflow.nodes,
     edges: workflow.edges,
     flowPath: workflow.flowPath,

@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 import type { EditorNode, EditorEdge, WorkflowContext } from "@/lib/types";
+import type { ReusableWorkflow } from "@/lib/workflows/projects";
+import { fetchReusableWorkflows } from "@/lib/workflows/reusable-workflows";
 
 interface EditorState {
   elements: EditorNode[];
@@ -53,6 +55,9 @@ interface EditorContextType {
   markDirty: () => void;
   setDirty: (v: boolean) => void;
   workflowNames: Record<string, string>;
+  projectId?: string;
+  reusableWorkflows: ReusableWorkflow[];
+  reusableWorkflowsLoading: boolean;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -170,58 +175,50 @@ const initialHistoryState: HistoryState = {
   currentIndex: 0,
 };
 
-const WORKFLOW_NAMES_TTL_MS = 60_000;
-
-let workflowNamesCache: { at: number; names: Record<string, string> } | null = null;
-
-/** Fetches sub-workflow id → name pairs, reusing a one-minute cache. */
-async function fetchWorkflowNames(): Promise<Record<string, string>> {
-  if (workflowNamesCache && Date.now() - workflowNamesCache.at < WORKFLOW_NAMES_TTL_MS) {
-    return workflowNamesCache.names;
-  }
-
-  const res = await fetch("/api/workflows?type=sub-workflow&compact=1");
-  const data = (await res.json()) as { workflows?: { id: string; name: string }[] };
-  const names: Record<string, string> = {};
-  for (const wf of data.workflows ?? []) names[wf.id] = wf.name;
-
-  workflowNamesCache = { at: Date.now(), names };
-  return names;
-}
-
-export function EditorProvider({ children }: { children: React.ReactNode }) {
+export function EditorProvider({
+  children,
+  projectId,
+}: {
+  children: React.ReactNode;
+  projectId?: string;
+}) {
   const [editor, dispatch] = useReducer(editorReducer, initialEditorState);
   const [history, setHistory] = useState<HistoryState>(initialHistoryState);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("actions");
   const [dirty, setDirty] = useState(false);
-  const [workflowNames, setWorkflowNames] = useState<Record<string, string>>({});
+  const [reusableWorkflows, setReusableWorkflows] = useState<ReusableWorkflow[]>([]);
+  const [reusableWorkflowsLoaded, setReusableWorkflowsLoaded] = useState(false);
   const isUndoRedo = useRef(false);
 
-  const needsWorkflowNames = useMemo(
-    () =>
-      editor.elements.some(
-        (node) => node.data.title === "Call Workflow" && Boolean(node.data.metadata?.workflowId),
-      ),
+  const needsReusableWorkflows = useMemo(
+    () => editor.elements.some((node) => node.data.title === "Call Workflow"),
     [editor.elements],
   );
 
-  // Used by node cards to resolve a Call Workflow target id into its name.
-  // Only fetched when the canvas actually has a Call Workflow node, and cached
-  // for a minute so moving between editors does not refetch.
+  // The picker and the node cards share this list. Only fetched when the canvas
+  // actually has a Call Workflow node, and cached for a minute.
   useEffect(() => {
-    if (!needsWorkflowNames) return;
+    if (!needsReusableWorkflows) return;
     let cancelled = false;
-    fetchWorkflowNames()
-      .then((names) => {
-        if (!cancelled) setWorkflowNames(names);
+    fetchReusableWorkflows()
+      .then((workflows) => {
+        if (!cancelled) setReusableWorkflows(workflows);
       })
       .catch(() => {
         /* the card falls back to the persisted name */
+      })
+      .finally(() => {
+        if (!cancelled) setReusableWorkflowsLoaded(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [needsWorkflowNames]);
+  }, [needsReusableWorkflows]);
+
+  const workflowNames = useMemo(
+    () => Object.fromEntries(reusableWorkflows.map((workflow) => [workflow.id, workflow.name])),
+    [reusableWorkflows],
+  );
 
   const markDirty = useCallback(() => {
     setDirty(true);
@@ -303,6 +300,9 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         markDirty,
         setDirty,
         workflowNames,
+        projectId,
+        reusableWorkflows,
+        reusableWorkflowsLoading: needsReusableWorkflows && !reusableWorkflowsLoaded,
       }}
     >
       {children}

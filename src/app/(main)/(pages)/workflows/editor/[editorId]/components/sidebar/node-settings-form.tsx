@@ -3,7 +3,7 @@
 import { useEditor } from "@/providers/editor-provider";
 import { SETTINGS_REGISTRY } from "../node-settings";
 
-export function NodeSettingsForm({ currentProjectId }: { currentProjectId?: string }) {
+export function NodeSettingsForm() {
   const { editor, updateNode, markDirty } = useEditor();
   const node = editor.selectedNode;
   if (!node) return null;
@@ -32,7 +32,6 @@ export function NodeSettingsForm({ currentProjectId }: { currentProjectId?: stri
         updateMeta={updateMeta}
         parentOutput={parentOutput}
         hasParentEdge={!!parentEdge}
-        currentProjectId={currentProjectId}
       />
     );
   }

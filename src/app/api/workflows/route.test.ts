@@ -68,6 +68,7 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { type: "sub-workflow" },
       orderBy: { updatedAt: "desc" },
+      include: { project: { select: { name: true } } },
     });
     expect(body.workflows[0]).toMatchObject({
       id: "wf-1",
@@ -77,9 +78,14 @@ describe("GET /api/workflows", () => {
     });
   });
 
-  it("selects the id, name and project for the picker in compact mode", async () => {
+  it("selects the picker fields, including project name and shared flag, in compact mode", async () => {
     mocks.findMany.mockResolvedValue([
-      { id: "wf-1", name: "Deploy alerts", projectId: "shared" },
+      {
+        id: "wf-1",
+        name: "Deploy alerts",
+        projectId: "shared",
+        project: { name: "Shared", isShared: true },
+      },
     ]);
 
     const response = await get("?type=sub-workflow&compact=1");
@@ -88,10 +94,23 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { type: "sub-workflow" },
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true, projectId: true },
+      select: {
+        id: true,
+        name: true,
+        projectId: true,
+        project: { select: { name: true, isShared: true } },
+      },
     });
     expect(body).toEqual({
-      workflows: [{ id: "wf-1", name: "Deploy alerts", projectId: "shared" }],
+      workflows: [
+        {
+          id: "wf-1",
+          name: "Deploy alerts",
+          projectId: "shared",
+          projectName: "Shared",
+          isShared: true,
+        },
+      ],
     });
   });
 
@@ -101,6 +120,7 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: { projectId: "proj-1" },
       orderBy: { updatedAt: "desc" },
+      include: { project: { select: { name: true } } },
     });
   });
 
@@ -110,7 +130,12 @@ describe("GET /api/workflows", () => {
     expect(mocks.findMany).toHaveBeenCalledWith({
       where: {},
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true, projectId: true },
+      select: {
+        id: true,
+        name: true,
+        projectId: true,
+        project: { select: { name: true, isShared: true } },
+      },
     });
   });
 
@@ -130,6 +155,7 @@ describe("POST /api/workflows", () => {
     expect(response.status).toBe(201);
     expect(mocks.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ name: "Deploy alerts", projectId: "shared" }),
+      include: { project: { select: { name: true } } },
     });
   });
 
@@ -139,6 +165,7 @@ describe("POST /api/workflows", () => {
     expect(mocks.getProject).toHaveBeenCalledWith("proj-1");
     expect(mocks.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ projectId: "proj-1" }),
+      include: { project: { select: { name: true } } },
     });
   });
 

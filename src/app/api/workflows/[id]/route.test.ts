@@ -92,6 +92,20 @@ describe("GET /api/workflows/[id]", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).variables).toEqual({ discordChannel: "123" });
   });
+
+  it("includes the project name so the editor does not need the projects list", async () => {
+    mocks.findUnique.mockResolvedValue(dbRow({ project: { name: "Shared" } }));
+
+    const response = await GET(new Request("http://localhost/api/workflows/wf-123"), {
+      params: Promise.resolve({ id: "wf-123" }),
+    });
+
+    expect(mocks.findUnique).toHaveBeenCalledWith({
+      where: { id: "wf-123" },
+      include: { project: { select: { name: true } } },
+    });
+    expect((await response.json()).projectName).toBe("Shared");
+  });
 });
 
 describe("PUT /api/workflows/[id]", () => {
@@ -141,6 +155,7 @@ describe("PUT /api/workflows/[id]", () => {
     expect(mocks.update).toHaveBeenCalledWith({
       where: { id: "wf-123" },
       data: { name: "Renamed" },
+      include: { project: { select: { name: true } } },
     });
     expect(response.status).toBe(200);
   });
@@ -156,6 +171,7 @@ describe("PUT /api/workflows/[id]", () => {
     expect(mocks.update).toHaveBeenCalledWith({
       where: { id: "wf-123" },
       data: { variables: { discordChannel: "123", githubRepo: "org/repo" } },
+      include: { project: { select: { name: true } } },
     });
   });
 
@@ -198,6 +214,7 @@ describe("PUT /api/workflows/[id]", () => {
     expect(mocks.update).toHaveBeenCalledWith({
       where: { id: "wf-123" },
       data: { projectId: "proj-1" },
+      include: { project: { select: { name: true } } },
     });
     expect(response.status).toBe(200);
   });

@@ -6,14 +6,13 @@ import { Loader2 } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
 import { EditorProvider } from "@/providers/editor-provider";
 import { EditorShell } from "./components/editor-shell";
-import type { Project, Workflow } from "@/lib/types";
+import type { Workflow } from "@/lib/types";
 
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
   const { request, loading } = useApi();
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
   const saveRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -28,16 +27,6 @@ export default function EditorPage() {
     }
   }, [params.editorId, request, router]);
 
-  useEffect(() => {
-    request<{ projects: Project[] }>({ endpoint: "/api/projects" })
-      .then((data) => {
-        if (data?.projects) setProjects(data.projects);
-      })
-      .catch(() => {
-        /* the breadcrumb simply falls back to the workflow name */
-      });
-  }, [request]);
-
   if (loading || !workflow) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -47,10 +36,10 @@ export default function EditorPage() {
   }
 
   return (
-    <EditorProvider>
+    <EditorProvider projectId={workflow.projectId}>
       <EditorShell
         workflow={workflow}
-        projectName={projects.find((project) => project.id === workflow.projectId)?.name}
+        projectName={workflow.projectName}
         onWorkflowUpdate={setWorkflow}
         saveRef={saveRef}
       />
