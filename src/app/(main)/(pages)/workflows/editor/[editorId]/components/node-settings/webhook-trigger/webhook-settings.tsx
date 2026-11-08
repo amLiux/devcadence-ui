@@ -1,40 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
+import { Check, Copy, Wand2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApi } from "@/hooks/use-api";
-import { Copy, Check, Wand2 } from "lucide-react";
 import { JsonField } from "@/components/composed/json-field";
-import type { NodeSettingsProps } from "./types";
-import type { Connection } from "@/lib/types";
 import { inferSchemaFromPayload } from "@/lib/json-schema";
-
-function WebhookConnectionSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { request } = useApi();
-  const [connections, setConnections] = useState<Connection[]>([]);
-
-  useEffect(() => {
-    request<Connection[]>({ endpoint: "/api/connections" }).then((data) => {
-      if (data) setConnections(data.filter((c) => c.type === "Webhook"));
-    });
-  }, [request]);
-
-  return (
-    <select
-      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="">Select webhook connection...</option>
-      {connections.map((conn) => (
-        <option key={conn.id} value={conn.id}>
-          {conn.name}
-        </option>
-      ))}
-    </select>
-  );
-}
+import type { NodeSettingsProps } from "../types";
+import { WebhookConnectionSelect } from "./connection-select";
 
 export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
   const [copied, setCopied] = useState(false);
@@ -43,21 +16,19 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
     : "";
 
   const handleCopy = async () => {
-    if (webhookUrl) {
-      await navigator.clipboard.writeText(webhookUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (!webhookUrl) return;
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleInferSchema = () => {
     if (!meta.testPayload) return;
     try {
       const payload = JSON.parse(meta.testPayload);
-      const schema = inferSchemaFromPayload(payload);
-      handleChange("schemaJson", schema);
+      handleChange("schemaJson", inferSchemaFromPayload(payload));
     } catch {
-      // ignore invalid JSON
+      // Ignore invalid JSON: the field already shows the parse error.
     }
   };
 
@@ -67,7 +38,7 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
         <Label className="text-xs">Webhook Connection</Label>
         <WebhookConnectionSelect
           value={meta.connectionId || ""}
-          onChange={(v) => handleChange("connectionId", v)}
+          onChange={(value) => handleChange("connectionId", value)}
         />
       </div>
 
@@ -83,11 +54,16 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
               onClick={handleCopy}
               className="h-8 w-8 flex items-center justify-center rounded-md border bg-transparent hover:bg-muted transition-colors"
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-500" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
             </button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            POST to this URL to trigger the workflow. Configure HMAC verification in the connection settings.
+            POST to this URL to trigger the workflow. Configure HMAC verification in the connection
+            settings.
           </p>
         </div>
       )}
@@ -95,7 +71,7 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
       <JsonField
         label="Test Payload (optional)"
         value={meta.testPayload || ""}
-        onChange={(v) => handleChange("testPayload", v)}
+        onChange={(value) => handleChange("testPayload", value)}
         placeholder='{"event": "push", "data": {...}}'
         minHeight={80}
         hint="JSON payload used when testing this trigger. Leave empty for a default test payload."
@@ -104,7 +80,7 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
       <JsonField
         label="JSON Schema (optional)"
         value={meta.schemaJson || ""}
-        onChange={(v) => handleChange("schemaJson", v)}
+        onChange={(value) => handleChange("schemaJson", value)}
         placeholder='{"type":"object","properties":{"event":{"type":"string"}},"required":["event"]}'
         minHeight={100}
         hint="Incoming webhook payloads are validated against this schema. Empty = no validation."
@@ -133,7 +109,7 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
               className="h-8 text-xs"
               placeholder="∞"
               value={meta.rateLimitRequests || ""}
-              onChange={(e) => handleChange("rateLimitRequests", e.target.value)}
+              onChange={(event) => handleChange("rateLimitRequests", event.target.value)}
             />
           </div>
           <div className="space-y-1">
@@ -144,7 +120,7 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
               className="h-8 text-xs"
               placeholder="60"
               value={meta.rateLimitWindowSeconds || ""}
-              onChange={(e) => handleChange("rateLimitWindowSeconds", e.target.value)}
+              onChange={(event) => handleChange("rateLimitWindowSeconds", event.target.value)}
             />
           </div>
         </div>
