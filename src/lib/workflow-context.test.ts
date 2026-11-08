@@ -10,6 +10,7 @@ import {
   wrapTransformOutput,
   resolveExpressionInput,
   findRoots,
+  withWorkflowVariables,
   type NodeOutput,
 } from "./workflow-context";
 import type { ContextStep, EditorEdge, EditorNode, WorkflowContext } from "./types";
@@ -188,6 +189,39 @@ describe("resolveTemplates", () => {
     };
 
     expect(resolveTemplates("{{total}}", chain)).toBe("99");
+  });
+
+  it("exposes workflow variables as workflow.*", () => {
+    const chain: ContextStep = {
+      name: "HTTP Request",
+      output: {},
+      success: true,
+      error: null,
+      workflow: { discordChannel: "123", githubRepo: "org/repo" },
+    };
+
+    expect(resolveTemplates("{{workflow.discordChannel}}", chain)).toBe("123");
+    expect(resolveTemplates("{{workflow.githubRepo}}", chain)).toBe("org/repo");
+  });
+});
+
+describe("withWorkflowVariables", () => {
+  it("creates a synthetic chain for root nodes", () => {
+    const chain = withWorkflowVariables(undefined, { githubRepo: "org/repo" });
+
+    expect(chain?.workflow).toEqual({ githubRepo: "org/repo" });
+    expect(resolveTemplates("{{workflow.githubRepo}}", chain)).toBe("org/repo");
+  });
+
+  it("returns the chain unchanged when there are no variables", () => {
+    const chain: ContextStep = {
+      name: "HTTP Request",
+      output: { status: 200 },
+      success: true,
+      error: null,
+    };
+
+    expect(withWorkflowVariables(chain, {})).toBe(chain);
   });
 });
 

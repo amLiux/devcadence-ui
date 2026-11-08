@@ -18,6 +18,7 @@ import {
   findWebhookNode,
   type WebhookWorkflow,
 } from "./webhook-selection";
+import { parseWorkflowVariables } from "./variables";
 
 const now = () => new Date().toISOString();
 
@@ -30,6 +31,7 @@ interface RunState {
   stepResults: NodeDebugLog[];
   visited: Set<string>;
   stepNr: number;
+  variables: Record<string, string>;
 }
 
 export interface WebhookExecutionResult {
@@ -137,6 +139,7 @@ async function walkNodes({
     const { debugLog, data } = await executeNode(node, chain, {
       runId: state.runId,
       stepNr: ++state.stepNr,
+      variables: state.variables,
     });
     state.stepResults.push(debugLog);
 
@@ -220,6 +223,7 @@ async function executeWebhookWorkflow(
     stepResults: [],
     visited: new Set(),
     stepNr: 0,
+    variables: parseWorkflowVariables(workflow.variables),
   };
 
   // Store the webhook payload BEFORE walking so downstream nodes can access it.

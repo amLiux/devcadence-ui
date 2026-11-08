@@ -8,6 +8,7 @@ export interface WebhookWorkflow {
   name: string;
   nodes: string | null;
   edges: string | null;
+  variables?: unknown;
 }
 
 export interface WebhookValidationError {

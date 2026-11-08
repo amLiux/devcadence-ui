@@ -7,12 +7,14 @@ import {
   buildParentMap,
   buildAncestorChain,
   outputsFromContext,
+  withWorkflowVariables,
   type ContextStep,
 } from "@/lib/workflow-context";
 import {
   handleRetryLoop,
 } from "@/lib/workflows/nodes";
 import { executeNode } from "@/lib/workflows/execute-node";
+import { parseWorkflowVariables } from "@/lib/workflows/variables";
 import { sanitize } from "@/lib/workflows/sanitize";
 import type { EditorNode, EditorEdge, NodeDebugLog, WorkflowContext } from "@/lib/types";
 
@@ -33,6 +35,14 @@ async function resolveWorkflowId(requested?: string): Promise<string | null> {
   return first?.id ?? null;
 }
 
+async function loadWorkflowVariables(workflowId: string): Promise<Record<string, string>> {
+  const row = await prisma.workflow.findUnique({
+    where: { id: workflowId },
+    select: { variables: true },
+  });
+  return parseWorkflowVariables(row?.variables);
+}
+
 export async function POST(req: Request) {
   try {
     const parsed = await readJsonBody(req, testNodeSchema);
@@ -46,6 +56,8 @@ export async function POST(req: Request) {
     if (!workflowId) {
       return NextResponse.json({ error: "No workflow found" }, { status: 400 });
     }
+
+    const variables = await loadWorkflowVariables(workflowId);
 
     // Build ancestor chain from editor context (parents must already be tested)
     let ancestorChain: ContextStep | undefined;
@@ -61,6 +73,8 @@ export async function POST(req: Request) {
       ancestorChain = buildAncestorChain(node.id, parents, contextOutputs, allNodes);
     }
 
+    const chain = withWorkflowVariables(ancestorChain, variables);
+
     const run = await prisma.workflowRun.create({
       data: { workflowId, source: "test" },
     });
@@ -71,7 +85,7 @@ export async function POST(req: Request) {
       const stream = new ReadableStream({
         async start(controller) {
           const startedAt = new Date().toISOString();
-          const result = await handleRetryLoop(meta, ancestorChain, async (entry) => {
+          const result = await handleRetryLoop(meta, chain, async (entry) => {
             controller.enqueue(encoder.encode(JSON.stringify({ type: "log", entry }) + "\n"));
             await prisma.workflowLog.create({
               data: {
@@ -125,7 +139,11 @@ export async function POST(req: Request) {
       });
     }
 
-    const { debugLog, data } = await executeNode(node, ancestorChain, { runId: run.id, stepNr: 1 });
+    const { debugLog, data } = await executeNode(node, chain, {
+      runId: run.id,
+      stepNr: 1,
+      variables,
+    });
 
     await prisma.workflowRun.update({
       where: { id: run.id },

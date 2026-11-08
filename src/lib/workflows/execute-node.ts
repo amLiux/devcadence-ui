@@ -32,6 +32,7 @@ import {
 } from "@/lib/workflows/nodes";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
 import { sanitize } from "@/lib/workflows/sanitize";
+import { withWorkflowVariables } from "@/lib/workflow-context";
 
 const now = () => new Date().toISOString();
 
@@ -39,6 +40,7 @@ export interface ExecuteNodeOptions {
   runId?: string;
   stepNr?: number;
   onLog?: (entry: LogEntry) => void;
+  variables?: Record<string, string> | null;
 }
 
 type Handler = (
@@ -217,16 +219,17 @@ export async function executeNode(
   const meta = (node.data.metadata || {}) as Record<string, string>;
   const { title, type } = node.data;
   const startedAt = new Date();
+  const chain = withWorkflowVariables(ancestorChain, options.variables);
 
   let inputSnapshot: unknown = undefined;
   try {
-    inputSnapshot = sanitize(buildInputSnapshot(ancestorChain)).sanitized;
+    inputSnapshot = sanitize(buildInputSnapshot(chain)).sanitized;
   } catch {
     inputSnapshot = null;
   }
 
   try {
-    const result = await dispatchHandler(title, type, meta, ancestorChain);
+    const result = await dispatchHandler(title, type, meta, chain);
     return await handleNodeSuccess({ node, title, result, inputSnapshot, startedAt, options });
   } catch (error) {
     return await handleNodeFailure({ node, title, error, inputSnapshot, startedAt, options });

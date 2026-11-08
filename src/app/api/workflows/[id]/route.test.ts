@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { PUT } from "./route";
+import { GET, PUT } from "./route";
 import { syncSchedules, unregisterSchedule } from "@/lib/scheduler";
 import { recordVersion } from "@/lib/workflows/version-store";
 
@@ -81,6 +81,19 @@ beforeEach(() => {
   );
 });
 
+describe("GET /api/workflows/[id]", () => {
+  it("serializes workflow variables", async () => {
+    mocks.findUnique.mockResolvedValue(dbRow({ variables: { discordChannel: "123" } }));
+
+    const response = await GET(new Request("http://localhost/api/workflows/wf-123"), {
+      params: Promise.resolve({ id: "wf-123" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).variables).toEqual({ discordChannel: "123" });
+  });
+});
+
 describe("PUT /api/workflows/[id]", () => {
   it("rejects a blank name without touching the database", async () => {
     const response = await callPut({ name: "   " });
@@ -132,6 +145,27 @@ describe("PUT /api/workflows/[id]", () => {
     expect(response.status).toBe(200);
   });
 
+  it("accepts workflow variables", async () => {
+    mocks.update.mockResolvedValue(dbRow());
+
+    const response = await callPut({
+      variables: { discordChannel: "123", githubRepo: "org/repo" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { id: "wf-123" },
+      data: { variables: { discordChannel: "123", githubRepo: "org/repo" } },
+    });
+  });
+
+  it("rejects non-string variable values", async () => {
+    const response = await callPut({ variables: { discordChannel: 123 } });
+
+    expect(response.status).toBe(400);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it("updates name and description and returns the serialized workflow", async () => {
     mocks.update.mockResolvedValue(dbRow({ name: "Renamed", description: "New description" }));
 
@@ -148,6 +182,7 @@ describe("PUT /api/workflows/[id]", () => {
       nodes: "[]",
       edges: "[]",
       flowPath: null,
+      variables: {},
       status: "draft",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",

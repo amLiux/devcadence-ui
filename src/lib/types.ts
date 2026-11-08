@@ -87,6 +87,7 @@ export interface Workflow {
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;
+  variables?: Record<string, string>;
   status: WorkflowStatus;
   createdAt: string;
   updatedAt: string;
@@ -210,6 +211,8 @@ export interface ContextStep {
   output: any;
   success: boolean;
   error: string | null;
+  /** Workflow-level variables exposed to templates as {{workflow.name}}. */
+  workflow?: Record<string, string>;
   previousStep?: ContextStep;
 }
 

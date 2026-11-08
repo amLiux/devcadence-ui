@@ -34,6 +34,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 
   mocks.create.mockResolvedValue({ id: "run-1" });
+  mocks.findUnique.mockResolvedValue({ variables: {} });
   mocks.run.mockResolvedValue(undefined);
 });
 

@@ -5,6 +5,7 @@ import { readJsonBody } from "@/lib/api/body";
 import { findRoots } from "@/lib/workflow-context";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { runSubWorkflow } from "@/lib/workflows/execute-sub-workflow";
+import { parseWorkflowVariables } from "@/lib/workflows/variables";
 import type { EditorNode, EditorEdge } from "@/lib/types";
 import type { NodeOutput } from "@/lib/workflow-context";
 
@@ -71,7 +72,12 @@ export async function POST(req: Request) {
       },
     });
 
-    const result = await runSubWorkflow({ nodes, edges, runId: run.id });
+    const result = await runSubWorkflow({
+      nodes,
+      edges,
+      runId: run.id,
+      variables: parseWorkflowVariables(workflow.variables),
+    });
     const allPassed = result.debugLogs.every((log) => log.success);
 
     await prisma.workflowRun.update({

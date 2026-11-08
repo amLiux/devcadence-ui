@@ -12,6 +12,7 @@ import { sanitize } from "@/lib/workflows/sanitize";
 import { notifyRunFailure } from "@/lib/notifications/notify";
 import { enqueueWorkflow, type WorkflowJobData } from "@/lib/queue";
 import { scheduleAutoRetry } from "./run-retries";
+import { parseWorkflowVariables } from "./variables";
 import type { EditorNode, EditorEdge, NodeDebugLog } from "@/lib/types";
 
 export interface ExecuteRunResult {
@@ -37,6 +38,7 @@ interface RunState {
   stepResults: NodeDebugLog[];
   visited: Set<string>;
   stepNr: number;
+  variables: Record<string, string>;
 }
 
 const now = () => new Date().toISOString();
@@ -138,6 +140,7 @@ async function walkNodes({
     const { debugLog, data } = await executeNode(node, chain, {
       runId: state.runId,
       stepNr: ++state.stepNr,
+      variables: state.variables,
     });
     state.stepResults.push(debugLog);
 
@@ -238,6 +241,7 @@ export async function executeWorkflowRun({
     stepResults: [],
     visited: new Set(),
     stepNr: 0,
+    variables: parseWorkflowVariables(workflow.variables),
   };
 
   const queue = await seedTriggerRoots({ roots, forward, body, state });

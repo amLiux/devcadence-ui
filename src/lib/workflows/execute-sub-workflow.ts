@@ -19,10 +19,12 @@ export async function runSubWorkflow({
   nodes,
   edges,
   runId,
+  variables = {},
 }: {
   nodes: EditorNode[];
   edges: EditorEdge[];
   runId: string;
+  variables?: Record<string, string>;
 }): Promise<SubWorkflowRunResult> {
   const parentMap = buildParentMap(edges);
   const forwardMap = buildForwardMap(edges);
@@ -59,6 +61,7 @@ export async function runSubWorkflow({
     const { debugLog, data } = await executeNode(node, ancestorChain, {
       runId,
       stepNr: ++stepNr,
+      variables,
     });
 
     debugLogs.push(debugLog);
