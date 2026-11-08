@@ -18,6 +18,22 @@ function mapOsvSeverity(severityEntries?: Array<{ type: string; score?: string }
   return "low";
 }
 
+function findFixedVersion(
+  affected: Array<{
+    ranges?: Array<{ events: Array<{ introduced?: string; fixed?: string }> }>;
+  }>,
+): string | undefined {
+  let fixedVersion: string | undefined;
+  for (const entry of affected) {
+    for (const range of entry.ranges ?? []) {
+      for (const event of range.events) {
+        if (event.fixed) fixedVersion = event.fixed;
+      }
+    }
+  }
+  return fixedVersion;
+}
+
 export async function queryOsv(deps: Dependency[], ecosystem: string): Promise<Finding[]> {
   const queries = deps.map((dependency) => ({
     package: { name: dependency.name, ecosystem: osvEcosystem(ecosystem) },
@@ -62,14 +78,6 @@ export async function queryOsv(deps: Dependency[], ecosystem: string): Promise<F
       const ghsa = vulnerability.id.startsWith("GHSA-")
         ? vulnerability.id
         : vulnerability.aliases?.find((alias) => alias.startsWith("GHSA-"));
-      let fixedVersion: string | undefined;
-      for (const affected of vulnerability.affected ?? []) {
-        for (const range of affected.ranges ?? []) {
-          for (const event of range.events) {
-            if (event.fixed) fixedVersion = event.fixed;
-          }
-        }
-      }
       findings.push({
         name: dependency.name,
         installedVersion: dependency.version,
@@ -77,7 +85,7 @@ export async function queryOsv(deps: Dependency[], ecosystem: string): Promise<F
         title: vulnerability.summary,
         cve,
         ghsa,
-        fixedVersion,
+        fixedVersion: findFixedVersion(vulnerability.affected ?? []),
         source: "OSV",
       });
     }

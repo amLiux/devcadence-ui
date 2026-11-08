@@ -27,6 +27,16 @@ export type ParseResult =
   | { ok: true; value: NotificationSettings }
   | { ok: false; error: string };
 
+function parseConnectionId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function parseThrottle(value: unknown): number {
+  const raw =
+    typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(raw) ? Math.trunc(raw) : DEFAULT_THROTTLE_MINUTES;
+}
+
 /** Validates the settings payload without touching the database. */
 export function parseNotificationSettings(body: unknown): ParseResult {
   if (typeof body !== "object" || body === null) {
@@ -41,19 +51,9 @@ export function parseNotificationSettings(body: unknown): ParseResult {
   const channel = input.channel as NotificationChannel;
 
   const enabled = input.enabled === true;
-  const connectionId =
-    typeof input.connectionId === "string" && input.connectionId.trim()
-      ? input.connectionId.trim()
-      : null;
+  const connectionId = parseConnectionId(input.connectionId);
   const target = typeof input.target === "string" ? input.target.trim() : "";
-
-  const rawThrottle =
-    typeof input.throttleMinutes === "number"
-      ? input.throttleMinutes
-      : Number.parseInt(String(input.throttleMinutes ?? ""), 10);
-  const throttleMinutes = Number.isFinite(rawThrottle)
-    ? Math.trunc(rawThrottle)
-    : DEFAULT_THROTTLE_MINUTES;
+  const throttleMinutes = parseThrottle(input.throttleMinutes);
 
   if (throttleMinutes < 1 || throttleMinutes > 1440) {
     return { ok: false, error: "Throttle must be between 1 and 1440 minutes" };

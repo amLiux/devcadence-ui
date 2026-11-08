@@ -70,70 +70,89 @@ function buildContextSkeleton(nodes: EditorNode[]): WorkflowContext {
   return ctx;
 }
 
+function rebuildContext(
+  elements: EditorNode[],
+  existing: WorkflowContext,
+): WorkflowContext {
+  const context: WorkflowContext = {};
+  for (const node of elements) {
+    context[node.id] = existing[node.id] ?? {
+      name: node.data.title,
+      output: null,
+      success: false,
+      error: null,
+    };
+  }
+  return context;
+}
+
+function loadData(
+  state: EditorState,
+  payload: { elements: EditorNode[]; edges: EditorEdge[] },
+): EditorState {
+  return {
+    ...state,
+    elements: payload.elements,
+    edges: payload.edges,
+    context: buildContextSkeleton(payload.elements),
+  };
+}
+
+function addNode(state: EditorState, node: EditorNode): EditorState {
+  const elements = [...state.elements, node];
+  return { ...state, elements, context: rebuildContext(elements, state.context) };
+}
+
+function deleteNode(state: EditorState, nodeId: string): EditorState {
+  const elements = state.elements.filter((element) => element.id !== nodeId);
+  return {
+    ...state,
+    elements,
+    edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
+    selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
+    context: rebuildContext(elements, state.context),
+  };
+}
+
+function updateNode(
+  state: EditorState,
+  nodeId: string,
+  data: Partial<EditorNode["data"]>,
+): EditorState {
+  return {
+    ...state,
+    elements: state.elements.map((element) =>
+      element.id === nodeId ? { ...element, data: { ...element.data, ...data } } : element,
+    ),
+    selectedNode:
+      state.selectedNode?.id === nodeId
+        ? { ...state.selectedNode, data: { ...state.selectedNode.data, ...data } }
+        : state.selectedNode,
+  };
+}
+
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
-    case "LOAD_DATA": {
-      const skeleton = buildContextSkeleton(action.payload.elements);
-      return { ...state, elements: action.payload.elements, edges: action.payload.edges, context: skeleton };
-    }
-    case "ADD_NODE": {
-      const elements = [...state.elements, action.payload];
-      const existingCtx = state.context;
-      const newCtx: WorkflowContext = {};
-      for (const node of elements) {
-        newCtx[node.id] = existingCtx[node.id] ?? {
-          name: node.data.title,
-          output: null,
-          success: false,
-          error: null,
-        };
-      }
-      return { ...state, elements, context: newCtx };
-    }
-    case "DELETE_NODE": {
-      const elements = state.elements.filter((el) => el.id !== action.payload.nodeId);
-      const existingCtx = state.context;
-      const newCtx: WorkflowContext = {};
-      for (const node of elements) {
-        newCtx[node.id] = existingCtx[node.id] ?? {
-          name: node.data.title,
-          output: null,
-          success: false,
-          error: null,
-        };
-      }
-      return {
-        ...state,
-        elements,
-        edges: state.edges.filter(
-          (e) => e.source !== action.payload.nodeId && e.target !== action.payload.nodeId,
-        ),
-        selectedNode: state.selectedNode?.id === action.payload.nodeId ? null : state.selectedNode,
-        context: newCtx,
-      };
-    }
+    case "LOAD_DATA":
+      return loadData(state, action.payload);
+    case "ADD_NODE":
+      return addNode(state, action.payload);
+    case "DELETE_NODE":
+      return deleteNode(state, action.payload.nodeId);
     case "UPDATE_NODE":
-      return {
-        ...state,
-        elements: state.elements.map((el) =>
-          el.id === action.payload.nodeId
-            ? { ...el, data: { ...el.data, ...action.payload.data } }
-            : el,
-        ),
-        selectedNode:
-          state.selectedNode?.id === action.payload.nodeId
-            ? {
-                ...state.selectedNode,
-                data: { ...state.selectedNode.data, ...action.payload.data },
-              }
-            : state.selectedNode,
-      };
+      return updateNode(state, action.payload.nodeId, action.payload.data);
     case "SET_EDGES":
       return { ...state, edges: action.payload };
     case "SELECT_ELEMENT":
       return { ...state, selectedNode: action.payload };
     case "SET_CONTEXT":
-      return { ...state, context: typeof action.payload === "function" ? action.payload(state.context) : action.payload };
+      return {
+        ...state,
+        context:
+          typeof action.payload === "function"
+            ? action.payload(state.context)
+            : action.payload,
+      };
     default:
       return state;
   }

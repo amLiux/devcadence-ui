@@ -17,39 +17,27 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
+const COMPARATORS: Record<string, (comparison: number) => boolean> = {
+  "==": (comparison) => comparison === 0,
+  "!=": (comparison) => comparison !== 0,
+  ">": (comparison) => comparison > 0,
+  ">=": (comparison) => comparison >= 0,
+  "<": (comparison) => comparison < 0,
+  "<=": (comparison) => comparison <= 0,
+  "~=": (comparison) => comparison >= 0,
+};
+
 function pythonSatisfies(version: string, range: string): boolean {
   const constraints = range.split(",").map((item) => item.trim());
   for (const constraint of constraints) {
     const match = constraint.match(/^([<>=~!]+)\s*([0-9a-zA-Z._\-]+)$/);
     if (!match) return false;
-    const operator = match[1];
-    const target = normalizeVersion(match[2]);
-    const comparison = compareVersions(version, target);
-    switch (operator) {
-      case "==":
-        if (comparison !== 0) return false;
-        break;
-      case "!=":
-        if (comparison === 0) return false;
-        break;
-      case ">":
-        if (comparison <= 0) return false;
-        break;
-      case ">=":
-        if (comparison < 0) return false;
-        break;
-      case "<":
-        if (comparison >= 0) return false;
-        break;
-      case "<=":
-        if (comparison > 0) return false;
-        break;
-      case "~=":
-        if (comparison < 0) return false;
-        break;
-      default:
-        return false;
-    }
+
+    const comparator = COMPARATORS[match[1]];
+    if (!comparator) return false;
+
+    const comparison = compareVersions(version, normalizeVersion(match[2]));
+    if (!comparator(comparison)) return false;
   }
   return true;
 }
