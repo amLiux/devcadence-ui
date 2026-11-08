@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { encryptConfig } from "../src/lib/secrets";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -37,6 +38,89 @@ const WORKFLOW_NODES = [
 
 const WORKFLOW_EDGES = [{ id: "e2e-edge", source: "e2e-trigger", target: "e2e-transform" }];
 
+const FAILURE_NODES = [
+  {
+    id: "e2e-failure-trigger",
+    type: "cardNode",
+    position: { x: 80, y: 80 },
+    data: {
+      title: "Webhook",
+      description: "E2E failure trigger",
+      type: "Trigger",
+      completed: false,
+      current: false,
+      metadata: { connectionId: "e2e-webhook" },
+    },
+  },
+  {
+    id: "e2e-failure-http",
+    type: "cardNode",
+    position: { x: 80, y: 280 },
+    data: {
+      title: "HTTP Request",
+      description: "E2E failure request",
+      type: "Action",
+      completed: false,
+      current: false,
+      metadata: { url: "http://127.0.0.1:9", method: "GET" },
+    },
+  },
+];
+
+const FAILURE_EDGES = [
+  { id: "e2e-failure-edge", source: "e2e-failure-trigger", target: "e2e-failure-http" },
+];
+
+async function seedConnections(): Promise<void> {
+  await prisma.connection.deleteMany({ where: { name: { startsWith: "E2E " } } });
+
+  await prisma.connection.create({
+    data: {
+      id: "e2e-webhook",
+      type: "Webhook",
+      name: "E2E Webhook",
+      description: "Seeded by the E2E suite",
+      config: encryptConfig({}),
+    },
+  });
+
+  await prisma.connection.create({
+    data: {
+      id: "e2e-smtp",
+      type: "SMTP",
+      name: "E2E SMTP",
+      description: "Seeded by the E2E suite (MailHog)",
+      config: encryptConfig({
+        host: "127.0.0.1",
+        port: 1025,
+        user: "",
+        password: "",
+        secure: false,
+        fromEmail: "e2e@devdock.local",
+      }),
+    },
+  });
+
+  await prisma.notificationSetting.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      enabled: true,
+      channel: "email",
+      connectionId: "e2e-smtp",
+      target: "e2e@devdock.local",
+      throttleMinutes: 1,
+    },
+    update: {
+      enabled: true,
+      channel: "email",
+      connectionId: "e2e-smtp",
+      target: "e2e@devdock.local",
+      throttleMinutes: 1,
+    },
+  });
+}
+
 export async function seed(): Promise<void> {
   const shared = await prisma.project.findFirst({ where: { isShared: true } });
   if (!shared) {
@@ -66,23 +150,30 @@ export async function seed(): Promise<void> {
     await prisma.workflowRun.deleteMany({ where: { workflowId: { in: previousIds } } });
     await prisma.workflow.deleteMany({ where: { id: { in: previousIds } } });
   }
-  await prisma.connection.deleteMany({ where: { name: { startsWith: "E2E " } } });
 
-  for (const name of ["E2E Success", "E2E Move"]) {
+  await seedConnections();
+
+  const workflows = [
+    { name: "E2E Success", status: "draft", nodes: WORKFLOW_NODES, edges: WORKFLOW_EDGES },
+    { name: "E2E Move", status: "draft", nodes: WORKFLOW_NODES, edges: WORKFLOW_EDGES },
+    { name: "E2E Failure", status: "active", nodes: FAILURE_NODES, edges: FAILURE_EDGES },
+  ];
+
+  for (const workflow of workflows) {
     await prisma.workflow.create({
       data: {
-        name,
+        name: workflow.name,
         description: "Seeded by the E2E suite",
         type: "workflow",
         projectId: shared.id,
-        status: "draft",
-        nodes: JSON.stringify(WORKFLOW_NODES),
-        edges: JSON.stringify(WORKFLOW_EDGES),
+        status: workflow.status,
+        nodes: JSON.stringify(workflow.nodes),
+        edges: JSON.stringify(workflow.edges),
       },
     });
   }
 
-  console.info("[e2e] Seeded E2E workflows and the E2E Target project");
+  console.info("[e2e] Seeded E2E workflows, connections and the E2E Target project");
 }
 
 if (process.argv[1]?.includes("seed.ts")) {
