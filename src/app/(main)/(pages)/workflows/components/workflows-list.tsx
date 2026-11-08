@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Folder, LayoutGrid, Loader2, Plus, Users } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
 import { useModal } from "@/providers/modal-provider";
@@ -13,37 +13,7 @@ import { Button } from "@/components/ui/button";
 import { filterByProject, defaultProjectId as resolveDefaultProjectId } from "@/lib/workflows/projects";
 import type { WorkflowFormValues } from "@/components/forms/workflow-form";
 import type { Project, Workflow } from "@/lib/types";
-
-function RailItem({
-  label,
-  count,
-  active,
-  icon,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  icon: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-        active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}
-    >
-      {icon}
-      <span className="flex-1 truncate text-left">{label}</span>
-      <span className="text-xs tabular-nums">{count}</span>
-    </button>
-  );
-}
+import { ProjectRailItem } from "./project-rail-item";
 
 export function Workflows() {
   const { request, loading } = useApi();
@@ -91,7 +61,7 @@ export function Workflows() {
 
   const handleDelete = async (id: string) => {
     await request({ endpoint: `/api/workflows/${id}`, method: "DELETE" });
-    setWorkflows((prev) => prev.filter((workflow) => workflow.id !== id));
+    setWorkflows((previous) => previous.filter((workflow) => workflow.id !== id));
   };
 
   const handleUpdate = async (id: string, data: WorkflowFormValues) => {
@@ -101,7 +71,9 @@ export function Workflows() {
       data,
     });
     if (updated) {
-      setWorkflows((prev) => prev.map((workflow) => (workflow.id === id ? updated : workflow)));
+      setWorkflows((previous) =>
+        previous.map((workflow) => (workflow.id === id ? updated : workflow)),
+      );
     }
     setClose();
   };
@@ -113,7 +85,9 @@ export function Workflows() {
       data: { projectId },
     });
     if (updated) {
-      setWorkflows((prev) => prev.map((workflow) => (workflow.id === id ? updated : workflow)));
+      setWorkflows((previous) =>
+        previous.map((workflow) => (workflow.id === id ? updated : workflow)),
+      );
     }
   };
 
@@ -124,7 +98,7 @@ export function Workflows() {
       data: values,
     });
     if (project) {
-      setProjects((prev) => [...prev, project]);
+      setProjects((previous) => [...previous, project]);
       setActiveProjectId(project.id);
     }
     setClose();
@@ -150,7 +124,7 @@ export function Workflows() {
 
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="space-y-1 lg:sticky lg:top-6 lg:self-start">
-          <RailItem
+          <ProjectRailItem
             label="All workflows"
             count={workflows.length}
             active={activeProjectId === null}
@@ -158,7 +132,7 @@ export function Workflows() {
             onClick={() => setActiveProjectId(null)}
           />
           {projects.map((project) => (
-            <RailItem
+            <ProjectRailItem
               key={project.id}
               label={project.name}
               count={counts.get(project.id) ?? 0}
