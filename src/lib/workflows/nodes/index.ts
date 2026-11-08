@@ -9,6 +9,7 @@ export { handleWebhookTrigger } from "./webhook";
 export { handleScheduleTrigger } from "./schedule-trigger";
 export { handlePrompt, handleClassify, handleExtract } from "./ai";
 export { handleCallWorkflow } from "./call-workflow";
+export { handleForEach } from "./for-each";
 export { handleBuildJson } from "./build-json";
 export { handleInput } from "./input";
 export { handleReturn } from "./return";

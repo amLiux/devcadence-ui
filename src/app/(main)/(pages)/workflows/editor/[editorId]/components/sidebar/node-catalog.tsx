@@ -162,6 +162,12 @@ export const actionNodes: NodeCardDef[] = [
   },
   {
     type: "Action",
+    title: "For Each",
+    description: "Run a reusable sub-workflow once per array item",
+    category: "Core",
+  },
+  {
+    type: "Action",
     title: "Return",
     description: "Export values back to parent workflow (sub-workflows only)",
     category: "Core",

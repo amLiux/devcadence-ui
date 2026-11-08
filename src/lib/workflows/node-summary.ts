@@ -114,6 +114,17 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return name ? `→ ${name}` : null;
   },
 
+  "For Each": (meta, options) => {
+    const workflowId = collapse(meta.workflowId);
+    const name =
+      (workflowId && options.workflowNames?.[workflowId]) ||
+      collapse(meta.workflowName) ||
+      workflowId;
+    if (!name) return null;
+    const max = collapse(meta.maxItems) || "25";
+    return `${name} · max ${max}`;
+  },
+
   "HTTP Request": (meta) => {
     const url = collapse(meta.url);
     if (!url) return null;
