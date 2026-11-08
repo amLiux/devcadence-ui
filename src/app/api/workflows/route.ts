@@ -30,14 +30,28 @@ export async function GET(req: Request) {
       const workflows = await prisma.workflow.findMany({
         where,
         orderBy: { updatedAt: "desc" },
-        select: { id: true, name: true, projectId: true },
+        select: {
+          id: true,
+          name: true,
+          projectId: true,
+          project: { select: { name: true, isShared: true } },
+        },
       });
-      return NextResponse.json({ workflows });
+      return NextResponse.json({
+        workflows: workflows.map((workflow) => ({
+          id: workflow.id,
+          name: workflow.name,
+          projectId: workflow.projectId,
+          projectName: workflow.project.name,
+          isShared: workflow.project.isShared,
+        })),
+      });
     }
 
     const workflows = await prisma.workflow.findMany({
       where,
       orderBy: { updatedAt: "desc" },
+      include: { project: { select: { name: true } } },
     });
     return NextResponse.json({ workflows: workflows.map(serializeWorkflow) });
   } catch (error) {
@@ -69,6 +83,7 @@ export async function POST(req: Request) {
         type: body.type || "workflow",
         projectId,
       },
+      include: { project: { select: { name: true } } },
     });
     return NextResponse.json(serializeWorkflow(workflow), { status: 201 });
   } catch (error) {

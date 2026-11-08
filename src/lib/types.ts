@@ -84,6 +84,7 @@ export interface Workflow {
   description: string;
   type: string;
   projectId: string;
+  projectName?: string;
   nodes: string | null;
   edges: string | null;
   flowPath: string | null;

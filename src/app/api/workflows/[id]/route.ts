@@ -43,7 +43,10 @@ async function syncScheduleAfterUpdate(
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const workflow = await prisma.workflow.findUnique({ where: { id } });
+    const workflow = await prisma.workflow.findUnique({
+      where: { id },
+      include: { project: { select: { name: true } } },
+    });
     if (!workflow) {
       return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
     }
@@ -84,6 +87,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return tx.workflow.update({
         where: { id },
         data: body,
+        include: { project: { select: { name: true } } },
       });
     });
 

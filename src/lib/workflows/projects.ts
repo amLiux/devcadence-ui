@@ -4,10 +4,12 @@ export interface ReusableWorkflow {
   id: string;
   name: string;
   projectId: string;
+  projectName?: string;
+  isShared?: boolean;
 }
 
 export interface ReusableWorkflowGroup {
-  project: Project;
+  project: { id: string; name: string; isShared: boolean };
   workflows: ReusableWorkflow[];
 }
 
@@ -31,34 +33,46 @@ export function defaultProjectId(
 }
 
 /**
- * Groups reusable workflows for the Call Workflow picker. A workflow can only be
- * called from its own project or from Shared, so those are the only groups kept.
- * Without a current project (older data), every project is offered.
+ * Groups the compact reusable workflow list for the Call Workflow picker. A
+ * workflow can only be called from its own project or from Shared, so those are
+ * the only groups kept. Without a current project, every project is offered.
+ *
+ * The list already carries projectName and isShared, so this does not need the
+ * full projects payload.
  */
 export function groupReusableWorkflows(
   workflows: ReusableWorkflow[],
-  projects: Project[],
   currentProjectId?: string | null,
 ): ReusableWorkflowGroup[] {
-  let targets: Project[];
+  const groups = new Map<string, ReusableWorkflowGroup>();
 
-  if (currentProjectId) {
-    const current = projects.find((project) => project.id === currentProjectId);
-    const shared = projects.find((project) => project.isShared);
-    targets = [];
-    for (const project of [current, shared]) {
-      if (project && !targets.some((target) => target.id === project.id)) {
-        targets.push(project);
-      }
+  for (const workflow of workflows) {
+    if (currentProjectId && workflow.projectId !== currentProjectId && !workflow.isShared) {
+      continue;
     }
-  } else {
-    targets = projects;
+
+    const existing = groups.get(workflow.projectId);
+    if (existing) {
+      existing.workflows.push(workflow);
+      continue;
+    }
+
+    groups.set(workflow.projectId, {
+      project: {
+        id: workflow.projectId,
+        name: workflow.projectName ?? workflow.projectId,
+        isShared: Boolean(workflow.isShared),
+      },
+      workflows: [workflow],
+    });
   }
 
-  return targets
-    .map((project) => ({
-      project,
-      workflows: workflows.filter((workflow) => workflow.projectId === project.id),
-    }))
-    .filter((group) => group.workflows.length > 0);
+  return [...groups.values()].sort((a, b) => {
+    if (!currentProjectId) return 0;
+    if (a.project.id === currentProjectId) return -1;
+    if (b.project.id === currentProjectId) return 1;
+    if (a.project.isShared && !b.project.isShared) return -1;
+    if (!a.project.isShared && b.project.isShared) return 1;
+    return 0;
+  });
 }

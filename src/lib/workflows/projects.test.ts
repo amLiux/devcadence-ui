@@ -4,6 +4,7 @@ import {
   defaultProjectId,
   filterByProject,
   groupReusableWorkflows,
+  type ReusableWorkflow,
 } from "./projects";
 
 const shared: Project = {
@@ -24,19 +25,28 @@ const dashboard: Project = {
   updatedAt: "",
 };
 
-const other: Project = {
-  id: "proj-other",
-  name: "other",
-  description: "",
-  isShared: false,
-  createdAt: "",
-  updatedAt: "",
-};
-
-const workflows = [
-  { id: "wf-1", name: "Shared helper", projectId: "shared" },
-  { id: "wf-2", name: "Dashboard job", projectId: "proj-dashboard" },
-  { id: "wf-3", name: "Other job", projectId: "proj-other" },
+const workflows: ReusableWorkflow[] = [
+  {
+    id: "wf-1",
+    name: "Shared helper",
+    projectId: "shared",
+    projectName: "Shared",
+    isShared: true,
+  },
+  {
+    id: "wf-2",
+    name: "Dashboard job",
+    projectId: "proj-dashboard",
+    projectName: "devcadence-ui",
+    isShared: false,
+  },
+  {
+    id: "wf-3",
+    name: "Other job",
+    projectId: "proj-other",
+    projectName: "other",
+    isShared: false,
+  },
 ];
 
 describe("filterByProject", () => {
@@ -61,7 +71,7 @@ describe("defaultProjectId", () => {
 
 describe("groupReusableWorkflows", () => {
   it("offers the current project followed by Shared", () => {
-    const groups = groupReusableWorkflows(workflows, [shared, dashboard, other], dashboard.id);
+    const groups = groupReusableWorkflows(workflows, dashboard.id);
 
     expect(groups.map((group) => group.project.name)).toEqual(["devcadence-ui", "Shared"]);
     expect(groups[0].workflows.map((w) => w.id)).toEqual(["wf-2"]);
@@ -69,15 +79,22 @@ describe("groupReusableWorkflows", () => {
   });
 
   it("does not repeat Shared when the current project is Shared", () => {
-    const groups = groupReusableWorkflows(workflows, [shared, dashboard], shared.id);
+    const groups = groupReusableWorkflows(workflows, shared.id);
 
     expect(groups.map((group) => group.project.id)).toEqual(["shared"]);
   });
 
   it("drops groups without workflows", () => {
     const groups = groupReusableWorkflows(
-      [{ id: "wf-1", name: "Helper", projectId: "shared" }],
-      [shared, dashboard],
+      [
+        {
+          id: "wf-1",
+          name: "Helper",
+          projectId: "shared",
+          projectName: "Shared",
+          isShared: true,
+        },
+      ],
       dashboard.id,
     );
 
@@ -85,7 +102,7 @@ describe("groupReusableWorkflows", () => {
   });
 
   it("offers every project when the current one is unknown", () => {
-    const groups = groupReusableWorkflows(workflows, [shared, dashboard, other]);
+    const groups = groupReusableWorkflows(workflows);
 
     expect(groups.map((group) => group.project.id)).toEqual([
       "shared",

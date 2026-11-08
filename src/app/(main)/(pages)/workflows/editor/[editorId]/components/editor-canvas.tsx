@@ -204,7 +204,6 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
             <div className="flex-1 overflow-auto">
               <EditorCanvasSidebar
                 workflowId={workflow.id}
-                projectId={workflow.projectId}
                 initialRunId={initialRunId}
               />
             </div>
