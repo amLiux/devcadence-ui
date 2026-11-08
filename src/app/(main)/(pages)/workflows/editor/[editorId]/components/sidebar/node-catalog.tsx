@@ -132,6 +132,12 @@ export const actionNodes: NodeCardDef[] = [
   },
   {
     type: "Action",
+    title: "Scrape",
+    description: "Fetch a page and extract its main text",
+    category: "Core",
+  },
+  {
+    type: "Action",
     title: "Transform Data",
     description: "Map, filter, or transform data",
     category: "Core",

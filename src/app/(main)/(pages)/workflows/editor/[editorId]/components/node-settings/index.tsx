@@ -7,6 +7,7 @@ import {
   ConditionalSettings,
 } from "./expression-nodes";
 import { HttpRequestSettings } from "./http-request";
+import { ScrapeSettings } from "./scrape";
 import {
   ListenCommitsSettings,
   ListenPRsSettings,
@@ -52,6 +53,7 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "Add Label": AddLabelSettings,
   "Request Review": RequestReviewSettings,
   "HTTP Request": HttpRequestSettings,
+  Scrape: ScrapeSettings,
   "Transform Data": TransformDataSettings,
   Conditional: ConditionalSettings,
   "PostgreSQL Query": PostgresQuerySettings,

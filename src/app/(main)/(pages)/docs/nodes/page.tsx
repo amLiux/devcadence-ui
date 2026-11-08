@@ -201,6 +201,23 @@ const NODE_DOCS: NodeDoc[] = [
     provider: "None",
   },
   {
+    title: "Scrape",
+    icon: <Globe className="h-4 w-4 text-emerald-500" />,
+    color: "border-emerald-500/30",
+    description:
+      "Fetches a public page and extracts its main text with readability. Blocks localhost and private networks, revalidates redirects and caps size and time.",
+    requires: "None",
+    settings: [
+      { key: "url", desc: "Public http/https URL. Supports {{expression}} template variables." },
+    ],
+    examples: [
+      "https://example.com/article",
+      "Scrape an article, then send {{previousStep.text}} to Prompt for a summary.",
+    ],
+    category: "Actions",
+    provider: "None",
+  },
+  {
     title: "Transform Data",
     icon: <Sparkles className="h-4 w-4 text-purple-500" />,
     color: "border-purple-500/30",

@@ -89,6 +89,18 @@ describe("summarizeNode — HTTP Request", () => {
   });
 });
 
+describe("summarizeNode — Scrape", () => {
+  it("shows the url", () => {
+    expect(summarizeNode({ url: "https://example.com/article" }, "Scrape")).toBe(
+      "GET https://example.com/article",
+    );
+  });
+
+  it("returns null without a url", () => {
+    expect(summarizeNode({}, "Scrape")).toBeNull();
+  });
+});
+
 describe("summarizeNode — Slack", () => {
   it("shows the channel and a truncated message", () => {
     expect(
