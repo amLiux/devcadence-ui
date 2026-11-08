@@ -4,9 +4,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toString as cronToString } from "cronstrue";
 import type { NodeSettingsProps } from "../types";
+import { useWorkflowDefault } from "../workflow-variables-context";
+import { WorkflowDefaultsToggle } from "../workflow-defaults-toggle";
 import { DiscordConnectionSelect } from "./connection-select";
 
 export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettingsProps) {
+  const connection = useWorkflowDefault(
+    "discordConnection",
+    meta.connectionId || "",
+    (value) => handleChange("connectionId", value),
+  );
+  const channel = useWorkflowDefault("discordChannel", meta.channelId || "", (value) =>
+    handleChange("channelId", value),
+  );
+  const available = connection.available && channel.available;
+  const usingDefaults = connection.enabled && channel.enabled;
+
+  const toggleDefaults = (checked: boolean) => {
+    connection.toggle(checked);
+    channel.toggle(checked);
+  };
+
   let cronPreview = "";
   if (meta.cron) {
     try {
@@ -18,11 +36,17 @@ export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettin
 
   return (
     <div className="space-y-3">
+      <WorkflowDefaultsToggle
+        available={available}
+        enabled={usingDefaults}
+        onChange={toggleDefaults}
+      />
       <div className="space-y-1.5">
         <Label className="text-xs">Discord Connection</Label>
         <DiscordConnectionSelect
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
+          disabled={connection.enabled}
         />
       </div>
       <div className="space-y-1.5">

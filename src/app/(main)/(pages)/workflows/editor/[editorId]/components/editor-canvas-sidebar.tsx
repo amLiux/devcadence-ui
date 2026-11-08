@@ -13,10 +13,12 @@ export function EditorCanvasSidebar({
   workflowId,
   projectId,
   initialRunId,
+  workflowVariables,
 }: {
   workflowId?: string;
   projectId?: string;
   initialRunId?: string | null;
+  workflowVariables?: Record<string, string>;
 }) {
   const { editor, sidebarTab, setSidebarTab } = useEditor();
   const hasNodes = editor.elements.length > 0;
@@ -60,7 +62,10 @@ export function EditorCanvasSidebar({
                   {editor.selectedNode.data.description}
                 </p>
               </div>
-              <NodeSettingsForm currentProjectId={projectId} />
+              <NodeSettingsForm
+                currentProjectId={projectId}
+                workflowVariables={workflowVariables}
+              />
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">

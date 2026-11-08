@@ -2,8 +2,15 @@
 
 import { useEditor } from "@/providers/editor-provider";
 import { SETTINGS_REGISTRY } from "../node-settings";
+import { WorkflowVariablesProvider } from "../node-settings/workflow-variables-context";
 
-export function NodeSettingsForm({ currentProjectId }: { currentProjectId?: string }) {
+export function NodeSettingsForm({
+  currentProjectId,
+  workflowVariables,
+}: {
+  currentProjectId?: string;
+  workflowVariables?: Record<string, string>;
+}) {
   const { editor, updateNode, markDirty } = useEditor();
   const node = editor.selectedNode;
   if (!node) return null;
@@ -26,14 +33,16 @@ export function NodeSettingsForm({ currentProjectId }: { currentProjectId?: stri
   const SettingsComponent = SETTINGS_REGISTRY[title];
   if (SettingsComponent) {
     return (
-      <SettingsComponent
-        meta={meta}
-        handleChange={handleChange}
-        updateMeta={updateMeta}
-        parentOutput={parentOutput}
-        hasParentEdge={!!parentEdge}
-        currentProjectId={currentProjectId}
-      />
+      <WorkflowVariablesProvider value={workflowVariables}>
+        <SettingsComponent
+          meta={meta}
+          handleChange={handleChange}
+          updateMeta={updateMeta}
+          parentOutput={parentOutput}
+          hasParentEdge={!!parentEdge}
+          currentProjectId={currentProjectId}
+        />
+      </WorkflowVariablesProvider>
     );
   }
 

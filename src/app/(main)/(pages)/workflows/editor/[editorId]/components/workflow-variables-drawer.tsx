@@ -12,6 +12,15 @@ interface VariableRow {
   value: string;
 }
 
+const DEFAULT_FIELDS = [
+  { key: "discordConnection", label: "Discord connection ID", placeholder: "b1169cc1-..." },
+  { key: "discordChannel", label: "Discord channel ID", placeholder: "1568166558176378900" },
+  { key: "githubRepo", label: "GitHub repository", placeholder: "owner/repo" },
+  { key: "githubBranch", label: "GitHub branch", placeholder: "main" },
+];
+
+const DEFAULT_KEYS = new Set(DEFAULT_FIELDS.map((field) => field.key));
+
 export function WorkflowVariablesDrawer({
   workflowId,
   variables,
@@ -22,8 +31,15 @@ export function WorkflowVariablesDrawer({
   onSaved: (variables: Record<string, string>) => void;
 }) {
   const { request } = useApi();
+  const [defaults, setDefaults] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      DEFAULT_FIELDS.map((field) => [field.key, variables[field.key] ?? ""]),
+    ),
+  );
   const [rows, setRows] = useState<VariableRow[]>(() =>
-    Object.entries(variables).map(([key, value]) => ({ key, value })),
+    Object.entries(variables)
+      .filter(([key]) => !DEFAULT_KEYS.has(key))
+      .map(([key, value]) => ({ key, value })),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +52,13 @@ export function WorkflowVariablesDrawer({
 
   const save = async () => {
     const next: Record<string, string> = {};
+    for (const field of DEFAULT_FIELDS) {
+      const value = (defaults[field.key] ?? "").trim();
+      if (value) next[field.key] = value;
+    }
     for (const row of rows) {
       const key = row.key.trim();
-      if (key) next[key] = row.value;
+      if (key && !DEFAULT_KEYS.has(key)) next[key] = row.value;
     }
 
     setSaving(true);
@@ -66,57 +86,88 @@ export function WorkflowVariablesDrawer({
         <code className="bg-muted px-1 rounded">{"{{workflow.variableName}}"}</code>.
       </p>
 
-      {rows.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          No variables yet. Add one for a channel, repo, branch or any repeated value.
+      <div className="space-y-2 rounded-lg border p-3">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Workflow defaults
         </p>
-      )}
-
-      {rows.map((row, index) => (
-        <div key={index} className="flex items-end gap-2">
-          <div className="flex-1 space-y-1">
-            <Label htmlFor={`variable-key-${index}`} className="text-[10px]">
-              Name
+        {DEFAULT_FIELDS.map((field) => (
+          <div key={field.key} className="grid grid-cols-[150px_1fr] items-center gap-2">
+            <Label htmlFor={`default-${field.key}`} className="text-[11px]">
+              {field.label}
             </Label>
             <Input
-              id={`variable-key-${index}`}
+              id={`default-${field.key}`}
               className="h-8 text-xs font-mono"
-              placeholder="discordChannel"
-              value={row.key}
-              onChange={(event) => updateRow(index, { key: event.target.value })}
+              placeholder={field.placeholder}
+              value={defaults[field.key] ?? ""}
+              onChange={(event) =>
+                setDefaults((current) => ({ ...current, [field.key]: event.target.value }))
+              }
             />
           </div>
-          <div className="flex-[2] space-y-1">
-            <Label htmlFor={`variable-value-${index}`} className="text-[10px]">
-              Value
-            </Label>
-            <Input
-              id={`variable-value-${index}`}
-              className="h-8 text-xs font-mono"
-              placeholder="1234567890123456789"
-              value={row.value}
-              onChange={(event) => updateRow(index, { value: event.target.value })}
-            />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Remove variable ${row.key || index + 1}`}
-            onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      ))}
+        ))}
+        <p className="text-[10px] text-muted-foreground">
+          Node settings can use these with the “Use default” toggle.
+        </p>
+      </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setRows((current) => [...current, { key: "", value: "" }])}
-      >
-        <Plus className="mr-1 h-3.5 w-3.5" />
-        Add variable
-      </Button>
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Other variables
+        </p>
+
+        {rows.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No extra variables yet. Add one for a value that does not fit the defaults.
+          </p>
+        )}
+
+        {rows.map((row, index) => (
+          <div key={index} className="flex items-end gap-2">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`variable-key-${index}`} className="text-[10px]">
+                Name
+              </Label>
+              <Input
+                id={`variable-key-${index}`}
+                className="h-8 text-xs font-mono"
+                placeholder="teamName"
+                value={row.key}
+                onChange={(event) => updateRow(index, { key: event.target.value })}
+              />
+            </div>
+            <div className="flex-[2] space-y-1">
+              <Label htmlFor={`variable-value-${index}`} className="text-[10px]">
+                Value
+              </Label>
+              <Input
+                id={`variable-value-${index}`}
+                className="h-8 text-xs font-mono"
+                placeholder="platform"
+                value={row.value}
+                onChange={(event) => updateRow(index, { value: event.target.value })}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Remove variable ${row.key || index + 1}`}
+              onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setRows((current) => [...current, { key: "", value: "" }])}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Add variable
+        </Button>
+      </div>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 

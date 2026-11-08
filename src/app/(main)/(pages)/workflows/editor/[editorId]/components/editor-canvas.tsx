@@ -206,6 +206,7 @@ export function EditorCanvas({ workflow, onSaveRef, initialRunId }: Props) {
                 workflowId={workflow.id}
                 projectId={workflow.projectId}
                 initialRunId={initialRunId}
+                workflowVariables={variables}
               />
             </div>
           </div>
