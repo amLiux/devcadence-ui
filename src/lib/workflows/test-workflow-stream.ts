@@ -21,6 +21,66 @@ interface StreamState {
 
 type ForwardMap = ReturnType<typeof buildForwardMap>;
 
+async function recordInvalidPayload({
+  root,
+  runId,
+  enqueue,
+  state,
+}: {
+  root: EditorNode;
+  runId: string;
+  enqueue: (message: unknown) => void;
+  state: StreamState;
+}): Promise<void> {
+  await prisma.workflowRun.update({
+    where: { id: runId },
+    data: { status: "error", finishedAt: now(), error: "Invalid test payload JSON" },
+  });
+  state.stepNr++;
+  const step: NodeDebugLog = {
+    nodeId: root.id,
+    title: "Webhook",
+    success: false,
+    logs: [
+      { type: "info", message: "Starting Webhook...", timestamp: now() },
+      {
+        type: "error",
+        message: "Invalid test payload JSON. Please provide valid JSON.",
+        timestamp: now(),
+      },
+    ],
+  };
+  enqueue({ type: "step-start", nodeId: root.id, title: "Webhook" });
+  for (const entry of step.logs) enqueue({ type: "log", nodeId: root.id, entry });
+  enqueue({ type: "step", step });
+  state.results.push(step);
+  await prisma.workflowLog.create({
+    data: {
+      runId,
+      nodeId: root.id,
+      nodeType: "Webhook",
+      stepNr: state.stepNr,
+      status: "error",
+      input: undefined,
+      output: undefined,
+      error: "Invalid test payload JSON",
+      controlFlow: undefined,
+      meta: undefined,
+      startedAt: now(),
+      finishedAt: now(),
+      elapsedMs: 0,
+    },
+  });
+  state.visited.add(root.id);
+  enqueue({
+    type: "result",
+    success: false,
+    context: {},
+    message: "Invalid test payload JSON",
+    runId,
+  });
+}
+
 async function processWebhookRoot({
   root,
   runId,
@@ -44,53 +104,7 @@ async function processWebhookRoot({
     try {
       payload = JSON.parse(meta.testPayload);
     } catch {
-      await prisma.workflowRun.update({
-        where: { id: runId },
-        data: { status: "error", finishedAt: now(), error: "Invalid test payload JSON" },
-      });
-      state.stepNr++;
-      const step: NodeDebugLog = {
-        nodeId: root.id,
-        title: "Webhook",
-        success: false,
-        logs: [
-          { type: "info", message: "Starting Webhook...", timestamp: now() },
-          {
-            type: "error",
-            message: "Invalid test payload JSON. Please provide valid JSON.",
-            timestamp: now(),
-          },
-        ],
-      };
-      enqueue({ type: "step-start", nodeId: root.id, title: "Webhook" });
-      for (const entry of step.logs) enqueue({ type: "log", nodeId: root.id, entry });
-      enqueue({ type: "step", step });
-      state.results.push(step);
-      await prisma.workflowLog.create({
-        data: {
-          runId,
-          nodeId: root.id,
-          nodeType: "Webhook",
-          stepNr: state.stepNr,
-          status: "error",
-          input: undefined,
-          output: undefined,
-          error: "Invalid test payload JSON",
-          controlFlow: undefined,
-          meta: undefined,
-          startedAt: now(),
-          finishedAt: now(),
-          elapsedMs: 0,
-        },
-      });
-      state.visited.add(root.id);
-      enqueue({
-        type: "result",
-        success: false,
-        context: {},
-        message: "Invalid test payload JSON",
-        runId,
-      });
+      await recordInvalidPayload({ root, runId, enqueue, state });
       return { aborted: true, rootsToWalk: [] };
     }
   }

@@ -21,6 +21,17 @@ import {
 
 const now = () => new Date().toISOString();
 
+type ForwardMap = ReturnType<typeof buildForwardMap>;
+type ParentsMap = ReturnType<typeof buildParentMap>;
+
+interface RunState {
+  runId: string;
+  nodeOutputs: Map<string, NodeOutput>;
+  stepResults: NodeDebugLog[];
+  visited: Set<string>;
+  stepNr: number;
+}
+
 export interface WebhookExecutionResult {
   status: number;
   headers?: Record<string, string>;
@@ -33,6 +44,154 @@ interface WebhookWorkflowResult {
   success: boolean;
   steps: NodeDebugLog[];
   runId: string;
+}
+
+async function seedRoots({
+  roots,
+  forward,
+  body,
+  state,
+}: {
+  roots: EditorNode[];
+  forward: ForwardMap;
+  body: unknown;
+  state: RunState;
+}): Promise<string[]> {
+  const queue: string[] = [];
+
+  for (const root of roots) {
+    const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
+    if (!isWebhookTrigger) {
+      queue.push(root.id);
+      continue;
+    }
+
+    const startedAt = now();
+    state.stepNr++;
+    const payload = sanitize(body).sanitized;
+    state.stepResults.push({
+      nodeId: root.id,
+      title: "Webhook",
+      success: true,
+      logs: [
+        { type: "info", message: "Starting Webhook...", timestamp: startedAt },
+        { type: "info", message: `Input: ${JSON.stringify(payload)}`, timestamp: startedAt },
+        { type: "success", message: "Webhook completed in 0ms", timestamp: now() },
+        { type: "info", message: `Output: ${JSON.stringify(payload)}`, timestamp: now() },
+      ],
+    });
+    await prisma.workflowLog.create({
+      data: {
+        runId: state.runId,
+        nodeId: root.id,
+        nodeType: "Webhook",
+        stepNr: state.stepNr,
+        status: "success",
+        input: undefined,
+        output: payload,
+        error: null,
+        controlFlow: undefined,
+        meta: undefined,
+        startedAt,
+        finishedAt: now(),
+        elapsedMs: 0,
+      },
+    });
+    state.visited.add(root.id);
+    for (const child of forward.get(root.id) || []) queue.push(child.targetId);
+  }
+
+  return queue;
+}
+
+async function walkNodes({
+  queue,
+  nodes,
+  parents,
+  forward,
+  nodeIds,
+  state,
+}: {
+  queue: string[];
+  nodes: EditorNode[];
+  parents: ParentsMap;
+  forward: ForwardMap;
+  nodeIds: Set<string>;
+  state: RunState;
+}): Promise<void> {
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    if (state.visited.has(nodeId)) continue;
+
+    const nodeParents = parents.get(nodeId) || [];
+    if (nodeParents.some((parent) => !state.visited.has(parent))) {
+      queue.push(nodeId);
+      continue;
+    }
+
+    state.visited.add(nodeId);
+    const node = nodes.find((item) => item.id === nodeId);
+    if (!node) continue;
+
+    const chain = buildAncestorChain(nodeId, parents, state.nodeOutputs, nodes);
+    const { debugLog, data } = await executeNode(node, chain, {
+      runId: state.runId,
+      stepNr: ++state.stepNr,
+    });
+    state.stepResults.push(debugLog);
+
+    if (!state.nodeOutputs.has(nodeId)) {
+      state.nodeOutputs.set(nodeId, {
+        data: data ?? null,
+        success: debugLog.success,
+        error: debugLog.success
+          ? null
+          : (debugLog.logs.find((log) => log.type === "error")?.message ?? "Unknown error"),
+      });
+    }
+
+    const children = forward.get(nodeId) || [];
+    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+      queue.push(targetId);
+    }
+  }
+}
+
+async function finalizeRun({
+  workflow,
+  body,
+  state,
+}: {
+  workflow: WebhookWorkflow;
+  body: unknown;
+  state: RunState;
+}): Promise<{ success: boolean; failureMessage: string }> {
+  const success = state.stepResults.every((result) => result.success);
+  const failureMessage =
+    state.stepResults.find((result) => !result.success)?.logs.find((log) => log.type === "error")
+      ?.message ?? "One or more nodes failed";
+
+  await prisma.workflowRun.update({
+    where: { id: state.runId },
+    data: {
+      status: success ? "success" : "error",
+      finishedAt: new Date().toISOString(),
+      error: success ? null : failureMessage,
+    },
+  });
+
+  if (!success) {
+    await notifyRunFailure(state.runId);
+    await enqueueAutoRetry({
+      workflowId: workflow.id,
+      source: "webhook",
+      body,
+      failedRunId: state.runId,
+      failureMessage,
+    });
+  }
+
+  return { success, failureMessage };
 }
 
 async function executeWebhookWorkflow(
@@ -54,129 +213,30 @@ async function executeWebhookWorkflow(
   const parents = buildParentMap(edges);
   const forward = buildForwardMap(edges);
   const roots = findRoots(nodes, edges);
-
-  const nodeOutputs = new Map<string, NodeOutput>();
-  const stepResults: NodeDebugLog[] = [];
-  const visited = new Set<string>();
-  let stepNr = 0;
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const state: RunState = {
+    runId: run.id,
+    nodeOutputs: new Map(),
+    stepResults: [],
+    visited: new Set(),
+    stepNr: 0,
+  };
 
   // Store the webhook payload BEFORE walking so downstream nodes can access it.
   const webhookNode = findWebhookNode(nodes, connectionId);
   if (webhookNode) {
-    nodeOutputs.set(webhookNode.id, { data: body, success: true, error: null });
+    state.nodeOutputs.set(webhookNode.id, { data: body, success: true, error: null });
   }
 
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const queue: string[] = [];
-
-  for (const root of roots) {
-    const isWebhookTrigger = root.data.type === "Trigger" && root.data.title === "Webhook";
-    if (isWebhookTrigger) {
-      const startedAt = now();
-      stepNr++;
-      const payload = sanitize(body).sanitized;
-      stepResults.push({
-        nodeId: root.id,
-        title: "Webhook",
-        success: true,
-        logs: [
-          { type: "info", message: "Starting Webhook...", timestamp: startedAt },
-          { type: "info", message: `Input: ${JSON.stringify(payload)}`, timestamp: startedAt },
-          { type: "success", message: "Webhook completed in 0ms", timestamp: now() },
-          { type: "info", message: `Output: ${JSON.stringify(payload)}`, timestamp: now() },
-        ],
-      });
-      await prisma.workflowLog.create({
-        data: {
-          runId: run.id,
-          nodeId: root.id,
-          nodeType: "Webhook",
-          stepNr,
-          status: "success",
-          input: undefined,
-          output: payload,
-          error: null,
-          controlFlow: undefined,
-          meta: undefined,
-          startedAt,
-          finishedAt: now(),
-          elapsedMs: 0,
-        },
-      });
-      visited.add(root.id);
-      for (const child of forward.get(root.id) || []) queue.push(child.targetId);
-    } else {
-      queue.push(root.id);
-    }
-  }
-
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    if (visited.has(nodeId)) continue;
-
-    const nodeParents = parents.get(nodeId) || [];
-    if (nodeParents.some((parent) => !visited.has(parent))) {
-      queue.push(nodeId);
-      continue;
-    }
-
-    visited.add(nodeId);
-    const node = nodes.find((item) => item.id === nodeId);
-    if (!node) continue;
-
-    const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
-    const { debugLog, data } = await executeNode(node, chain, {
-      runId: run.id,
-      stepNr: ++stepNr,
-    });
-    stepResults.push(debugLog);
-
-    if (!nodeOutputs.has(nodeId)) {
-      nodeOutputs.set(nodeId, {
-        data: data ?? null,
-        success: debugLog.success,
-        error: debugLog.success
-          ? null
-          : (debugLog.logs.find((log) => log.type === "error")?.message ?? "Unknown error"),
-      });
-    }
-
-    const children = forward.get(nodeId) || [];
-    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
-      queue.push(targetId);
-    }
-  }
-
-  const allPassed = stepResults.every((result) => result.success);
-  const failureMessage =
-    stepResults.find((result) => !result.success)?.logs.find((log) => log.type === "error")
-      ?.message ?? "One or more nodes failed";
-
-  await prisma.workflowRun.update({
-    where: { id: run.id },
-    data: {
-      status: allPassed ? "success" : "error",
-      finishedAt: new Date().toISOString(),
-      error: allPassed ? null : failureMessage,
-    },
-  });
-
-  if (!allPassed) {
-    await notifyRunFailure(run.id);
-    await enqueueAutoRetry({
-      workflowId: workflow.id,
-      source: "webhook",
-      body,
-      failedRunId: run.id,
-      failureMessage,
-    });
-  }
+  const queue = await seedRoots({ roots, forward, body, state });
+  await walkNodes({ queue, nodes, parents, forward, nodeIds, state });
+  const outcome = await finalizeRun({ workflow, body, state });
 
   return {
     workflowId: workflow.id,
     workflowName: workflow.name,
-    success: allPassed,
-    steps: stepResults,
+    success: outcome.success,
+    steps: state.stepResults,
     runId: run.id,
   };
 }
@@ -209,11 +269,7 @@ export async function executeWebhook(
       return {
         status: 429,
         headers: { "Retry-After": String(maxRetryAfter) },
-        payload: {
-          success: false,
-          message: "Webhook rate limit exceeded",
-          rateLimited,
-        },
+        payload: { success: false, message: "Webhook rate limit exceeded", rateLimited },
       };
     }
     return {

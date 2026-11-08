@@ -7,6 +7,34 @@ import { queryGitHubAdvisory } from "./github-advisory";
 import { maxSeverity, summarize } from "./summarize";
 import { passesFilter, type Finding, type ScanResult } from "./types";
 
+function emptyScanResult(): ScanResult {
+  return {
+    findings: [],
+    summary: { total: 0, critical: 0, high: 0, moderate: 0, low: 0 },
+    hasFindings: false,
+    maxSeverity: null,
+  };
+}
+
+function buildScanResult(findings: Finding[], severityFilter: string): ScanResult {
+  const filtered =
+    severityFilter === "all"
+      ? findings
+      : findings.filter((finding) => passesFilter(finding.severity, severityFilter));
+
+  return {
+    findings: filtered,
+    summary: summarize(filtered),
+    hasFindings: filtered.length > 0,
+    maxSeverity: maxSeverity(filtered),
+  };
+}
+
+function scanLogLevel(result: ScanResult): "warning" | "info" | "success" {
+  if (!result.hasFindings) return "success";
+  return result.maxSeverity === "critical" || result.maxSeverity === "high" ? "warning" : "info";
+}
+
 export async function handleScanDependencies(
   meta: Record<string, string>,
   ancestorChain?: ContextStep,
@@ -44,52 +72,30 @@ export async function handleScanDependencies(
     });
 
     if (deps.length === 0) {
-      const result: ScanResult = {
-        findings: [],
-        summary: { total: 0, critical: 0, high: 0, moderate: 0, low: 0 },
-        hasFindings: false,
-        maxSeverity: null,
-      };
       return {
         success: true,
         message: "Scan complete: no dependencies found",
-        data: wrapTransformOutput(meta.outputName, result),
+        data: wrapTransformOutput(meta.outputName, emptyScanResult()),
         logs,
       };
     }
 
-    let findings: Finding[] = [];
-    if (provider === "GitHub Advisory") {
-      findings = await queryGitHubAdvisory(deps, ecosystem, token);
-    } else {
-      findings = await queryOsv(deps, ecosystem);
-    }
+    const findings =
+      provider === "GitHub Advisory"
+        ? await queryGitHubAdvisory(deps, ecosystem, token)
+        : await queryOsv(deps, ecosystem);
 
-    if (severityFilter !== "all") {
-      findings = findings.filter((finding) => passesFilter(finding.severity, severityFilter));
-    }
+    const result = buildScanResult(findings, severityFilter);
 
-    const result: ScanResult = {
-      findings,
-      summary: summarize(findings),
-      hasFindings: findings.length > 0,
-      maxSeverity: maxSeverity(findings),
-    };
-
-    const level = result.hasFindings
-      ? result.maxSeverity === "critical" || result.maxSeverity === "high"
-        ? "warning"
-        : "info"
-      : "success";
     logs.push({
-      type: level,
-      message: `Scan complete: ${findings.length} finding(s)`,
+      type: scanLogLevel(result),
+      message: `Scan complete: ${result.findings.length} finding(s)`,
       timestamp: new Date().toISOString(),
     });
 
     return {
       success: true,
-      message: `Scan complete: ${findings.length} finding(s)`,
+      message: `Scan complete: ${result.findings.length} finding(s)`,
       data: wrapTransformOutput(meta.outputName, result),
       logs,
     };

@@ -28,6 +28,17 @@ export interface ExecuteRunOptions {
   runId?: string;
 }
 
+type ForwardMap = ReturnType<typeof buildForwardMap>;
+type ParentsMap = ReturnType<typeof buildParentMap>;
+
+interface RunState {
+  runId: string;
+  nodeOutputs: Map<string, NodeOutput>;
+  stepResults: NodeDebugLog[];
+  visited: Set<string>;
+  stepNr: number;
+}
+
 const now = () => new Date().toISOString();
 
 async function failRun(runId: string, error: string): Promise<void> {
@@ -35,6 +46,149 @@ async function failRun(runId: string, error: string): Promise<void> {
     where: { id: runId },
     data: { status: "error", finishedAt: new Date().toISOString(), error },
   });
+}
+
+async function seedTriggerRoots({
+  roots,
+  forward,
+  body,
+  state,
+}: {
+  roots: EditorNode[];
+  forward: ForwardMap;
+  body: unknown;
+  state: RunState;
+}): Promise<string[]> {
+  const queue: string[] = [];
+
+  for (const root of roots) {
+    const isTriggerWithBody = root.data.type === "Trigger" && Boolean(body);
+    if (!isTriggerWithBody) {
+      queue.push(root.id);
+      continue;
+    }
+
+    const title = root.data.title;
+    state.nodeOutputs.set(root.id, { data: body, success: true, error: null });
+    const startedAt = now();
+    state.stepNr++;
+    state.stepResults.push({
+      nodeId: root.id,
+      title,
+      success: true,
+      logs: [
+        { type: "info", message: `Starting ${title}...`, timestamp: startedAt },
+        { type: "success", message: `${title} completed in 0ms`, timestamp: now() },
+      ],
+    });
+    await prisma.workflowLog.create({
+      data: {
+        runId: state.runId,
+        nodeId: root.id,
+        nodeType: title,
+        stepNr: state.stepNr,
+        status: "success",
+        input: undefined,
+        output: sanitize(body).sanitized,
+        error: null,
+        controlFlow: undefined,
+        meta: undefined,
+        startedAt,
+        finishedAt: now(),
+        elapsedMs: 0,
+      },
+    });
+    state.visited.add(root.id);
+    for (const child of forward.get(root.id) || []) queue.push(child.targetId);
+  }
+
+  return queue;
+}
+
+async function walkNodes({
+  queue,
+  nodes,
+  parents,
+  forward,
+  nodeIds,
+  state,
+}: {
+  queue: string[];
+  nodes: EditorNode[];
+  parents: ParentsMap;
+  forward: ForwardMap;
+  nodeIds: Set<string>;
+  state: RunState;
+}): Promise<void> {
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    if (state.visited.has(nodeId)) continue;
+
+    const nodeParents = parents.get(nodeId) || [];
+    if (nodeParents.some((parent) => !state.visited.has(parent))) {
+      queue.push(nodeId);
+      continue;
+    }
+
+    state.visited.add(nodeId);
+    const node = nodes.find((item) => item.id === nodeId);
+    if (!node) continue;
+
+    const chain = buildAncestorChain(nodeId, parents, state.nodeOutputs, nodes);
+    const { debugLog, data } = await executeNode(node, chain, {
+      runId: state.runId,
+      stepNr: ++state.stepNr,
+    });
+    state.stepResults.push(debugLog);
+
+    if (!state.nodeOutputs.has(nodeId)) {
+      state.nodeOutputs.set(nodeId, {
+        data: data ?? null,
+        success: debugLog.success,
+        error: debugLog.success
+          ? null
+          : (debugLog.logs.find((log) => log.type === "error")?.message ?? null),
+      });
+    }
+
+    const children = forward.get(nodeId) || [];
+    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
+      queue.push(targetId);
+    }
+  }
+}
+
+async function finalizeRun({
+  workflowId,
+  source,
+  body,
+  state,
+}: {
+  workflowId: string;
+  source: WorkflowJobData["source"];
+  body: unknown;
+  state: RunState;
+}): Promise<{ success: boolean; failureMessage: string }> {
+  const success = state.stepResults.every((result) => result.success);
+  const failureMessage =
+    state.stepResults.find((result) => !result.success)?.logs.find((log) => log.type === "error")
+      ?.message ?? "One or more nodes failed";
+
+  await prisma.workflowRun.update({
+    where: { id: state.runId },
+    data: {
+      status: success ? "success" : "error",
+      finishedAt: new Date().toISOString(),
+      error: success ? null : failureMessage,
+    },
+  });
+
+  if (!success) {
+    await notifyRunFailure(state.runId);
+    await enqueueAutoRetry({ workflowId, source, body, failedRunId: state.runId, failureMessage });
+  }
+
+  return { success, failureMessage };
 }
 
 /**
@@ -77,110 +231,24 @@ export async function executeWorkflowRun({
   const parents = buildParentMap(edges);
   const forward = buildForwardMap(edges);
   const roots = findRoots(nodes, edges);
-
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const nodeOutputs = new Map<string, NodeOutput>();
-  const stepResults: NodeDebugLog[] = [];
-  const visited = new Set<string>();
-  let stepNr = 0;
+  const state: RunState = {
+    runId: run.id,
+    nodeOutputs: new Map(),
+    stepResults: [],
+    visited: new Set(),
+    stepNr: 0,
+  };
 
-  const queue: string[] = [];
+  const queue = await seedTriggerRoots({ roots, forward, body, state });
+  await walkNodes({ queue, nodes, parents, forward, nodeIds, state });
+  const outcome = await finalizeRun({ workflowId, source, body, state });
 
-  for (const root of roots) {
-    const isTriggerWithBody = root.data.type === "Trigger" && body;
-    if (isTriggerWithBody) {
-      const title = root.data.title;
-      nodeOutputs.set(root.id, { data: body, success: true, error: null });
-      const startedAt = now();
-      stepNr++;
-      stepResults.push({
-        nodeId: root.id,
-        title,
-        success: true,
-        logs: [
-          { type: "info", message: `Starting ${title}...`, timestamp: startedAt },
-          { type: "success", message: `${title} completed in 0ms`, timestamp: now() },
-        ],
-      });
-      await prisma.workflowLog.create({
-        data: {
-          runId: run.id,
-          nodeId: root.id,
-          nodeType: title,
-          stepNr,
-          status: "success",
-          input: undefined,
-          output: sanitize(body).sanitized,
-          error: null,
-          controlFlow: undefined,
-          meta: undefined,
-          startedAt,
-          finishedAt: now(),
-          elapsedMs: 0,
-        },
-      });
-      visited.add(root.id);
-      const children = forward.get(root.id) || [];
-      for (const child of children) queue.push(child.targetId);
-    } else {
-      queue.push(root.id);
-    }
-  }
-
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    if (visited.has(nodeId)) continue;
-
-    const nodeParents = parents.get(nodeId) || [];
-    if (nodeParents.some((p) => !visited.has(p))) {
-      queue.push(nodeId);
-      continue;
-    }
-
-    visited.add(nodeId);
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) continue;
-
-    const chain = buildAncestorChain(nodeId, parents, nodeOutputs, nodes);
-    const { debugLog, data } = await executeNode(node, chain, { runId: run.id, stepNr: ++stepNr });
-    stepResults.push(debugLog);
-
-    if (!nodeOutputs.has(nodeId)) {
-      nodeOutputs.set(nodeId, {
-        data: data ?? null,
-        success: debugLog.success,
-        error: debugLog.success
-          ? null
-          : (debugLog.logs.find((l) => l.type === "error")?.message ?? null),
-      });
-    }
-
-    const children = forward.get(nodeId) || [];
-    for (const targetId of resolveNextNodeIds(node.data.title, data, children, nodeIds)) {
-      queue.push(targetId);
-    }
-  }
-
-  const allPassed = stepResults.every((r) => r.success);
-  const failureMessage =
-    stepResults.find((r) => !r.success)?.logs.find((l) => l.type === "error")?.message ??
-    "One or more nodes failed";
-
-  await prisma.workflowRun.update({
-    where: { id: run.id },
-    data: {
-      status: allPassed ? "success" : "error",
-      finishedAt: new Date().toISOString(),
-      error: allPassed ? null : failureMessage,
-    },
-  });
-
-  if (!allPassed) {
-    await notifyRunFailure(run.id);
-    await enqueueAutoRetry({ workflowId, source, body, failedRunId: run.id, failureMessage });
-  }
-
-  return { success: allPassed, runId: run.id, error: allPassed ? undefined : failureMessage };
+  return {
+    success: outcome.success,
+    runId: run.id,
+    error: outcome.success ? undefined : outcome.failureMessage,
+  };
 }
 
 /**
@@ -204,8 +272,5 @@ export async function enqueueAutoRetry({
   if (!retry) return;
 
   const delayMs = Math.max(0, retry.nextRetryAt.getTime() - Date.now());
-  await enqueueWorkflow(
-    { workflowId, source, body, runId: retry.runId },
-    { delayMs },
-  );
+  await enqueueWorkflow({ workflowId, source, body, runId: retry.runId }, { delayMs });
 }

@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import type { LogEntry, NodeDebugLog, Workflow } from "@/lib/types";
+import { useState, type Dispatch, type SetStateAction } from "react";
+import { readSseEvents } from "@/lib/sse";
+import type { LogEntry, NodeDebugLog, Workflow, WorkflowContext } from "@/lib/types";
+
+type WorkflowTestMessage =
+  | { type: "step-start"; nodeId: string; title: string }
+  | { type: "log"; nodeId: string; entry: LogEntry }
+  | { type: "step"; step: NodeDebugLog }
+  | { type: "result"; context?: WorkflowContext };
 
 function errorStep(message: string): NodeDebugLog[] {
   return [
@@ -9,15 +16,61 @@ function errorStep(message: string): NodeDebugLog[] {
       nodeId: "error",
       title: "Workflow",
       success: false,
-      logs: [
-        {
-          type: "error",
-          message,
-          timestamp: new Date().toISOString(),
-        },
-      ],
+      logs: [{ type: "error", message, timestamp: new Date().toISOString() }],
     },
   ];
+}
+
+function applyMessage(
+  message: WorkflowTestMessage,
+  pendingEntries: Map<string, LogEntry[]>,
+  setSteps: Dispatch<SetStateAction<NodeDebugLog[]>>,
+  setTesting: (value: boolean) => void,
+): void {
+  switch (message.type) {
+    case "step-start": {
+      pendingEntries.set(message.nodeId, []);
+      setSteps((previous) => [
+        ...previous,
+        { nodeId: message.nodeId, title: message.title, success: false, logs: [] },
+      ]);
+      return;
+    }
+    case "log": {
+      const entries = pendingEntries.get(message.nodeId);
+      if (!entries) return;
+      entries.push(message.entry);
+      setSteps((previous) =>
+        previous.map((step) =>
+          step.nodeId === message.nodeId ? { ...step, logs: [...entries] } : step,
+        ),
+      );
+      return;
+    }
+    case "step": {
+      setSteps((previous) =>
+        previous.map((step) => (step.nodeId === message.step.nodeId ? message.step : step)),
+      );
+      return;
+    }
+    case "result": {
+      setTesting(false);
+    }
+  }
+}
+
+async function applyJsonResult(
+  response: Response,
+  setSteps: Dispatch<SetStateAction<NodeDebugLog[]>>,
+  setTesting: (value: boolean) => void,
+): Promise<void> {
+  const result = await response.json();
+  if (result.steps) {
+    setSteps(result.steps);
+  } else {
+    setSteps(errorStep(result.error || result.message || "Unknown error"));
+  }
+  setTesting(false);
 }
 
 export function useWorkflowTest(workflow: Workflow) {
@@ -42,66 +95,11 @@ export function useWorkflowTest(workflow: Workflow) {
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("event-stream")) {
         const pendingEntries = new Map<string, LogEntry[]>();
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        if (!reader) throw new Error("No reader");
-
-        let buffer = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith(":")) continue;
-            const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
-
-            try {
-              const message = JSON.parse(data);
-              if (message.type === "step-start") {
-                pendingEntries.set(message.nodeId, []);
-                setDebugSteps((previous) => [
-                  ...previous,
-                  { nodeId: message.nodeId, title: message.title, success: false, logs: [] },
-                ]);
-              } else if (message.type === "log") {
-                const entries = pendingEntries.get(message.nodeId);
-                if (entries) {
-                  entries.push(message.entry);
-                  setDebugSteps((previous) =>
-                    previous.map((step) =>
-                      step.nodeId === message.nodeId
-                        ? { ...step, logs: [...entries] }
-                        : step,
-                    ),
-                  );
-                }
-              } else if (message.type === "step") {
-                setDebugSteps((previous) =>
-                  previous.map((step) =>
-                    step.nodeId === message.step.nodeId ? message.step : step,
-                  ),
-                );
-              } else if (message.type === "result") {
-                setTesting(false);
-              }
-            } catch {
-              // Skip malformed events.
-            }
-          }
-
-          if (done) break;
-        }
+        await readSseEvents<WorkflowTestMessage>(response, (message) =>
+          applyMessage(message, pendingEntries, setDebugSteps, setTesting),
+        );
       } else {
-        const result = await response.json();
-        if (result.steps) {
-          setDebugSteps(result.steps);
-        } else {
-          setDebugSteps(errorStep(result.error || result.message || "Unknown error"));
-        }
-        setTesting(false);
+        await applyJsonResult(response, setDebugSteps, setTesting);
       }
     } catch {
       setDebugSteps(errorStep("Request failed"));

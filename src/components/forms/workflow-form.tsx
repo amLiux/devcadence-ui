@@ -22,6 +22,68 @@ interface Props {
   defaultProjectId?: string;
 }
 
+function submitLabel(isEdit: boolean, submitting: boolean): string {
+  if (isEdit) return submitting ? "Saving..." : "Save Changes";
+  return submitting ? "Creating..." : "Create Workflow";
+}
+
+function isEditMode(
+  initialData?: Workflow,
+  onUpdate?: (id: string, data: WorkflowFormValues) => Promise<void>,
+): boolean {
+  return Boolean(initialData && onUpdate);
+}
+
+function resolveSelectedProjectId(
+  projectId: string,
+  defaultProjectId: string | undefined,
+  projects?: Project[],
+): string {
+  const sharedProjectId = projects?.find((project) => project.isShared)?.id;
+  return projectId || defaultProjectId || sharedProjectId || "";
+}
+
+async function persistWorkflow({
+  isEdit,
+  initialData,
+  onUpdate,
+  request,
+  router,
+  setClose,
+  values,
+}: {
+  isEdit: boolean;
+  initialData?: Workflow;
+  onUpdate?: (id: string, data: WorkflowFormValues) => Promise<void>;
+  request: ReturnType<typeof useApi>["request"];
+  router: ReturnType<typeof useRouter>;
+  setClose: () => void;
+  values: { name: string; description: string; type: string; projectId?: string };
+}): Promise<void> {
+  if (isEdit && initialData && onUpdate) {
+    await onUpdate(initialData.id, {
+      name: values.name,
+      description: values.description,
+    });
+    return;
+  }
+
+  const workflow = await request<Workflow>({
+    endpoint: "/api/workflows",
+    method: "POST",
+    data: {
+      name: values.name,
+      description: values.description,
+      type: values.type,
+      ...(values.projectId && { projectId: values.projectId }),
+    },
+  });
+  if (workflow) {
+    setClose();
+    router.push(`/workflows/editor/${workflow.id}`);
+  }
+}
+
 export function WorkflowForm({
   initialData,
   onUpdate,
@@ -31,7 +93,7 @@ export function WorkflowForm({
   const router = useRouter();
   const { request } = useApi();
   const { setClose } = useModal();
-  const isEdit = Boolean(initialData && onUpdate);
+  const isEdit = isEditMode(initialData, onUpdate);
   const [name, setName] = useState(initialData?.name ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [reusable, setReusable] = useState(false);
@@ -39,10 +101,10 @@ export function WorkflowForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sharedProjectId = projects?.find((project) => project.isShared)?.id;
   // Keep the project select controlled without an effect: the rail selection wins,
   // then Shared, and the user's explicit choice wins over both.
-  const selectedProjectId = projectId || defaultProjectId || sharedProjectId || "";
+  const selectedProjectId = resolveSelectedProjectId(projectId, defaultProjectId, projects);
+  const showProjectSelect = !isEdit && Boolean(projects?.length);
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
@@ -54,25 +116,20 @@ export function WorkflowForm({
     setSubmitting(true);
     setError(null);
     try {
-      if (isEdit && initialData && onUpdate) {
-        await onUpdate(initialData.id, { name: trimmedName, description: description.trim() });
-        return;
-      }
-
-      const workflow = await request<Workflow>({
-        endpoint: "/api/workflows",
-        method: "POST",
-        data: {
+      await persistWorkflow({
+        isEdit,
+        initialData,
+        onUpdate,
+        request,
+        router,
+        setClose,
+        values: {
           name: trimmedName,
           description: description.trim(),
           type: reusable ? "sub-workflow" : "workflow",
-          ...(selectedProjectId && { projectId: selectedProjectId }),
+          projectId: selectedProjectId || undefined,
         },
       });
-      if (workflow) {
-        setClose();
-        router.push(`/workflows/editor/${workflow.id}`);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save workflow");
     } finally {
@@ -100,7 +157,7 @@ export function WorkflowForm({
           placeholder="What does this workflow do?"
         />
       </div>
-      {!isEdit && projects && projects.length > 0 && (
+      {showProjectSelect && (
         <div className="space-y-2">
           <Label htmlFor="workflow-project">Project</Label>
           <select
@@ -109,7 +166,7 @@ export function WorkflowForm({
             value={selectedProjectId}
             onChange={(event) => setProjectId(event.target.value)}
           >
-            {projects.map((project) => (
+            {projects?.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
@@ -139,13 +196,7 @@ export function WorkflowForm({
       )}
       <div className="flex justify-end">
         <Button onClick={handleSubmit} disabled={submitting}>
-          {isEdit
-            ? submitting
-              ? "Saving..."
-              : "Save Changes"
-            : submitting
-              ? "Creating..."
-              : "Create Workflow"}
+          {submitLabel(isEdit, submitting)}
         </Button>
       </div>
     </div>

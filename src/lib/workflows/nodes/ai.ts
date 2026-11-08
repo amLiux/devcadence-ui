@@ -12,56 +12,65 @@ import type { NodeHandlerResult } from "./types";
 
 // --- 4-layer system prompt assembly ---
 
+async function personaBlock(meta: Record<string, string>): Promise<string | null> {
+  if (!meta.personaId) return null;
+  const persona = await prisma.aIPersona.findUnique({ where: { id: meta.personaId } });
+  if (!persona) return null;
+
+  const parts = [`# Identity\nYou are ${persona.name}.\n\n${persona.systemPrompt}`];
+  if (persona.tone) parts.push(`Tone: ${persona.tone}`);
+  return parts.join("\n\n");
+}
+
+async function contextBlock(meta: Record<string, string>): Promise<string | null> {
+  if (!meta.contextIds) return null;
+  const ids = meta.contextIds.split(",").map((id) => id.trim()).filter(Boolean);
+  if (!ids.length) return null;
+
+  const contexts = await prisma.aIContext.findMany({ where: { id: { in: ids } } });
+  if (!contexts.length) return null;
+
+  const block = contexts.map((context) => `## ${context.name}\n${context.content}`).join("\n\n");
+  return `# Context\n${block}`;
+}
+
+async function memoryBlock(meta: Record<string, string>): Promise<string | null> {
+  if (!meta.memoryIds) return null;
+  const ids = meta.memoryIds.split(",").map((id) => id.trim()).filter(Boolean);
+  if (!ids.length) return null;
+
+  const memories = await prisma.aIMemory.findMany({ where: { id: { in: ids } } });
+  if (!memories.length) return null;
+
+  const block = memories.map((memory) => `## ${memory.name}\n${memory.content}`).join("\n\n");
+  return `# Memory\n${block}`;
+}
+
+function instructionBlock(
+  meta: Record<string, string>,
+  nodeType: "prompt" | "classify" | "extract",
+): string {
+  if (nodeType === "classify") {
+    const categories = meta.categories?.split(",").map((item) => item.trim()).filter(Boolean) || [];
+    return `Classify the following text into exactly one of these categories: ${categories.join(", ")}.\nRespond with ONLY the category name, nothing else.`;
+  }
+  if (nodeType === "extract") {
+    const fields = meta.fields?.split(",").map((item) => item.trim()).filter(Boolean) || [];
+    return `Extract the following fields from the text: ${fields.join(", ")}.\nRespond with a valid JSON object where each key is a field name and the value is the extracted content.\nIf a field is not found, use null.\nDo NOT include any markdown formatting, just the raw JSON.`;
+  }
+  return meta.systemPrompt || "You are a helpful assistant.";
+}
+
 export async function buildSystemPrompt(
   meta: Record<string, string>,
   nodeType: "prompt" | "classify" | "extract",
 ): Promise<string> {
-  const parts: string[] = [];
-
-  // 1. Persona
-  if (meta.personaId) {
-    const persona = await prisma.aIPersona.findUnique({ where: { id: meta.personaId } });
-    if (persona) {
-      parts.push(`# Identity\nYou are ${persona.name}.\n\n${persona.systemPrompt}`);
-      if (persona.tone) parts.push(`Tone: ${persona.tone}`);
-    }
-  }
-
-  // 2. Context
-  if (meta.contextIds) {
-    const ids = meta.contextIds.split(",").map((s) => s.trim()).filter(Boolean);
-    if (ids.length) {
-      const contexts = await prisma.aIContext.findMany({ where: { id: { in: ids } } });
-      if (contexts.length) {
-        const block = contexts.map((c) => `## ${c.name}\n${c.content}`).join("\n\n");
-        parts.push(`# Context\n${block}`);
-      }
-    }
-  }
-
-  // 3. Memory
-  if (meta.memoryIds) {
-    const ids = meta.memoryIds.split(",").map((s) => s.trim()).filter(Boolean);
-    if (ids.length) {
-      const memories = await prisma.aIMemory.findMany({ where: { id: { in: ids } } });
-      if (memories.length) {
-        const block = memories.map((m) => `## ${m.name}\n${m.content}`).join("\n\n");
-        parts.push(`# Memory\n${block}`);
-      }
-    }
-  }
-
-  // 4. Node-specific instructions
-  if (nodeType === "classify") {
-    const categories = meta.categories?.split(",").map((c) => c.trim()).filter(Boolean) || [];
-    parts.push(`Classify the following text into exactly one of these categories: ${categories.join(", ")}.\nRespond with ONLY the category name, nothing else.`);
-  } else if (nodeType === "extract") {
-    const fields = meta.fields?.split(",").map((f) => f.trim()).filter(Boolean) || [];
-    parts.push(`Extract the following fields from the text: ${fields.join(", ")}.\nRespond with a valid JSON object where each key is a field name and the value is the extracted content.\nIf a field is not found, use null.\nDo NOT include any markdown formatting, just the raw JSON.`);
-  } else {
-    // prompt node — use explicit systemPrompt or default
-    parts.push(meta.systemPrompt || "You are a helpful assistant.");
-  }
+  const parts = [
+    await personaBlock(meta),
+    await contextBlock(meta),
+    await memoryBlock(meta),
+    instructionBlock(meta, nodeType),
+  ].filter((part): part is string => Boolean(part));
 
   return parts.join("\n\n---\n\n");
 }

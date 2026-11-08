@@ -56,6 +56,16 @@ function positionToLineColumn(value: string, position: number): { line: number; 
   };
 }
 
+type Fail = (message: string, at?: number) => never;
+
+function validateUnicodeEscape(text: string, index: number, fail: Fail): void {
+  for (let offset = 1; offset <= 4; offset++) {
+    if (!/[0-9a-fA-F]/.test(text[index + offset] ?? "")) {
+      fail("Invalid unicode escape", index + offset);
+    }
+  }
+}
+
 class JsonSyntaxError extends Error {
   constructor(
     message: string,
@@ -94,11 +104,7 @@ function scanJson(text: string): void {
         const escape = text[index];
         if (!'"\\/bfnrtu'.includes(escape)) fail(`Invalid escape sequence \\${escape}`);
         if (escape === "u") {
-          for (let offset = 1; offset <= 4; offset++) {
-            if (!/[0-9a-fA-F]/.test(text[index + offset] ?? "")) {
-              fail("Invalid unicode escape", index + offset);
-            }
-          }
+          validateUnicodeEscape(text, index, fail);
           index += 4;
         }
         index++;

@@ -33,11 +33,43 @@ import {
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
 import { sanitize } from "@/lib/workflows/sanitize";
 
+const now = () => new Date().toISOString();
+
 export interface ExecuteNodeOptions {
   runId?: string;
   stepNr?: number;
   onLog?: (entry: LogEntry) => void;
 }
+
+type Handler = (
+  meta: Record<string, string>,
+  ancestorChain: ContextStep | undefined,
+) => Promise<NodeHandlerResult> | NodeHandlerResult;
+
+const TITLE_HANDLERS: Record<string, Handler> = {
+  Conditional: handleConditional,
+  "Transform Data": handleTransformData,
+  "Build JSON": handleBuildJson,
+  "Retry Loop": handleRetryLoop,
+  "HTTP Request": handleHttpRequest,
+  "PostgreSQL Query": handlePostgresQuery,
+  "PostgreSQL Insert": handlePostgresInsert,
+  "PostgreSQL Update": handlePostgresUpdate,
+  "PostgreSQL Delete": handlePostgresDelete,
+  Prompt: handlePrompt,
+  Classify: handleClassify,
+  Extract: handleExtract,
+  "Call Workflow": handleCallWorkflow,
+  Input: handleInput,
+  Return: handleReturn,
+  "Send Email": handleSendEmail,
+  "Send Slack Message": handleSendMessage,
+  "Send Discord Message": handleSendDiscordMessage,
+  "Read Discord Messages": handleReadDiscordMessages,
+  "Send Direct Message": handleSendDirectMessage,
+  "Listen Discord Messages": handleListenDiscordMessages,
+  "Scan Dependencies": handleScanDependencies,
+};
 
 function dispatchHandler(
   title: string,
@@ -45,32 +77,136 @@ function dispatchHandler(
   meta: Record<string, string>,
   ancestorChain: ContextStep | undefined,
 ): Promise<NodeHandlerResult> | NodeHandlerResult {
-  if (title === "Conditional") return handleConditional(meta, ancestorChain);
-  if (title === "Transform Data") return handleTransformData(meta, ancestorChain);
-  if (title === "Build JSON") return handleBuildJson(meta, ancestorChain);
-  if (title === "Retry Loop") return handleRetryLoop(meta, ancestorChain);
-  if (title === "HTTP Request") return handleHttpRequest(meta, ancestorChain);
+  const handler = TITLE_HANDLERS[title];
+  if (handler) return handler(meta, ancestorChain);
+
   if (type === "Trigger" && title === "Webhook") return handleWebhookTrigger(meta);
   if (type === "Trigger" && title === "Schedule") return handleScheduleTrigger(meta);
   if (type === "GitHub" && title.startsWith("Listen")) return handleGithubTrigger(title, meta);
-  if (title === "PostgreSQL Query") return handlePostgresQuery(meta, ancestorChain);
-  if (title === "PostgreSQL Insert") return handlePostgresInsert(meta, ancestorChain);
-  if (title === "PostgreSQL Update") return handlePostgresUpdate(meta, ancestorChain);
-  if (title === "PostgreSQL Delete") return handlePostgresDelete(meta, ancestorChain);
-  if (title === "Prompt") return handlePrompt(meta, ancestorChain);
-  if (title === "Classify") return handleClassify(meta, ancestorChain);
-  if (title === "Extract") return handleExtract(meta, ancestorChain);
-  if (title === "Call Workflow") return handleCallWorkflow(meta, ancestorChain);
-  if (title === "Input") return handleInput(meta, ancestorChain);
-  if (title === "Return") return handleReturn(meta, ancestorChain);
-  if (title === "Send Email") return handleSendEmail(meta, ancestorChain);
-  if (title === "Send Slack Message") return handleSendMessage(meta, ancestorChain);
-  if (title === "Send Discord Message") return handleSendDiscordMessage(meta, ancestorChain);
-  if (title === "Read Discord Messages") return handleReadDiscordMessages(meta, ancestorChain);
-  if (title === "Send Direct Message") return handleSendDirectMessage(meta, ancestorChain);
-  if (title === "Listen Discord Messages") return handleListenDiscordMessages(meta, ancestorChain);
-  if (title === "Scan Dependencies") return handleScanDependencies(meta, ancestorChain);
   return handleGithubAction(title, meta, ancestorChain);
+}
+
+function buildResultLogs(
+  title: string,
+  result: NodeHandlerResult,
+  inputSnapshot: unknown,
+): LogEntry[] {
+  if (result.logs) return [...result.logs];
+
+  const logs: LogEntry[] = [
+    { type: "info", message: `Starting ${title}...`, timestamp: now() },
+  ];
+  if (
+    inputSnapshot &&
+    typeof inputSnapshot === "object" &&
+    Object.keys(inputSnapshot as Record<string, unknown>).length > 0
+  ) {
+    logs.push({
+      type: "info",
+      message: `Input: ${JSON.stringify(inputSnapshot, null, 2)}`,
+      timestamp: now(),
+    });
+  }
+  logs.push({
+    type: result.success ? "success" : "error",
+    message: result.message,
+    timestamp: now(),
+  });
+  if (result.data) {
+    logs.push({
+      type: "info",
+      message: `Output: ${JSON.stringify(result.data, null, 2)}`,
+      timestamp: now(),
+    });
+  }
+  return logs;
+}
+
+async function handleNodeSuccess({
+  node,
+  title,
+  result,
+  inputSnapshot,
+  startedAt,
+  options,
+}: {
+  node: EditorNode;
+  title: string;
+  result: NodeHandlerResult;
+  inputSnapshot: unknown;
+  startedAt: Date;
+  options: ExecuteNodeOptions;
+}): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
+  const finishedAt = new Date();
+  const logs = buildResultLogs(title, result, inputSnapshot);
+
+  for (const log of logs) options.onLog?.(log);
+
+  if (options.runId) {
+    await writeLog(options.runId, {
+      nodeId: node.id,
+      nodeType: title,
+      stepNr: options.stepNr ?? 0,
+      status: result.success ? "success" : "error",
+      input: inputSnapshot ?? null,
+      output: sanitize(result.data).sanitized,
+      error: result.success ? null : result.message,
+      controlFlow: extractControlFlow(result.data as Record<string, unknown> | undefined),
+      meta: extractMeta(result.data as Record<string, unknown> | undefined),
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      elapsedMs: finishedAt.getTime() - startedAt.getTime(),
+    });
+  }
+
+  return {
+    debugLog: { nodeId: node.id, title, success: result.success, logs },
+    data: result.data,
+  };
+}
+
+async function handleNodeFailure({
+  node,
+  title,
+  error,
+  inputSnapshot,
+  startedAt,
+  options,
+}: {
+  node: EditorNode;
+  title: string;
+  error: unknown;
+  inputSnapshot: unknown;
+  startedAt: Date;
+  options: ExecuteNodeOptions;
+}): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
+  const finishedAt = new Date();
+  const message = error instanceof Error ? error.message : "Execution failed";
+  const logs: LogEntry[] = [{ type: "error", message, timestamp: now() }];
+
+  for (const log of logs) options.onLog?.(log);
+
+  if (options.runId) {
+    await writeLog(options.runId, {
+      nodeId: node.id,
+      nodeType: title,
+      stepNr: options.stepNr ?? 0,
+      status: "error",
+      input: inputSnapshot ?? null,
+      output: null,
+      error: message,
+      controlFlow: null,
+      meta: null,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      elapsedMs: finishedAt.getTime() - startedAt.getTime(),
+    });
+  }
+
+  return {
+    debugLog: { nodeId: node.id, title, success: false, logs },
+    data: undefined,
+  };
 }
 
 export async function executeNode(
@@ -80,9 +216,7 @@ export async function executeNode(
 ): Promise<{ debugLog: NodeDebugLog; data: unknown }> {
   const meta = (node.data.metadata || {}) as Record<string, string>;
   const { title, type } = node.data;
-  const now = () => new Date().toISOString();
   const startedAt = new Date();
-  const logs: LogEntry[] = [];
 
   let inputSnapshot: unknown = undefined;
   try {
@@ -93,127 +227,43 @@ export async function executeNode(
 
   try {
     const result = await dispatchHandler(title, type, meta, ancestorChain);
-    const finishedAt = new Date();
-    const elapsedMs = finishedAt.getTime() - startedAt.getTime();
-
-    if (result.logs) {
-      logs.push(...result.logs);
-    } else {
-      logs.push({ type: "info", message: `Starting ${title}...`, timestamp: now() });
-      if (inputSnapshot && typeof inputSnapshot === "object" && Object.keys(inputSnapshot as Record<string, unknown>).length > 0) {
-        logs.push({ type: "info", message: `Input: ${JSON.stringify(inputSnapshot, null, 2)}`, timestamp: now() });
-      }
-      logs.push({
-        type: result.success ? "success" : "error",
-        message: result.message,
-        timestamp: now(),
-      });
-      if (result.data) {
-        logs.push({
-          type: "info",
-          message: `Output: ${JSON.stringify(result.data, null, 2)}`,
-          timestamp: now(),
-        });
-      }
-    }
-
-    const outputSanitized = sanitize(result.data).sanitized;
-    const errorStr = result.success ? null : result.message;
-
-    if (options.onLog) {
-      for (const log of logs) {
-        options.onLog(log);
-      }
-    }
-
-    if (options.runId) {
-      await writeLog(options.runId, {
-        nodeId: node.id,
-        nodeType: title,
-        stepNr: options.stepNr ?? 0,
-        status: result.success ? "success" : "error",
-        input: inputSnapshot ?? null,
-        output: outputSanitized,
-        error: errorStr,
-        controlFlow: extractControlFlow(result.data as Record<string, unknown> | undefined),
-        meta: extractMeta(result.data as Record<string, unknown> | undefined),
-        startedAt: startedAt.toISOString(),
-        finishedAt: finishedAt.toISOString(),
-        elapsedMs,
-      });
-    }
-
-    return {
-      debugLog: { nodeId: node.id, title, success: result.success, logs },
-      data: result.data,
-    };
+    return await handleNodeSuccess({ node, title, result, inputSnapshot, startedAt, options });
   } catch (error) {
-    const finishedAt = new Date();
-    const elapsedMs = finishedAt.getTime() - startedAt.getTime();
-    const msg = error instanceof Error ? error.message : "Execution failed";
-    logs.push({ type: "error", message: msg, timestamp: now() });
-
-    if (options.onLog) {
-      for (const log of logs) options.onLog(log);
-    }
-
-    if (options.runId) {
-      await writeLog(options.runId, {
-        nodeId: node.id,
-        nodeType: title,
-        stepNr: options.stepNr ?? 0,
-        status: "error",
-        input: inputSnapshot ?? null,
-        output: null,
-        error: msg,
-        controlFlow: null,
-        meta: null,
-        startedAt: startedAt.toISOString(),
-        finishedAt: finishedAt.toISOString(),
-        elapsedMs,
-      });
-    }
-
-    return {
-      debugLog: { nodeId: node.id, title, success: false, logs },
-      data: undefined,
-    };
+    return await handleNodeFailure({ node, title, error, inputSnapshot, startedAt, options });
   }
 }
 
-function buildInputSnapshot(ancestorChain: ContextStep | undefined): Record<string, unknown> | null {
+function applyStepSnapshot(flat: Record<string, unknown>, step: ContextStep): void {
+  if (step.outputName && step.output && typeof step.output === "object") {
+    const wrapped = (step.output as Record<string, unknown>)[step.outputName];
+    flat[step.outputName] = wrapped !== undefined ? wrapped : step.output;
+  }
+  if (step.name === "Input" && step.output && typeof step.output === "object") {
+    flat.input = step.output;
+  }
+}
+
+function buildInputSnapshot(
+  ancestorChain: ContextStep | undefined,
+): Record<string, unknown> | null {
   if (!ancestorChain) return null;
 
   const flat: Record<string, unknown> = {};
+  applyStepSnapshot(flat, ancestorChain);
 
-  if (ancestorChain.outputName && ancestorChain.output && typeof ancestorChain.output === "object") {
-    const wrapped = (ancestorChain.output as Record<string, unknown>)[ancestorChain.outputName];
-    flat[ancestorChain.outputName] = wrapped !== undefined ? wrapped : ancestorChain.output;
-  }
-  if (ancestorChain.name === "Input" && ancestorChain.output && typeof ancestorChain.output === "object") {
-    flat.input = ancestorChain.output;
-  }
-
-  let prev = ancestorChain.previousStep;
-  while (prev) {
-    if (prev.outputName && prev.output && typeof prev.output === "object") {
-      const wrapped = (prev.output as Record<string, unknown>)[prev.outputName];
-      flat[prev.outputName] = wrapped !== undefined ? wrapped : prev.output;
-    }
-    if (prev.name === "Input" && prev.output && typeof prev.output === "object") {
-      flat.input = prev.output;
-    }
-    prev = prev.previousStep;
+  let previous = ancestorChain.previousStep;
+  while (previous) {
+    applyStepSnapshot(flat, previous);
+    previous = previous.previousStep;
   }
 
-  if (ancestorChain.output) {
-    flat.previousStep = ancestorChain.output;
-  }
-
+  if (ancestorChain.output) flat.previousStep = ancestorChain.output;
   return Object.keys(flat).length > 0 ? flat : null;
 }
 
-function extractControlFlow(data: Record<string, unknown> | undefined): Record<string, unknown> | null {
+function extractControlFlow(
+  data: Record<string, unknown> | undefined,
+): Record<string, unknown> | null {
   if (!data) return null;
   const flow: Record<string, unknown> = {};
   if ("condition" in data) flow.condition = data.condition;
@@ -225,13 +275,13 @@ function extractControlFlow(data: Record<string, unknown> | undefined): Record<s
 
 function extractMeta(data: Record<string, unknown> | undefined): Record<string, unknown> | null {
   if (!data) return null;
-  const m: Record<string, unknown> = {};
-  if ("tokens" in data) m.ai_tokens = data.tokens;
-  if ("model" in data) m.ai_model = data.model;
-  if ("provider" in data) m.ai_provider = data.provider;
-  if ("statusCode" in data) m.http_status = data.statusCode;
-  if ("totalDuration" in data) m.http_latency = data.totalDuration;
-  return Object.keys(m).length > 0 ? m : null;
+  const meta: Record<string, unknown> = {};
+  if ("tokens" in data) meta.ai_tokens = data.tokens;
+  if ("model" in data) meta.ai_model = data.model;
+  if ("provider" in data) meta.ai_provider = data.provider;
+  if ("statusCode" in data) meta.http_status = data.statusCode;
+  if ("totalDuration" in data) meta.http_latency = data.totalDuration;
+  return Object.keys(meta).length > 0 ? meta : null;
 }
 
 interface WriteLogData {
