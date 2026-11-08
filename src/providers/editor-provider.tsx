@@ -19,7 +19,7 @@ interface EditorState {
   context: WorkflowContext;
 }
 
-type EditorAction =
+export type EditorAction =
   | { type: "LOAD_DATA"; payload: { elements: EditorNode[]; edges: EditorEdge[] } }
   | { type: "UPDATE_NODE"; payload: { nodeId: string; data: Partial<EditorNode["data"]> } }
   | { type: "ADD_NODE"; payload: EditorNode }
@@ -35,7 +35,7 @@ interface HistoryState {
   currentIndex: number;
 }
 
-type SidebarTab = "actions" | "settings" | "history";
+export type SidebarTab = "actions" | "settings" | "history";
 
 interface EditorContextType {
   editor: EditorState;

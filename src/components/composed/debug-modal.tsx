@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Info, AlertTriangle, Terminal } from "lucide-react";
+import { LogLine } from "@/components/composed/log-line";
 import type { NodeDebugLog, LogLevel } from "@/lib/types";
 
 const levelConfig: Record<LogLevel, { icon: React.ReactNode; color: string; prefix: string }> = {
@@ -34,10 +35,6 @@ const levelConfig: Record<LogLevel, { icon: React.ReactNode; color: string; pref
     prefix: "!",
   },
 };
-
-function LogLine({ entry }: { entry: React.ReactNode }) {
-  return <div className="leading-relaxed">{entry}</div>;
-}
 
 interface DebugModalProps {
   open: boolean;
