@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { readJsonBody } from "@/lib/api/body";
+import { toClientConnection } from "@/lib/connections/serialize";
+import { resolveRedactedConfig } from "@/lib/connections/redact";
 import { getConnections, createConnection } from "@/lib/db/connections";
-import type { Connection } from "@/lib/types";
 
 const createConnectionSchema = z.object({
   type: z.string().min(1, "type is required"),
@@ -11,22 +12,10 @@ const createConnectionSchema = z.object({
   config: z.record(z.string(), z.unknown()).optional(),
 });
 
-function toResponse(conn: Awaited<ReturnType<typeof getConnections>>[number]): Connection {
-  return {
-    id: conn.id,
-    type: conn.type as Connection["type"],
-    name: conn.name,
-    description: conn.description,
-    config: conn.config as Record<string, string>,
-    createdAt: conn.createdAt.toISOString(),
-    updatedAt: conn.updatedAt.toISOString(),
-  };
-}
-
 export async function GET() {
   try {
     const connections = await getConnections();
-    return NextResponse.json(connections.map(toResponse));
+    return NextResponse.json(connections.map(toClientConnection));
   } catch (error) {
     console.error("GET /api/connections error:", error);
     return NextResponse.json({ error: "Failed to fetch connections" }, { status: 500 });
@@ -43,9 +32,9 @@ export async function POST(req: Request) {
       type,
       name,
       description,
-      config: config ?? {},
+      config: resolveRedactedConfig(config ?? {}, {}),
     });
-    return NextResponse.json(toResponse(connection), { status: 201 });
+    return NextResponse.json(toClientConnection(connection), { status: 201 });
   } catch (error) {
     console.error("POST /api/connections error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
