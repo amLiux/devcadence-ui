@@ -162,6 +162,25 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return query ? cap(query, 60) : cron;
   },
 
+  "New Calendar Event": (meta) => {
+    const calendar = collapse(meta.calendarId) || "primary";
+    const cron = formatCron(meta.cron);
+    return cron ? `${calendar} · ${cron}` : calendar;
+  },
+
+  "List Events": (meta) => {
+    const calendar = collapse(meta.calendarId) || "primary";
+    const query = collapse(meta.query);
+    return query ? `${calendar} · ${cap(query, 40)}` : calendar;
+  },
+
+  "Create Event": (meta) => {
+    const summary = collapse(meta.summary);
+    const start = collapse(meta.start);
+    if (summary && start) return `${cap(summary, 40)} · ${cap(start, 16)}`;
+    return summary ? cap(summary, 60) : start ? cap(start, 60) : null;
+  },
+
 
 
 

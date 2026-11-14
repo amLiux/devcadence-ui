@@ -31,7 +31,13 @@ interface GmailListenTrigger {
   maxResults: number;
 }
 
-type TriggerConfig = ScheduleTrigger | DiscordListenTrigger | GmailListenTrigger;
+interface CalendarListenTrigger {
+  type: "calendar-listen";
+  cron: string;
+  calendarId: string;
+}
+
+type TriggerConfig = ScheduleTrigger | DiscordListenTrigger | GmailListenTrigger | CalendarListenTrigger;
 
 function asSchedule(title: string, meta: Record<string, string>): ScheduleTrigger | null {
   if (title !== "Schedule" || !meta.cron) return null;
@@ -62,6 +68,11 @@ function asGmailListen(title: string, meta: Record<string, string>): GmailListen
 }
 
 
+function asCalendarListen(title: string, meta: Record<string, string>): CalendarListenTrigger | null {
+  if (title !== "New Calendar Event" || !meta.cron) return null;
+  return { type: "calendar-listen", cron: meta.cron, calendarId: meta.calendarId || "primary" };
+}
+
 function findTriggerNodes(
   nodes: EditorNode[],
   variables: Record<string, string>,
@@ -75,7 +86,8 @@ function findTriggerNodes(
     const trigger =
       asSchedule(node.data.title, meta) ??
       asDiscordListen(node.data.title, meta) ??
-      asGmailListen(node.data.title, meta);
+      asGmailListen(node.data.title, meta) ??
+      asCalendarListen(node.data.title, meta);
     if (trigger) return trigger;
   }
   return null;
@@ -90,6 +102,9 @@ function jobName(workflowId: string, trigger: TriggerConfig): string {
   if (trigger.type === "gmail-listen") {
     return `gmail-listen:${workflowId}:${gmailJobKey(trigger.query)}`;
   }
+  if (trigger.type === "calendar-listen") {
+    return `calendar-listen:${workflowId}:${gmailJobKey(trigger.calendarId)}`;
+  }
   return `discord-listen:${workflowId}:${trigger.channelId}`;
 }
 
@@ -102,6 +117,13 @@ function jobData(workflowId: string, trigger: TriggerConfig): Record<string, unk
       workflowId,
       source: "gmail-listen",
       body: { query: trigger.query, maxResults: trigger.maxResults },
+    };
+  }
+  if (trigger.type === "calendar-listen") {
+    return {
+      workflowId,
+      source: "calendar-listen",
+      body: { calendarId: trigger.calendarId },
     };
   }
   return {
@@ -136,7 +158,8 @@ export async function unregisterSchedule(workflowId: string): Promise<void> {
     if (
       job.name === workflowId ||
       job.name.startsWith(`discord-listen:${workflowId}:`) ||
-      job.name.startsWith(`gmail-listen:${workflowId}:`)
+      job.name.startsWith(`gmail-listen:${workflowId}:`) ||
+      job.name.startsWith(`calendar-listen:${workflowId}:`)
     ) {
       if (job.pattern) {
         await queue.removeRepeatable(job.name, { pattern: job.pattern });

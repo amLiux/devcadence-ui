@@ -14,6 +14,7 @@ export { handleInput } from "./input";
 export { handleReturn } from "./return";
 export { handleSendEmail } from "./smtp";
 export { handleSendGmail, handleSearchEmails, handleReplyToEmail, handleWatchEmails } from "./gmail";
+export { handleListCalendarEvents, handleCreateCalendarEvent, handleWatchCalendarEvents } from "./google-calendar";
 export { handleSendMessage } from "./slack";
 export { handleSendDiscordMessage, handleReadDiscordMessages, handleSendDirectMessage, handleListenDiscordMessages } from "./discord";
 export { handleScanDependencies } from "./scan-dependencies";
