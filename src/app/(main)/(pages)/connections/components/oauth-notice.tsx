@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -24,7 +25,18 @@ export function OAuthNotice() {
     return (
       <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
         <XCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
-        <span>{ERROR_MESSAGES[error] ?? "The Google authorization failed. Try again."}</span>
+        <span>
+          {ERROR_MESSAGES[error] ?? "The Google authorization failed. Try again."}
+          {error === "not_configured" && (
+            <>
+              {" "}
+              <Link href="/docs/google-oauth" className="underline">
+                Open the setup guide
+              </Link>
+              .
+            </>
+          )}
+        </span>
       </div>
     );
   }
