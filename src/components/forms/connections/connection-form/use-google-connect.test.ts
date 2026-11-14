@@ -59,6 +59,35 @@ describe("useGoogleConnect", () => {
     expect(result.current.services).toEqual([]);
   });
 
+  it("prefills the services stored on the connection", () => {
+    const { result } = renderHook(() =>
+      useGoogleConnect({
+        connectionId: "conn-1",
+        connectionName: "Work",
+        returnTo: "/connections",
+        initialServices: ["gmail", "drive", "docs"],
+      }),
+    );
+
+    expect(result.current.services).toEqual(["gmail", "drive", "docs"]);
+    expect(result.current.canConnect).toBe(true);
+    expect(
+      new URL(result.current.authorizeUrl, "http://localhost").searchParams.get("services"),
+    ).toBe("gmail,drive,docs");
+  });
+
+  it("drops stored services the form no longer offers", () => {
+    const { result } = renderHook(() =>
+      useGoogleConnect({
+        connectionName: "Work",
+        returnTo: "/connections",
+        initialServices: ["gmail", "maps"],
+      }),
+    );
+
+    expect(result.current.services).toEqual(["gmail"]);
+  });
+
   it("disconnects through the connection endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

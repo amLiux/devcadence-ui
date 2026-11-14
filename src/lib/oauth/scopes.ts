@@ -1,7 +1,7 @@
 import { GOOGLE_SERVICE_SCOPES, type GoogleService } from "./google";
 import type { OAuthProvider } from "./types";
 
-export const GOOGLE_SERVICES: GoogleService[] = ["gmail", "calendar", "drive", "sheets"];
+export const GOOGLE_SERVICES: GoogleService[] = ["gmail", "calendar", "drive", "sheets", "docs"];
 
 export function isGoogleService(value: string): value is GoogleService {
   return (GOOGLE_SERVICES as string[]).includes(value);

@@ -8,16 +8,20 @@ export function GoogleConnectFields({
   connectionId,
   connectionName,
   connectedEmail,
+  initialServices,
 }: {
   connectionId?: string;
   connectionName: string;
   connectedEmail?: string;
+  /** Space separated list stored on the connection, e.g. "gmail drive". */
+  initialServices?: string;
 }) {
   const { services, toggleService, canConnect, authorizeUrl, disconnect, disconnecting } =
     useGoogleConnect({
       connectionId,
       connectionName,
       returnTo: "/connections",
+      initialServices: (initialServices ?? "").split(" ").filter(Boolean),
     });
 
   const actionLabel = connectedEmail ? "Reconnect Google account" : "Connect Google account";

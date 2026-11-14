@@ -21,6 +21,12 @@ describe("scopesForServices", () => {
     expect(scopes).toContain("openid");
   });
 
+  it("includes the Docs scope when Docs is selected", () => {
+    expect(scopesForServices(GOOGLE_PROVIDER, ["docs"])).toContain(
+      "https://www.googleapis.com/auth/documents",
+    );
+  });
+
   it("ignores unknown services instead of failing", () => {
     const scopes = scopesForServices(GOOGLE_PROVIDER, ["gmail", "maps"]);
 

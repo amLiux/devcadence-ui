@@ -7,15 +7,21 @@ export const GOOGLE_SERVICE_OPTIONS = [
   { id: "calendar", label: "Calendar", hint: "List and create events" },
   { id: "drive", label: "Drive", hint: "Upload and list files" },
   { id: "sheets", label: "Sheets", hint: "Read and append rows" },
+  { id: "docs", label: "Docs", hint: "Create and edit documents" },
 ] as const;
 
 export function useGoogleConnect(input: {
   connectionId?: string;
   connectionName: string;
   returnTo: string;
+  initialServices?: string[];
   onDisconnected?: () => void;
 }) {
-  const [services, setServices] = useState<string[]>([]);
+  const [services, setServices] = useState<string[]>(() =>
+    (input.initialServices ?? []).filter((id) =>
+      GOOGLE_SERVICE_OPTIONS.some((option) => option.id === id),
+    ),
+  );
   const [disconnecting, setDisconnecting] = useState(false);
 
   const toggleService = useCallback((id: string) => {

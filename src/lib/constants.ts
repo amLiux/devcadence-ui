@@ -69,8 +69,8 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     inputs: [],
     checkboxes: [],
     description:
-      "Authorize a Google account once so workflows can use Gmail, Calendar, Drive and Sheets. Tokens are stored encrypted and used by nodes on the server — this grants API access, it does not sign you in to DevCadence.",
-    features: ["Send Email", "Search Emails", "Watch Emails", "Calendar Events", "Drive Files", "Sheets Rows"],
+      "Authorize a Google account once so workflows can use Gmail, Calendar, Drive, Sheets and Docs. Tokens are stored encrypted and used by nodes on the server — this grants API access, it does not sign you in to DevCadence.",
+    features: ["Send Email", "Search Emails", "Watch Emails", "Calendar Events", "Drive Files", "Sheets Rows", "Docs"],
   },
   SMTP: {
     inputs: [

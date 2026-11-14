@@ -95,6 +95,7 @@ export function ConnectionForm(props: ConnectionFormProps) {
           connectionId={form.initialData?.id}
           connectionName={form.name}
           connectedEmail={form.initialData?.config.email}
+          initialServices={form.initialData?.config.services}
         />
       ) : (
         <ConnectionFormActions

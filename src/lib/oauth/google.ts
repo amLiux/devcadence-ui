@@ -10,7 +10,7 @@ export const GOOGLE_PROVIDER: OAuthProvider = {
   baseScopes: ["openid", "email", "profile"],
 };
 
-export type GoogleService = "gmail" | "calendar" | "drive" | "sheets";
+export type GoogleService = "gmail" | "calendar" | "drive" | "sheets" | "docs";
 
 /**
  * Least privilege per service. gmail.modify and calendar scopes are "restricted"
@@ -25,6 +25,7 @@ export const GOOGLE_SERVICE_SCOPES: Record<GoogleService, string[]> = {
   ],
   drive: ["https://www.googleapis.com/auth/drive.file"],
   sheets: ["https://www.googleapis.com/auth/spreadsheets"],
+  docs: ["https://www.googleapis.com/auth/documents"],
 };
 
 export function googleScopesForServices(services: GoogleService[]): string[] {
