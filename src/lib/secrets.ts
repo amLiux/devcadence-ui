@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypt
 const ALGORITHM = "aes-256-gcm";
 const PREFIX = "enc:v1:";
 
-function getMasterKey(): Buffer {
+export function getMasterKey(): Buffer {
   const envKey = process.env.DEVDOCK_MASTER_KEY;
   if (!envKey) {
     throw new Error("DEVDOCK_MASTER_KEY is not set");

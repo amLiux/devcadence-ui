@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { connectionIcons } from "@/lib/constants";
 import { ConnectionFields } from "./connection-fields";
+import { ConnectionFormActions } from "./connection-form-actions";
+import { GoogleConnectFields } from "./google-connect-fields";
 import { ProviderPicker } from "./provider-picker";
 import { useConnectionForm, type ConnectionFormProps } from "./use-connection-form";
 
@@ -89,20 +90,21 @@ export function ConnectionForm(props: ConnectionFormProps) {
         onInputChange={form.handleInputChange}
         onTouch={form.touchField}
       />
-      <div className="flex justify-end gap-2 pb-4">
-        <Button variant="ghost" onClick={form.setClose}>
-          Cancel
-        </Button>
-        <Button onClick={form.handleSubmit} disabled={form.submitting || !form.name || form.hasMissing}>
-          {form.submitting
-            ? form.initialData
-              ? "Saving..."
-              : "Connecting..."
-            : form.initialData
-              ? "Save"
-              : "Connect"}
-        </Button>
-      </div>
+      {form.selectedType === "Google" ? (
+        <GoogleConnectFields
+          connectionId={form.initialData?.id}
+          connectionName={form.name}
+          connectedEmail={form.initialData?.config.email}
+        />
+      ) : (
+        <ConnectionFormActions
+          submitting={form.submitting}
+          editing={Boolean(form.initialData)}
+          canSubmit={Boolean(form.name) && !form.hasMissing}
+          onSubmit={form.handleSubmit}
+          onClose={form.setClose}
+        />
+      )}
     </div>
   );
 }

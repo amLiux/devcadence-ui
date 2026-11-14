@@ -56,7 +56,7 @@ describe("isTestable", () => {
 
   it("rejects types without a probe", () => {
     expect(isTestable("Webhook")).toBe(false);
-    expect(isTestable("Gmail")).toBe(false);
+    expect(isTestable("Google")).toBe(false);
   });
 });
 
