@@ -135,6 +135,33 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return subject ? `"${cap(subject, 60)}"` : null;
   },
 
+  "Send Gmail": (meta) => {
+    const to = collapse(meta.to);
+    const subject = collapse(meta.subject);
+    if (to && subject) return `${to} · "${cap(subject, 60)}"`;
+    if (to) return to;
+    return subject ? `"${cap(subject, 60)}"` : null;
+  },
+
+  "Search Emails": (meta) => {
+    const query = collapse(meta.query);
+    const max = collapse(meta.maxResults);
+    if (query && max) return `${cap(query, 40)} · ${max}`;
+    return query ? cap(query, 60) : max ? `first ${max}` : null;
+  },
+
+  "Reply to Email": (meta) => {
+    const text = collapse(meta.body);
+    return text ? cap(text, 60) : null;
+  },
+
+  "Watch Emails": (meta) => {
+    const query = collapse(meta.query);
+    const cron = formatCron(meta.cron);
+    if (query && cron) return `${cap(query, 40)} · ${cron}`;
+    return query ? cap(query, 60) : cron;
+  },
+
   "PostgreSQL Query": (meta) => {
     const sql = collapse(meta.sql);
     return sql ? cap(sql, 120) : null;

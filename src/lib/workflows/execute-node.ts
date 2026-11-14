@@ -2,34 +2,13 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import type { ContextStep } from "@/lib/workflow-context";
 import {
-  handleTransformData,
-  handleConditional,
-  handleHttpRequest,
   handleGithubTrigger,
   handleGithubAction,
-  handlePostgresQuery,
-  handlePostgresInsert,
-  handlePostgresUpdate,
-  handlePostgresDelete,
   handleWebhookTrigger,
   handleScheduleTrigger,
-  handlePrompt,
-  handleClassify,
-  handleExtract,
-  handleCallWorkflow,
-  handleInput,
-  handleReturn,
-  handleBuildJson,
-  handleRetryLoop,
-  handleSendEmail,
-  handleSendMessage,
-  handleSendDiscordMessage,
-  handleReadDiscordMessages,
-  handleSendDirectMessage,
-  handleListenDiscordMessages,
-  handleScanDependencies,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
+import { TITLE_HANDLERS } from "@/lib/workflows/node-handlers";
 import type { EditorNode, NodeDebugLog, LogEntry } from "@/lib/types";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { withWorkflowVariables } from "@/lib/workflow-context";
@@ -42,36 +21,6 @@ export interface ExecuteNodeOptions {
   onLog?: (entry: LogEntry) => void;
   variables?: Record<string, string> | null;
 }
-
-type Handler = (
-  meta: Record<string, string>,
-  ancestorChain: ContextStep | undefined,
-) => Promise<NodeHandlerResult> | NodeHandlerResult;
-
-const TITLE_HANDLERS: Record<string, Handler> = {
-  Conditional: handleConditional,
-  "Transform Data": handleTransformData,
-  "Build JSON": handleBuildJson,
-  "Retry Loop": handleRetryLoop,
-  "HTTP Request": handleHttpRequest,
-  "PostgreSQL Query": handlePostgresQuery,
-  "PostgreSQL Insert": handlePostgresInsert,
-  "PostgreSQL Update": handlePostgresUpdate,
-  "PostgreSQL Delete": handlePostgresDelete,
-  Prompt: handlePrompt,
-  Classify: handleClassify,
-  Extract: handleExtract,
-  "Call Workflow": handleCallWorkflow,
-  Input: handleInput,
-  Return: handleReturn,
-  "Send Email": handleSendEmail,
-  "Send Slack Message": handleSendMessage,
-  "Send Discord Message": handleSendDiscordMessage,
-  "Read Discord Messages": handleReadDiscordMessages,
-  "Send Direct Message": handleSendDirectMessage,
-  "Listen Discord Messages": handleListenDiscordMessages,
-  "Scan Dependencies": handleScanDependencies,
-};
 
 function dispatchHandler(
   title: string,

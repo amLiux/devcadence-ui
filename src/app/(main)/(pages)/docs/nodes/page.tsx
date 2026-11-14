@@ -37,7 +37,7 @@ import {
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 type NodeCategory = "Triggers" | "Actions" | "Security";
-type NodeProvider = "None" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord" | "Webhook" | "Sub-workflow" | "Security";
+type NodeProvider = "None" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord" | "Webhook" | "Sub-workflow" | "Security" | "Google";
 
 interface NodeDoc {
   title: string;
@@ -445,6 +445,22 @@ const NODE_DOCS: NodeDoc[] = [
     provider: "GitHub",
   },
   {
+    title: "Watch Emails",
+    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    color: "border-blue-500/30",
+    description: "Trigger on new Gmail messages matching a query. Polls on a cron schedule.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to poll." },
+      { key: "query", desc: "Gmail search query, e.g. is:unread label:inbox." },
+      { key: "cron", desc: "How often to poll, e.g. */5 * * * *." },
+      { key: "maxResults", desc: "Messages fetched per poll (1-50)." },
+    ],
+    examples: ["is:unread from:boss@example.com every 5 minutes"],
+    category: "Triggers",
+    provider: "Google",
+  },
+  {
     title: "Send Email",
     icon: <Mail className="h-4 w-4 text-red-500" />,
     color: "border-red-500/30",
@@ -459,6 +475,56 @@ const NODE_DOCS: NodeDoc[] = [
     examples: ["Send daily report to ops@example.com"],
     category: "Actions",
     provider: "SMTP",
+  },
+  {
+    title: "Send Gmail",
+    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    color: "border-blue-500/30",
+    description: "Send an email through the authorized Gmail account.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to send with." },
+      { key: "to", desc: "Recipient. Supports {{expression}}." },
+      { key: "cc", desc: "Optional CC list." },
+      { key: "bcc", desc: "Optional BCC list." },
+      { key: "subject", desc: "Subject. Supports {{expression}}." },
+      { key: "body", desc: "Plain text body." },
+      { key: "html", desc: "Optional HTML body; sends multipart/alternative." },
+    ],
+    examples: ["Notify a customer with {{previousStep.name}}"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Search Emails",
+    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    color: "border-blue-500/30",
+    description: "Search Gmail and return matching messages as an array.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to search with." },
+      { key: "query", desc: "Gmail search query. Supports {{expression}}." },
+      { key: "maxResults", desc: "How many messages to return (1-50)." },
+    ],
+    examples: ["Fetch unread invoices and pass them to For Each"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Reply to Email",
+    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    color: "border-blue-500/30",
+    description: "Reply inside an existing Gmail thread, keeping the subject and headers.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to reply with." },
+      { key: "threadId", desc: "Thread to reply in. Usually {{previousStep.threadId}}." },
+      { key: "body", desc: "Reply text." },
+      { key: "html", desc: "Optional HTML body." },
+    ],
+    examples: ["Auto-reply to support emails"],
+    category: "Actions",
+    provider: "Google",
   },
   {
     title: "Send Discord Message",
@@ -568,7 +634,7 @@ const NODE_DOCS: NodeDoc[] = [
 
 type ProviderFilter = NodeProvider | "All";
 
-const PROVIDERS: ProviderFilter[] = ["All", "None", "GitHub", "PostgreSQL", "AI", "SMTP", "Discord", "Webhook", "Sub-workflow", "Security"];
+const PROVIDERS: ProviderFilter[] = ["All", "None", "GitHub", "PostgreSQL", "AI", "SMTP", "Discord", "Google", "Webhook", "Sub-workflow", "Security"];
 
 function NodeDocCard({ doc }: { doc: NodeDoc }) {
   const [open, setOpen] = useState(false);

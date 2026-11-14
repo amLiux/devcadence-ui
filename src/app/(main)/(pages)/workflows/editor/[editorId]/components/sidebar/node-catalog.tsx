@@ -1,17 +1,3 @@
-import Image from "next/image";
-import {
-  ArrowRightLeft,
-  Database,
-  GitBranch,
-  GitFork,
-  LogIn,
-  LogOut,
-  Mail,
-  Settings,
-  Shield,
-  Sparkles,
-  Zap,
-} from "lucide-react";
 import type { Connection, EditorNodeData } from "@/lib/types";
 
 export type NodeCategory = "Communication" | "Repository" | "Data" | "AI" | "Core" | "Security";
@@ -57,6 +43,12 @@ export const triggerNodes: NodeCardDef[] = [
     title: "Listen Discord Messages",
     description: "Trigger on new Discord channel messages",
     requiresConnection: "Discord",
+  },
+  {
+    type: "Trigger",
+    title: "Watch Emails",
+    description: "Trigger on new Gmail messages matching a query",
+    requiresConnection: "Google",
   },
   {
     type: "Trigger",
@@ -223,6 +215,27 @@ export const actionNodes: NodeCardDef[] = [
     category: "Communication",
   },
   {
+    type: "Action",
+    title: "Send Gmail",
+    description: "Send an email through Gmail",
+    requiresConnection: "Google",
+    category: "Communication",
+  },
+  {
+    type: "Action",
+    title: "Search Emails",
+    description: "Search Gmail and return matching messages",
+    requiresConnection: "Google",
+    category: "Communication",
+  },
+  {
+    type: "Action",
+    title: "Reply to Email",
+    description: "Reply in an existing Gmail thread",
+    requiresConnection: "Google",
+    category: "Communication",
+  },
+  {
     type: "Slack",
     title: "Send Slack Message",
     description: "Post a message to a Slack channel",
@@ -259,28 +272,4 @@ export const actionNodes: NodeCardDef[] = [
   },
 ];
 
-export const iconMap: Record<string, React.ReactNode> = {
-  Trigger: <Zap className="h-3 w-3 text-yellow-500" />,
-  Action: <Settings className="h-3 w-3 text-blue-500" />,
-  GitHub: <GitBranch className="h-3 w-3 text-foreground" />,
-  Conditional: <GitFork className="h-3 w-3 text-orange-500" />,
-  PostgreSQL: <Database className="h-3 w-3 text-blue-600" />,
-  AI: <Sparkles className="h-3 w-3 text-purple-500" />,
-  "Call Workflow": <ArrowRightLeft className="h-3 w-3 text-emerald-500" />,
-  Input: <LogIn className="h-3 w-3 text-cyan-500" />,
-  Return: <LogOut className="h-3 w-3 text-amber-500" />,
-  SMTP: <Mail className="h-3 w-3 text-red-500" />,
-  Slack: <Image src="/slack.png" alt="Slack" width={12} height={12} className="object-contain" />,
-  Security: <Shield className="h-3 w-3 text-emerald-500" />,
-  "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
-  Discord: <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
-  "Send Discord Message": (
-    <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />
-  ),
-  "Read Discord Messages": (
-    <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />
-  ),
-  "Send Direct Message": (
-    <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />
-  ),
-};
+export { iconMap } from "./node-icons";
