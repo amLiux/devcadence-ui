@@ -33,6 +33,9 @@ import {
   handleListFiles,
   handleReadRows,
   handleAppendRows,
+  handleCreateDocument,
+  handleReadDocument,
+  handleAppendText,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 
@@ -76,4 +79,7 @@ export const TITLE_HANDLERS: Record<string, NodeHandler> = {
   "List Files": handleListFiles,
   "Read Rows": handleReadRows,
   "Append Rows": handleAppendRows,
+  "Create Document": handleCreateDocument,
+  "Read Document": handleReadDocument,
+  "Append Text": handleAppendText,
 };

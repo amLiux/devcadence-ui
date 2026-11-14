@@ -191,6 +191,27 @@ export const actionNodes: NodeCardDef[] = [
     category: "Data",
   },
   {
+    type: "Action",
+    title: "Create Document",
+    description: "Create a Google Doc with optional text",
+    requiresConnection: "Google",
+    category: "Data",
+  },
+  {
+    type: "Action",
+    title: "Read Document",
+    description: "Read a Google Doc as plain text",
+    requiresConnection: "Google",
+    category: "Data",
+  },
+  {
+    type: "Action",
+    title: "Append Text",
+    description: "Append text to a Google Doc",
+    requiresConnection: "Google",
+    category: "Data",
+  },
+  {
     type: "Slack",
     title: "Send Slack Message",
     description: "Post a message to a Slack channel",
