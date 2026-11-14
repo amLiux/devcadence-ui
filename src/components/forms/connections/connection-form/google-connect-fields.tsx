@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useGoogleConnect, GOOGLE_SERVICE_OPTIONS } from "./use-google-connect";
 
 export function GoogleConnectFields({
@@ -72,7 +74,9 @@ export function GoogleConnectFields({
           </Button>
         )}
         {canConnect ? (
-          <Button render={<a href={authorizeUrl} />}>{actionLabel}</Button>
+          <a href={authorizeUrl} className={cn(buttonVariants())}>
+            {actionLabel}
+          </a>
         ) : (
           <Button disabled>{actionLabel}</Button>
         )}
