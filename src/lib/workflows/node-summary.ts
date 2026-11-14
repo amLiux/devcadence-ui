@@ -162,6 +162,62 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return query ? cap(query, 60) : cron;
   },
 
+  "New Calendar Event": (meta) => {
+    const calendar = collapse(meta.calendarId) || "primary";
+    const cron = formatCron(meta.cron);
+    return cron ? `${calendar} · ${cron}` : calendar;
+  },
+
+  "List Events": (meta) => {
+    const calendar = collapse(meta.calendarId) || "primary";
+    const query = collapse(meta.query);
+    return query ? `${calendar} · ${cap(query, 40)}` : calendar;
+  },
+
+  "Create Event": (meta) => {
+    const summary = collapse(meta.summary);
+    const start = collapse(meta.start);
+    if (summary && start) return `${cap(summary, 40)} · ${cap(start, 16)}`;
+    return summary ? cap(summary, 60) : start ? cap(start, 60) : null;
+  },
+
+  "Upload File": (meta) => {
+    const name = collapse(meta.fileName);
+    return name ? cap(name, 60) : null;
+  },
+
+  "List Files": (meta) => {
+    const query = collapse(meta.query);
+    return query ? cap(query, 60) : null;
+  },
+
+  "Read Rows": (meta) => {
+    const range = collapse(meta.range);
+    return range ? cap(range, 60) : null;
+  },
+
+  "Append Rows": (meta) => {
+    const range = collapse(meta.range);
+    const rows = collapse(meta.rows);
+    if (range && rows) return `${range} · ${cap(rows, 40)}`;
+    return range ? cap(range, 60) : null;
+  },
+
+  "Create Document": (meta) => {
+    const title = collapse(meta.title);
+    return title ? cap(title, 60) : null;
+  },
+
+  "Read Document": (meta) => {
+    const id = collapse(meta.documentId);
+    return id ? shortenId(id, 10) : null;
+  },
+
+  "Append Text": (meta) => {
+    const text = collapse(meta.text);
+    return text ? cap(text, 60) : null;
+  },
+
   "PostgreSQL Query": (meta) => {
     const sql = collapse(meta.sql);
     return sql ? cap(sql, 120) : null;

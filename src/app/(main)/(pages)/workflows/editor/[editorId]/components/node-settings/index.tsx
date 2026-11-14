@@ -35,6 +35,10 @@ import { BuildJsonSettings } from "./build-json";
 import { RetryLoopSettings } from "./retry-loop";
 import { SendEmailSettings } from "./smtp";
 import { SendGmailSettings, SearchEmailsSettings, ReplyToEmailSettings, WatchEmailsSettings } from "./gmail";
+import { ListEventsSettings, CreateEventSettings, WatchCalendarEventsSettings } from "./calendar";
+import { UploadFileSettings, ListFilesSettings } from "./drive";
+import { ReadRowsSettings, AppendRowsSettings } from "./sheets";
+import { CreateDocumentSettings, ReadDocumentSettings, AppendTextSettings } from "./docs";
 import { SendMessageSettings } from "./slack";
 import { SendDiscordMessageSettings, ReadDiscordMessagesSettings, SendDirectMessageSettings, ListenDiscordMessagesSettings } from "./discord";
 import { ScanDependenciesSettings } from "./scan-dependencies";
@@ -72,6 +76,16 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "Search Emails": SearchEmailsSettings,
   "Reply to Email": ReplyToEmailSettings,
   "Watch Emails": WatchEmailsSettings,
+  "New Calendar Event": WatchCalendarEventsSettings,
+  "List Events": ListEventsSettings,
+  "Create Event": CreateEventSettings,
+  "Upload File": UploadFileSettings,
+  "List Files": ListFilesSettings,
+  "Read Rows": ReadRowsSettings,
+  "Append Rows": AppendRowsSettings,
+  "Create Document": CreateDocumentSettings,
+  "Read Document": ReadDocumentSettings,
+  "Append Text": AppendTextSettings,
   "Send Slack Message": SendMessageSettings,
   "Send Discord Message": SendDiscordMessageSettings,
   "Read Discord Messages": ReadDiscordMessagesSettings,

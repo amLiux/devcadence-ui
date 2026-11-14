@@ -49,4 +49,34 @@ export const iconMap: Record<string, React.ReactNode> = {
   "Reply to Email": (
     <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
   ),
+  "New Calendar Event": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "List Events": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Create Event": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Upload File": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "List Files": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Read Rows": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Append Rows": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Create Document": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Read Document": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Append Text": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
 };

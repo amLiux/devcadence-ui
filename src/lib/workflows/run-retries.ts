@@ -10,7 +10,7 @@ import { canRetryRun, planAutoRetry, type FailureInput } from "./retry";
 import { getRetryPolicy } from "./retry-store";
 
 /** Sources whose runs can be replayed from their stored trigger payload. */
-const REPLAYABLE_SOURCES = new Set(["manual", "schedule", "webhook", "discord-listen", "gmail-listen"]);
+const REPLAYABLE_SOURCES = new Set(["manual", "schedule", "webhook", "discord-listen", "gmail-listen", "calendar-listen"]);
 
 const MAX_CHAIN_WALK = 100;
 
