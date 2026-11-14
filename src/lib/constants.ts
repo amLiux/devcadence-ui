@@ -65,12 +65,12 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     features: ["Execute Command"],
     comingSoon: true,
   },
-  Gmail: {
+  Google: {
     inputs: [],
     checkboxes: [],
-    description: "Send emails through Gmail using OAuth2. No API key needed — just sign in with your Google account.",
-    features: ["Send Email"],
-    comingSoon: true,
+    description:
+      "Authorize a Google account once so workflows can use Gmail, Calendar, Drive, Sheets and Docs. Tokens are stored encrypted and used by nodes on the server — this grants API access, it does not sign you in to DevCadence.",
+    features: ["Send Email", "Search Emails", "Watch Emails", "Calendar Events", "Drive Files", "Sheets Rows", "Docs"],
   },
   SMTP: {
     inputs: [
@@ -112,13 +112,6 @@ export const integrationConfigs: Record<ConnectionType, IntegrationConfig> = {
     description: "Read and write Notion pages and databases.",
     features: ["Query Database", "Create Page"],
   },
-  "Google Drive": {
-    inputs: [],
-    checkboxes: [],
-    comingSoon: true,
-    description: "Access and manage Google Drive files and folders.",
-    features: ["Upload File", "List Files"],
-  },
 };
 
 /** Connection types that can validate their credentials with a test call. */
@@ -140,7 +133,6 @@ export const connectionIcons: Record<ConnectionType, string> = {
   AI: "/dd-logo.svg",
   SMTP: "/dd-logo.svg",
   SSH: "/dd-logo.svg",
-  Gmail: "/gmail.png",
   Notion: "/notion.png",
-  "Google Drive": "/googleDrive.png",
+  Google: "/google.png",
 };

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { getConnections, createConnection } from "@/lib/db/connections";
+import { SECRET_PLACEHOLDER } from "@/lib/connections/redact";
 
 vi.mock("@/lib/db/connections", () => ({
   getConnections: vi.fn(),
@@ -51,11 +52,22 @@ describe("GET /api/connections", () => {
         type: "Slack",
         name: "Team Slack",
         description: "main channel",
-        config: { botToken: "xoxb" },
+        config: { botToken: SECRET_PLACEHOLDER },
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ]);
+  });
+
+  it("never serializes a stored secret value", async () => {
+    getConnectionsMock.mockResolvedValue([
+      dbRow({ type: "PostgreSQL", config: { host: "db", password: "hunter2" } }),
+    ] as never);
+
+    const body = await (await GET()).json();
+
+    expect(JSON.stringify(body)).not.toContain("hunter2");
+    expect(body[0].config).toEqual({ host: "db", password: SECRET_PLACEHOLDER });
   });
 
   it("returns 500 when the query fails", async () => {
@@ -98,7 +110,25 @@ describe("POST /api/connections", () => {
       config: { botToken: "xoxb" },
     });
     expect(response.status).toBe(201);
-    expect((await response.json()).id).toBe("conn-1");
+    const body = await response.json();
+    expect(body.id).toBe("conn-1");
+    expect(body.config).toEqual({ botToken: SECRET_PLACEHOLDER });
+  });
+
+  it("drops a placeholder that has no stored value to resolve to", async () => {
+    createConnectionMock.mockResolvedValue(dbRow({ config: { botToken: "" } }) as never);
+
+    await POST(
+      postRequest({
+        type: "Slack",
+        name: "Team Slack",
+        config: { botToken: SECRET_PLACEHOLDER },
+      }),
+    );
+
+    expect(createConnectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ config: {} }),
+    );
   });
 
   it("defaults config to an empty object", async () => {
