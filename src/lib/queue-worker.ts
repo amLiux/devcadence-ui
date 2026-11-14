@@ -2,6 +2,8 @@ import { Worker, type Job } from "bullmq";
 import { prisma } from "@/lib/db";
 import { getConnection } from "@/lib/db/connections";
 import { getChannelMessages } from "@/lib/discord";
+import { prepareGmailListenBody } from "@/lib/gmail/trigger";
+import { prepareCalendarListenBody } from "@/lib/google-calendar/trigger";
 import { executeWorkflowRun, type ExecuteRunResult } from "@/lib/workflows/execute-workflow";
 import {
   QUEUE_CONNECTION,
@@ -82,6 +84,18 @@ const worker = new Worker<WorkflowJobData>(
     if (source === "discord-listen" && !runId) {
       const triggerBody = await prepareDiscordListenBody(workflowId, body);
       if (!triggerBody) return { success: true, runId: "", error: "No new Discord messages" };
+      return executeWorkflowRun({ workflowId, source, body: triggerBody });
+    }
+
+    if (source === "gmail-listen" && !runId) {
+      const triggerBody = await prepareGmailListenBody(workflowId, body);
+      if (!triggerBody) return { success: true, runId: "", error: "No new emails" };
+      return executeWorkflowRun({ workflowId, source, body: triggerBody });
+    }
+
+    if (source === "calendar-listen" && !runId) {
+      const triggerBody = await prepareCalendarListenBody(workflowId, body);
+      if (!triggerBody) return { success: true, runId: "", error: "No new calendar events" };
       return executeWorkflowRun({ workflowId, source, body: triggerBody });
     }
 
