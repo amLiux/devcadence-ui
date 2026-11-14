@@ -122,12 +122,22 @@ export interface EditorEdge {
   sourceHandle?: string | null;
 }
 
-export type WorkflowTriggerType = "webhook" | "schedule" | "github" | "sub-workflow" | "discord" | "manual";
+export type WorkflowTriggerType =
+  | "webhook"
+  | "schedule"
+  | "github"
+  | "sub-workflow"
+  | "discord"
+  | "gmail"
+  | "calendar"
+  | "manual";
 
 const TRIGGER_TITLE_MAP: Record<string, WorkflowTriggerType> = {
   Webhook: "webhook",
   Schedule: "schedule",
   "Listen Discord Messages": "discord",
+  "Watch Emails": "gmail",
+  "New Calendar Event": "calendar",
   Input: "sub-workflow",
   "Listen Commits": "github",
   "Listen Pull Requests": "github",
@@ -156,6 +166,8 @@ export const TRIGGER_TYPE_LABELS: Record<WorkflowTriggerType, string> = {
   schedule: "Scheduled",
   github: "GitHub Events",
   discord: "Discord Messages",
+  gmail: "Gmail Messages",
+  calendar: "Calendar Events",
   "sub-workflow": "Reusable",
   manual: "Manual",
 };
