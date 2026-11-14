@@ -181,6 +181,28 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return summary ? cap(summary, 60) : start ? cap(start, 60) : null;
   },
 
+  "Upload File": (meta) => {
+    const name = collapse(meta.fileName);
+    return name ? cap(name, 60) : null;
+  },
+
+  "List Files": (meta) => {
+    const query = collapse(meta.query);
+    return query ? cap(query, 60) : null;
+  },
+
+  "Read Rows": (meta) => {
+    const range = collapse(meta.range);
+    return range ? cap(range, 60) : null;
+  },
+
+  "Append Rows": (meta) => {
+    const range = collapse(meta.range);
+    const rows = collapse(meta.rows);
+    if (range && rows) return `${range} · ${cap(rows, 40)}`;
+    return range ? cap(range, 60) : null;
+  },
+
 
 
 

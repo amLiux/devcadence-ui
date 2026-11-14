@@ -29,6 +29,10 @@ import {
   handleListCalendarEvents,
   handleCreateCalendarEvent,
   handleWatchCalendarEvents,
+  handleUploadFile,
+  handleListFiles,
+  handleReadRows,
+  handleAppendRows,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 
@@ -68,4 +72,8 @@ export const TITLE_HANDLERS: Record<string, NodeHandler> = {
   "List Events": handleListCalendarEvents,
   "Create Event": handleCreateCalendarEvent,
   "New Calendar Event": handleWatchCalendarEvents,
+  "Upload File": handleUploadFile,
+  "List Files": handleListFiles,
+  "Read Rows": handleReadRows,
+  "Append Rows": handleAppendRows,
 };
