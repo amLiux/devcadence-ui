@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "../expression-nodes";
 import type { NodeSettingsProps } from "../types";
-import { GoogleConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function GoogleSettingsShell({
   meta,
@@ -27,7 +27,8 @@ export function GoogleSettingsShell({
         ))}
       <div className="space-y-1.5">
         <Label className="text-xs">Google Connection</Label>
-        <GoogleConnectionSelect
+        <ConnectionSelect
+          type="Google"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />
