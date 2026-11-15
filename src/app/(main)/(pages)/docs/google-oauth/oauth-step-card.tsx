@@ -27,10 +27,12 @@ export function OAuthStepCard({
     <Card
       className={cn(
         "transition-colors",
-        checked ? "bg-emerald-500/10 ring-2 ring-emerald-500/60" : undefined,
+        checked ? "ring-2 ring-emerald-500/60" : undefined,
       )}
     >
-      <CardContent className="space-y-2 p-4">
+      <CardContent
+        className={cn("space-y-2 p-4", checked && "bg-emerald-500/10")}
+      >
         <div className="flex items-start gap-3">
           <span
             className={cn(
