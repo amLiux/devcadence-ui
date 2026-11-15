@@ -49,7 +49,12 @@ export async function prepareCalendarListenBody(
   const syncToken = await readSyncToken(workflowId, calendarId);
   if (!syncToken) {
     const full = await listUpcomingEvents({ calendarId });
-    if (full.nextSyncToken) await writeSyncToken(workflowId, calendarId, full.nextSyncToken);
+    if (!full.nextSyncToken) {
+      throw new Error(
+        "Calendar did not return a sync token. The trigger cannot follow new events without it.",
+      );
+    }
+    await writeSyncToken(workflowId, calendarId, full.nextSyncToken);
     return null;
   }
 
@@ -63,7 +68,12 @@ export async function prepareCalendarListenBody(
   } catch (error) {
     if (!(error instanceof SyncTokenExpiredError)) throw error;
     const full = await listUpcomingEvents({ calendarId });
-    if (full.nextSyncToken) await writeSyncToken(workflowId, calendarId, full.nextSyncToken);
+    if (!full.nextSyncToken) {
+      throw new Error(
+        "Calendar did not return a sync token after the previous one expired. Re-save the workflow to retry.",
+      );
+    }
+    await writeSyncToken(workflowId, calendarId, full.nextSyncToken);
     return null;
   }
 }

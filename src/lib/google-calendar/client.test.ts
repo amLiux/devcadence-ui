@@ -4,6 +4,7 @@ import {
   createEvent,
   listEvents,
   listEventsIncremental,
+  listUpcomingEvents,
   normalizeDateTime,
   SyncTokenExpiredError,
 } from "./client";
@@ -104,5 +105,37 @@ describe("normalizeDateTime", () => {
     expect(normalizeDateTime("2026-11-16T09:00:00-06:00")).toBe("2026-11-16T09:00:00-06:00");
     expect(normalizeDateTime("2026-11-16")).toBe("2026-11-16");
     expect(normalizeDateTime(undefined)).toBeUndefined();
+  });
+});
+
+describe("listUpcomingEvents", () => {
+  it("does not send orderBy and returns the sync token from the last page", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        json({
+          items: [{ ...rawEvent, id: "b", start: { dateTime: "2026-11-21T10:00:00Z" } }],
+          nextPageToken: "page-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        json({
+          items: [{ ...rawEvent, id: "a", start: { dateTime: "2026-11-20T10:00:00Z" } }],
+          nextSyncToken: "sync-final",
+        }),
+      );
+
+    const result = await listUpcomingEvents({ calendarId: "primary" });
+
+    const firstUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    const secondUrl = new URL(String(fetchMock.mock.calls[1][0]));
+    expect(firstUrl.searchParams.get("orderBy")).toBeNull();
+    expect(secondUrl.searchParams.get("pageToken")).toBe("page-2");
+    expect(result.nextSyncToken).toBe("sync-final");
+    expect(result.events.map((event) => event.id)).toEqual(["a", "b"]);
+  });
+
+  it("returns null when Google omits the token", async () => {
+    fetchMock.mockResolvedValueOnce(json({ items: [] }));
+    await expect(listUpcomingEvents({})).resolves.toMatchObject({ nextSyncToken: null });
   });
 });

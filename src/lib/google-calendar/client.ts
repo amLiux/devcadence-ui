@@ -206,23 +206,44 @@ export async function listEventsIncremental(input: {
   };
 }
 
-/** Full sync used for the first poll and after a sync token expires. */
+/**
+ * Full sync used for the first poll and after a sync token expires.
+ *
+ * `orderBy=startTime` must not be sent here: Google omits `nextSyncToken` when
+ * it is present, which would leave the trigger with no cursor forever. Results
+ * are ordered client-side instead, and pages are walked until Google returns
+ * the token on the last one.
+ */
 export async function listUpcomingEvents(input: {
   calendarId?: string;
 }): Promise<{ events: CalendarEvent[]; nextSyncToken: string | null }> {
   const calendarId = encodeURIComponent(input.calendarId || "primary");
   const params = new URLSearchParams({
     singleEvents: "true",
-    orderBy: "startTime",
     timeMin: new Date().toISOString(),
     maxResults: "50",
   });
 
-  const body = await getJson<{ items?: RawEvent[]; nextSyncToken?: string }>(
-    `${BASE}/calendars/${calendarId}/events?${params.toString()}`,
-  );
+  const items: RawEvent[] = [];
+  let nextSyncToken: string | null = null;
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < 10; page += 1) {
+    if (pageToken) params.set("pageToken", pageToken);
+    const body = await getJson<{
+      items?: RawEvent[];
+      nextSyncToken?: string;
+      nextPageToken?: string;
+    }>(`${BASE}/calendars/${calendarId}/events?${params.toString()}`);
+
+    items.push(...(body.items ?? []));
+    nextSyncToken = body.nextSyncToken ?? null;
+    pageToken = body.nextPageToken;
+    if (!pageToken) break;
+  }
+
   return {
-    events: (body.items ?? []).map(toEvent),
-    nextSyncToken: body.nextSyncToken ?? null,
+    events: items.map(toEvent).sort((a, b) => a.start.localeCompare(b.start)),
+    nextSyncToken,
   };
 }
