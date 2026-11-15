@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, KeyRound, ShieldCheck, AlertTriangle } from "lucide-react";
+import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 interface Step {
   title: string;
@@ -93,6 +94,9 @@ function CodeBlock({ children }: { children: string }) {
 }
 
 export default function GoogleOAuthDocsPage() {
+  const { markPage } = useDocsProgress();
+  useEffect(() => { markPage("google-oauth"); }, [markPage]);
+
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <SubpageHeader
