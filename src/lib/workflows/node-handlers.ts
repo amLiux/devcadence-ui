@@ -26,6 +26,9 @@ import {
   handleSearchEmails,
   handleReplyToEmail,
   handleWatchEmails,
+  handleListCalendarEvents,
+  handleCreateCalendarEvent,
+  handleWatchCalendarEvents,
   type NodeHandlerResult,
 } from "@/lib/workflows/nodes";
 
@@ -62,4 +65,7 @@ export const TITLE_HANDLERS: Record<string, NodeHandler> = {
   "Search Emails": handleSearchEmails,
   "Reply to Email": handleReplyToEmail,
   "Watch Emails": handleWatchEmails,
+  "List Events": handleListCalendarEvents,
+  "Create Event": handleCreateCalendarEvent,
+  "New Calendar Event": handleWatchCalendarEvents,
 };

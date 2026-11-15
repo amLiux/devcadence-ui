@@ -149,6 +149,20 @@ export const actionNodes: NodeCardDef[] = [
     category: "Communication",
   },
   {
+    type: "Action",
+    title: "List Events",
+    description: "List calendar events in a time window",
+    requiresConnection: "Google",
+    category: "Communication",
+  },
+  {
+    type: "Action",
+    title: "Create Event",
+    description: "Create a calendar event with attendees",
+    requiresConnection: "Google",
+    category: "Communication",
+  },
+  {
     type: "Slack",
     title: "Send Slack Message",
     description: "Post a message to a Slack channel",

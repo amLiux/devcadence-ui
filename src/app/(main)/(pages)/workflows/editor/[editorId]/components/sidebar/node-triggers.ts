@@ -22,6 +22,12 @@ export const triggerNodes: NodeCardDef[] = [
   },
   {
     type: "Trigger",
+    title: "New Calendar Event",
+    description: "Trigger on new or updated calendar events",
+    requiresConnection: "Google",
+  },
+  {
+    type: "Trigger",
     title: "Input",
     description: "Receive data from parent workflow (sub-workflows only)",
   },
