@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { Queue } from "bullmq";
 import { prisma } from "@/lib/db";
 import { parseWorkflowVariables } from "@/lib/workflows/variables";
@@ -23,7 +24,43 @@ interface DiscordListenTrigger {
   connectionId: string;
 }
 
-type TriggerConfig = ScheduleTrigger | DiscordListenTrigger;
+interface GmailListenTrigger {
+  type: "gmail-listen";
+  cron: string;
+  query: string;
+  maxResults: number;
+}
+
+type TriggerConfig = ScheduleTrigger | DiscordListenTrigger | GmailListenTrigger;
+
+function asSchedule(title: string, meta: Record<string, string>): ScheduleTrigger | null {
+  if (title !== "Schedule" || !meta.cron) return null;
+  return { type: "schedule", cron: meta.cron };
+}
+
+function asDiscordListen(title: string, meta: Record<string, string>): DiscordListenTrigger | null {
+  if (title !== "Listen Discord Messages" || !meta.cron || !meta.channelId || !meta.connectionId) {
+    return null;
+  }
+  return {
+    type: "discord-listen",
+    cron: meta.cron,
+    channelId: meta.channelId,
+    limit: parseInt(meta.limit || "50", 10),
+    connectionId: meta.connectionId,
+  };
+}
+
+function asGmailListen(title: string, meta: Record<string, string>): GmailListenTrigger | null {
+  if (title !== "Watch Emails" || !meta.cron || !meta.query) return null;
+  return {
+    type: "gmail-listen",
+    cron: meta.cron,
+    query: meta.query,
+    maxResults: parseInt(meta.maxResults || "25", 10),
+  };
+}
+
 
 function findTriggerNodes(
   nodes: EditorNode[],
@@ -35,37 +72,37 @@ function findTriggerNodes(
       (node.data.metadata || {}) as Record<string, string>,
       variables,
     );
-
-    if (node.data.title === "Schedule" && meta.cron) {
-      return { type: "schedule", cron: meta.cron };
-    }
-
-    if (
-      node.data.title === "Listen Discord Messages" &&
-      meta.cron &&
-      meta.channelId &&
-      meta.connectionId
-    ) {
-      return {
-        type: "discord-listen",
-        cron: meta.cron,
-        channelId: meta.channelId,
-        limit: parseInt(meta.limit || "50", 10),
-        connectionId: meta.connectionId,
-      };
-    }
+    const trigger =
+      asSchedule(node.data.title, meta) ??
+      asDiscordListen(node.data.title, meta) ??
+      asGmailListen(node.data.title, meta);
+    if (trigger) return trigger;
   }
   return null;
 }
 
+function gmailJobKey(query: string): string {
+  return createHash("sha1").update(query).digest("hex").slice(0, 12);
+}
+
 function jobName(workflowId: string, trigger: TriggerConfig): string {
   if (trigger.type === "schedule") return workflowId;
+  if (trigger.type === "gmail-listen") {
+    return `gmail-listen:${workflowId}:${gmailJobKey(trigger.query)}`;
+  }
   return `discord-listen:${workflowId}:${trigger.channelId}`;
 }
 
 function jobData(workflowId: string, trigger: TriggerConfig): Record<string, unknown> {
   if (trigger.type === "schedule") {
     return { workflowId, source: "schedule" };
+  }
+  if (trigger.type === "gmail-listen") {
+    return {
+      workflowId,
+      source: "gmail-listen",
+      body: { query: trigger.query, maxResults: trigger.maxResults },
+    };
   }
   return {
     workflowId,
@@ -96,7 +133,11 @@ export async function unregisterSchedule(workflowId: string): Promise<void> {
   const existing = await queue.getRepeatableJobs();
   for (const job of existing) {
     if (!job.name) continue;
-    if (job.name === workflowId || job.name.startsWith(`discord-listen:${workflowId}:`)) {
+    if (
+      job.name === workflowId ||
+      job.name.startsWith(`discord-listen:${workflowId}:`) ||
+      job.name.startsWith(`gmail-listen:${workflowId}:`)
+    ) {
       if (job.pattern) {
         await queue.removeRepeatable(job.name, { pattern: job.pattern });
       }
