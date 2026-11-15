@@ -203,6 +203,21 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return range ? cap(range, 60) : null;
   },
 
+  "Create Document": (meta) => {
+    const title = collapse(meta.title);
+    return title ? cap(title, 60) : null;
+  },
+
+  "Read Document": (meta) => {
+    const id = collapse(meta.documentId);
+    return id ? shortenId(id, 10) : null;
+  },
+
+  "Append Text": (meta) => {
+    const text = collapse(meta.text);
+    return text ? cap(text, 60) : null;
+  },
+
 
 
 

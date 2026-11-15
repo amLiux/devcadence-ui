@@ -38,6 +38,7 @@ import { SendGmailSettings, SearchEmailsSettings, ReplyToEmailSettings, WatchEma
 import { ListEventsSettings, CreateEventSettings, WatchCalendarEventsSettings } from "./calendar";
 import { UploadFileSettings, ListFilesSettings } from "./drive";
 import { ReadRowsSettings, AppendRowsSettings } from "./sheets";
+import { CreateDocumentSettings, ReadDocumentSettings, AppendTextSettings } from "./docs";
 import { SendMessageSettings } from "./slack";
 import { SendDiscordMessageSettings, ReadDiscordMessagesSettings, SendDirectMessageSettings, ListenDiscordMessagesSettings } from "./discord";
 import { ScanDependenciesSettings } from "./scan-dependencies";
@@ -82,6 +83,9 @@ const SETTINGS_REGISTRY: Record<string, React.FC<NodeSettingsProps & { parentOut
   "List Files": ListFilesSettings,
   "Read Rows": ReadRowsSettings,
   "Append Rows": AppendRowsSettings,
+  "Create Document": CreateDocumentSettings,
+  "Read Document": ReadDocumentSettings,
+  "Append Text": AppendTextSettings,
   "Send Slack Message": SendMessageSettings,
   "Send Discord Message": SendDiscordMessageSettings,
   "Read Discord Messages": ReadDiscordMessagesSettings,

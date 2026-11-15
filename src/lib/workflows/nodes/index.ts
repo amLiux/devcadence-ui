@@ -17,6 +17,7 @@ export { handleSendGmail, handleSearchEmails, handleReplyToEmail, handleWatchEma
 export { handleListCalendarEvents, handleCreateCalendarEvent, handleWatchCalendarEvents } from "./google-calendar";
 export { handleUploadFile, handleListFiles } from "./google-drive";
 export { handleReadRows, handleAppendRows } from "./google-sheets";
+export { handleCreateDocument, handleReadDocument, handleAppendText } from "./google-docs";
 export { handleSendMessage } from "./slack";
 export { handleSendDiscordMessage, handleReadDiscordMessages, handleSendDirectMessage, handleListenDiscordMessages } from "./discord";
 export { handleScanDependencies } from "./scan-dependencies";

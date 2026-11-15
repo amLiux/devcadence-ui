@@ -70,4 +70,13 @@ export const iconMap: Record<string, React.ReactNode> = {
   "Append Rows": (
     <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
   ),
+  "Create Document": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Read Document": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Append Text": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
 };

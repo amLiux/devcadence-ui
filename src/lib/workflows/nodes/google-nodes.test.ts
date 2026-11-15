@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEvent, listEvents } from "@/lib/google-calendar";
 import { uploadFile } from "@/lib/google-drive/client";
+import { createDocument } from "@/lib/google-docs/client";
 import { appendRows } from "@/lib/google-sheets/client";
 import { handleCreateCalendarEvent, handleListCalendarEvents, handleWatchCalendarEvents } from "./google-calendar";
 import { handleUploadFile } from "./google-drive";
 import { handleAppendRows } from "./google-sheets";
+import { handleAppendText, handleCreateDocument } from "./google-docs";
 
 vi.mock("@/lib/google-calendar", () => ({
   createEvent: vi.fn(),
@@ -15,10 +17,17 @@ vi.mock("@/lib/google-drive/client", () => ({ uploadFile: vi.fn(), listFiles: vi
 
 vi.mock("@/lib/google-sheets/client", () => ({ readRows: vi.fn(), appendRows: vi.fn() }));
 
+vi.mock("@/lib/google-docs/client", () => ({
+  createDocument: vi.fn(),
+  getDocument: vi.fn(),
+  appendText: vi.fn(),
+}));
+
 const createEventMock = vi.mocked(createEvent);
 const listEventsMock = vi.mocked(listEvents);
 const uploadMock = vi.mocked(uploadFile);
 const appendMock = vi.mocked(appendRows);
+const createDocMock = vi.mocked(createDocument);
 
 const chain = {
   name: "Trigger",
@@ -144,5 +153,30 @@ describe("sheets handlers", () => {
       expect.objectContaining({ rows: [["a", "b"]] }),
     );
     expect(result).toMatchObject({ success: true, data: { updatedRows: 1 } });
+  });
+});
+
+describe("docs handlers", () => {
+  it("requires a title", async () => {
+    await expect(handleCreateDocument({}, chain)).resolves.toMatchObject({
+      success: false,
+      message: "Document title is required",
+    });
+  });
+
+  it("creates the document with a resolved title", async () => {
+    createDocMock.mockResolvedValue({ documentId: "d1", title: "Ana", text: "" } as never);
+
+    const result = await handleCreateDocument({ title: "{{previousStep.name}}" }, chain);
+
+    expect(createDocMock).toHaveBeenCalledWith("Ana");
+    expect(result).toMatchObject({ success: true, data: { document: { documentId: "d1" } } });
+  });
+
+  it("requires a document id when appending", async () => {
+    await expect(handleAppendText({ text: "x" }, chain)).resolves.toMatchObject({
+      success: false,
+      message: "Document ID is required",
+    });
   });
 });
