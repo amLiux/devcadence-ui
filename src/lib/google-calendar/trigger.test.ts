@@ -71,3 +71,13 @@ describe("prepareCalendarListenBody", () => {
     await expect(prepareCalendarListenBody("wf-1", {})).resolves.toBeNull();
   });
 });
+
+describe("prepareCalendarListenBody without a sync token", () => {
+  it("fails loudly instead of silently polling forever", async () => {
+    state.findUnique.mockResolvedValue(null);
+    fullMock.mockResolvedValue({ events: [], nextSyncToken: null });
+
+    await expect(prepareCalendarListenBody("wf-1", {})).rejects.toThrow(/sync token/i);
+    expect(state.upsert).not.toHaveBeenCalled();
+  });
+});
