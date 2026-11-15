@@ -1,7 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TextField } from "@/components/composed/text-field";
 import { toString as cronToString } from "cronstrue";
 import type { NodeSettingsProps } from "../types";
 import { GoogleConnectionSelect } from "./connection-select";
@@ -25,34 +25,26 @@ export function WatchEmailsSettings({ meta, handleChange }: NodeSettingsProps) {
           onChange={(value) => handleChange("connectionId", value)}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Gmail query</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="is:unread label:inbox"
-          value={meta.query || ""}
-          onChange={(event) => handleChange("query", event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Cron Expression</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="*/5 * * * *"
-          value={meta.cron || ""}
-          onChange={(event) => handleChange("cron", event.target.value)}
-        />
-        {cronPreview && <p className="text-[11px] text-muted-foreground">{cronPreview}</p>}
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Max results per poll (1-50)</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="25"
-          value={meta.maxResults || ""}
-          onChange={(event) => handleChange("maxResults", event.target.value)}
-        />
-      </div>
+      <TextField
+        label="Gmail query"
+        value={meta.query || ""}
+        onChange={(value) => handleChange("query", value)}
+        placeholder="is:unread label:inbox"
+      />
+      <TextField
+        label="Cron Expression"
+        value={meta.cron || ""}
+        onChange={(value) => handleChange("cron", value)}
+        placeholder="*/5 * * * *"
+        hint={cronPreview || undefined}
+      />
+      <TextField
+        label="Max results per poll"
+        value={meta.maxResults || ""}
+        onChange={(value) => handleChange("maxResults", value)}
+        placeholder="25"
+        hint="1-50."
+      />
       <p className="text-[10px] text-muted-foreground">
         Activate the workflow to start polling. The first poll only records the newest matching
         message, so enabling it does not replay old mail. Output:{" "}
