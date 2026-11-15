@@ -37,6 +37,8 @@ export function ReadRowsSettings({
         />
       </div>
       <p className="text-[10px] text-muted-foreground">
+        Use <code className="bg-muted px-1 rounded">A1:B2</code> for the first tab. If the tab has
+        spaces, quote its name: <code className="bg-muted px-1 rounded">&apos;Hoja 1&apos;!A1:B2</code>.
         Output: <code className="bg-muted px-1 rounded">rows</code> (array of arrays) and{" "}
         <code className="bg-muted px-1 rounded">rowCount</code>, ready for For Each.
       </p>

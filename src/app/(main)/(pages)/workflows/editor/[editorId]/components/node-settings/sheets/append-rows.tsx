@@ -46,7 +46,9 @@ export function AppendRowsSettings({
           onChange={(event) => handleChange("rows", event.target.value)}
         />
         <p className="text-[10px] text-muted-foreground">
-          One row per inner array. Also accepts {"{{previousStep.rows}}"}.
+          One row per inner array. Also accepts {"{{previousStep.rows}}"}. The range is the start
+          point: <code className="bg-muted px-1 rounded">A1</code> or{" "}
+          <code className="bg-muted px-1 rounded">&apos;Hoja 1&apos;!A1</code>.
         </p>
       </div>
       <p className="text-[10px] text-muted-foreground">
