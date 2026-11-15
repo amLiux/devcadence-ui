@@ -39,7 +39,7 @@ describe("calendar handlers", () => {
     });
     await expect(handleCreateCalendarEvent({ summary: "Sync" }, chain)).resolves.toMatchObject({
       success: false,
-      message: "Start and end are required (ISO date-time)",
+      message: "Start and end are required",
     });
   });
 
