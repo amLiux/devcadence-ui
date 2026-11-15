@@ -56,7 +56,7 @@ Connect to external services once, reuse them across workflows:
 - **PostgreSQL** — query your own databases
 - **Discord** — bot token
 - **Slack** — bot token
-- **Google** — one OAuth2 authorization for Gmail, Calendar, Drive, Sheets and Docs (see `/docs/google-oauth` in the app)
+- **Gmail** — OAuth2
 - **AI providers** — OpenAI, Claude, and OpenAI-compatible APIs
 - **Webhooks** — incoming endpoints with HMAC verification
 
@@ -281,8 +281,7 @@ devdock is under active development. Core systems are in place:
 - ✅ SMTP, PostgreSQL, Discord, Slack nodes
 - ✅ BullMQ + Redis async execution
 - ✅ Conditional, iterator, retry-loop logic
-- 🚧 Gmail / Calendar / Drive / Sheets / Docs nodes
-- ✅ Google OAuth2 connection + self-hosted setup guide (`/docs/google-oauth`)
+- 🚧 Gmail OAuth2 nodes
 - 🚧 AI provider abstraction + AI nodes
 - 🚧 Workflow templates library
 
