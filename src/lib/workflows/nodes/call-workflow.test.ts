@@ -97,3 +97,16 @@ describe("handleCallWorkflow failure propagation", () => {
     expect(result.logs?.at(-1)?.message).toContain("run-9");
   });
 });
+
+describe("handleCallWorkflow unsafe ids", () => {
+  it("warns when an input id is a bare large number", async () => {
+    mockExecuteSubWorkflow({ success: true, output: null });
+
+    const result = await handleCallWorkflow({
+      workflowId: "wf-sub",
+      input: '{"discordChannelId": 1566642396014448660}',
+    });
+
+    expect(result.logs?.[0]?.message).toMatch(/quote ids as strings/i);
+  });
+});
