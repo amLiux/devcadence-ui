@@ -27,7 +27,7 @@ export function OAuthStepCard({
     <Card
       className={cn(
         "transition-colors",
-        checked ? "border-emerald-500/60 bg-emerald-500/5" : undefined,
+        checked ? "bg-emerald-500/10 ring-2 ring-emerald-500/60" : undefined,
       )}
     >
       <CardContent className="space-y-2 p-4">
