@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { TextField } from "@/components/composed/text-field";
 import { toString as cronToString } from "cronstrue";
 import type { NodeSettingsProps } from "../types";
-import { GoogleConnectionSelect } from "../google/connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function WatchCalendarEventsSettings({ meta, handleChange }: NodeSettingsProps) {
   let cronPreview = "";
@@ -20,7 +20,8 @@ export function WatchCalendarEventsSettings({ meta, handleChange }: NodeSettings
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label className="text-xs">Google Connection</Label>
-        <GoogleConnectionSelect
+        <ConnectionSelect
+          type="Google"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />

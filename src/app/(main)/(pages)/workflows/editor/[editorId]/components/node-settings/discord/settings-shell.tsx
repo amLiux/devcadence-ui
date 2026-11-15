@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "../expression-nodes";
 import type { NodeSettingsProps } from "../types";
-import { DiscordConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function DiscordSettingsShell({
   meta,
@@ -27,7 +27,8 @@ export function DiscordSettingsShell({
         ))}
       <div className="space-y-1.5">
         <Label className="text-xs">Discord Connection</Label>
-        <DiscordConnectionSelect
+        <ConnectionSelect
+          type="Discord"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />

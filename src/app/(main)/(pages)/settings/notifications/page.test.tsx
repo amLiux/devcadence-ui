@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { invalidateConnections } from "@/hooks/use-connections";
 import NotificationsSettingsPage from "./page";
 
 const settings = {
@@ -36,10 +37,14 @@ function json(body: unknown) {
   return { ok: true, json: async () => body };
 }
 
-function mockFetch() {
+function mockFetch(testResponse: () => unknown = () => json({ success: true })) {
+  invalidateConnections();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    if (url.endsWith("/test")) return json({ success: true });
-    if (url === "/api/connections") return json(connections);
+    if (url.endsWith("/test")) return testResponse();
+    if (url.startsWith("/api/connections")) {
+      const type = new URL(url, "http://localhost").searchParams.get("type");
+      return json(type ? connections.filter((connection) => connection.type === type) : connections);
+    }
     if (init?.method === "PUT") return json(JSON.parse(init.body as string));
     return json(settings);
   });
@@ -107,18 +112,13 @@ describe("NotificationsSettingsPage", () => {
   });
 
   it("surfaces a failed test", async () => {
-    const fetchMock = mockFetch();
-    fetchMock.mockResolvedValueOnce(json(settings));
-    fetchMock.mockResolvedValueOnce(json(connections));
+    mockFetch(
+      () =>
+        new Response(JSON.stringify({ error: "Slack: invalid_auth" }), { status: 500 }),
+    );
 
     render(<NotificationsSettingsPage />);
     await screen.findByDisplayValue("#alerts");
-
-    fetchMock.mockResolvedValueOnce(json(settings));
-    fetchMock.mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: "Slack: invalid_auth" }),
-    });
 
     await userEvent.click(screen.getByRole("button", { name: /send test/i }));
 

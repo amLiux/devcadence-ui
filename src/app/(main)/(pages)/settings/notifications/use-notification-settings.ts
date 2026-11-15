@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useApi } from "@/hooks/use-api";
+import { useConnections } from "@/hooks/use-connections";
 import {
   CHANNEL_CONNECTION_TYPE,
   DEFAULT_NOTIFICATION_SETTINGS,
   type NotificationSettings,
 } from "@/lib/notifications/settings";
-import type { Connection } from "@/lib/types";
 
 export interface Feedback {
   ok: boolean;
@@ -17,7 +17,8 @@ export interface Feedback {
 export function useNotificationSettings() {
   const { request } = useApi();
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const requiredType = CHANNEL_CONNECTION_TYPE[settings.channel];
+  const { connections: availableConnections } = useConnections(requiredType);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -25,12 +26,8 @@ export function useNotificationSettings() {
 
   const load = useCallback(async () => {
     try {
-      const [saved, list] = await Promise.all([
-        request<NotificationSettings>({ endpoint: "/api/settings/notifications" }),
-        request<Connection[]>({ endpoint: "/api/connections" }),
-      ]);
+      const saved = await request<NotificationSettings>({ endpoint: "/api/settings/notifications" });
       if (saved) setSettings(saved);
-      if (Array.isArray(list)) setConnections(list);
     } catch {
       setFeedback({ ok: false, text: "Could not load notification settings." });
     } finally {
@@ -43,11 +40,6 @@ export function useNotificationSettings() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
-
-  const availableConnections = useMemo(() => {
-    const required = CHANNEL_CONNECTION_TYPE[settings.channel];
-    return connections.filter((connection) => connection.type === required);
-  }, [connections, settings.channel]);
 
   const update = (patch: Partial<NotificationSettings>) => {
     setSettings((current) => ({ ...current, ...patch }));

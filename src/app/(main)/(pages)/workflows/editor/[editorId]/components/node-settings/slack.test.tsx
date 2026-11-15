@@ -9,13 +9,12 @@ const mockConnections = [
   { id: "conn-discord-1", type: "Discord", name: "Discord Server" },
 ];
 
-const mockRequest = vi.fn();
-
-vi.mock("@/hooks/use-api", () => ({
-  useApi: () => ({
-    request: mockRequest,
+vi.mock("@/hooks/use-connections", () => ({
+  useConnections: () => ({
+    connections: mockConnections.filter((connection) => connection.type === "Slack"),
     loading: false,
     error: null,
+    refresh: vi.fn(),
   }),
 }));
 
@@ -24,7 +23,6 @@ describe("SendMessageSettings (Slack)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRequest.mockResolvedValue(mockConnections);
   });
 
   it("renders connection select and inputs for channel and message", async () => {

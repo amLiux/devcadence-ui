@@ -42,7 +42,7 @@ describe("GET /api/connections", () => {
   it("serializes connections with ISO timestamps", async () => {
     getConnectionsMock.mockResolvedValue([dbRow()] as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/connections"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -64,7 +64,7 @@ describe("GET /api/connections", () => {
       dbRow({ type: "PostgreSQL", config: { host: "db", password: "hunter2" } }),
     ] as never);
 
-    const body = await (await GET()).json();
+    const body = await (await GET(new Request("http://localhost/api/connections"))).json();
 
     expect(JSON.stringify(body)).not.toContain("hunter2");
     expect(body[0].config).toEqual({ host: "db", password: SECRET_PLACEHOLDER });
@@ -73,7 +73,7 @@ describe("GET /api/connections", () => {
   it("returns 500 when the query fails", async () => {
     getConnectionsMock.mockRejectedValue(new Error("db down"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/connections"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Failed to fetch connections" });
@@ -148,5 +148,25 @@ describe("POST /api/connections", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "unique constraint" });
+  });
+});
+
+describe("GET /api/connections?type", () => {
+  it("filters by connection type on the server", async () => {
+    getConnectionsMock.mockResolvedValue([dbRow({ type: "Google" })] as never);
+
+    const response = await GET(new Request("http://localhost/api/connections?type=Google"));
+    const body = await response.json();
+
+    expect(getConnectionsMock).toHaveBeenCalledWith("Google");
+    expect(body[0].type).toBe("Google");
+  });
+
+  it("passes no type when the query is missing", async () => {
+    getConnectionsMock.mockResolvedValue([] as never);
+
+    await GET(new Request("http://localhost/api/connections"));
+
+    expect(getConnectionsMock).toHaveBeenCalledWith(undefined);
   });
 });

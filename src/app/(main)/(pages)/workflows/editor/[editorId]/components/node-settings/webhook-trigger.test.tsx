@@ -9,13 +9,12 @@ const mockConnections = [
   { id: "conn-github-1", type: "GitHub", name: "GitHub Repo" },
 ];
 
-const mockRequest = vi.fn();
-
-vi.mock("@/hooks/use-api", () => ({
-  useApi: () => ({
-    request: mockRequest,
+vi.mock("@/hooks/use-connections", () => ({
+  useConnections: () => ({
+    connections: mockConnections.filter((connection) => connection.type === "Webhook"),
     loading: false,
     error: null,
+    refresh: vi.fn(),
   }),
 }));
 
@@ -24,7 +23,6 @@ describe("WebhookSettings", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRequest.mockResolvedValue(mockConnections);
   });
 
   it("loads and displays webhook connections in the dropdown", async () => {
