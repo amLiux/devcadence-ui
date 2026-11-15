@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, KeyRound, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
+import { OAuthSetupChecklist } from "./oauth-setup-checklist";
 
 interface Step {
   title: string;
@@ -124,6 +125,8 @@ export default function GoogleOAuthDocsPage() {
           </p>
         </CardContent>
       </Card>
+
+      <OAuthSetupChecklist />
 
       <div className="space-y-4">
         {steps.map((step, index) => (
