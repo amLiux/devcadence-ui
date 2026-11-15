@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock, RefreshCw } from "lucide-react";
+import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock, RefreshCw, KeyRound } from "lucide-react";
 import { SectionCard } from "@/components/composed/section-card";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
@@ -80,6 +80,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     icon: <Plug className="h-5 w-5" />,
     tag: "Explore",
     page: "connections",
+  },
+  {
+    title: "Google OAuth Setup",
+    description: "Create the OAuth client for a self-hosted instance: APIs, scopes, consent screen and env vars.",
+    href: "/docs/google-oauth",
+    icon: <KeyRound className="h-5 w-5" />,
+    tag: "Self-hosting",
+    tagColor: "text-amber-500",
+    page: "google-oauth",
   },
   {
     title: "Security & Secrets",
