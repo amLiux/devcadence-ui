@@ -58,4 +58,16 @@ export const iconMap: Record<string, React.ReactNode> = {
   "Create Event": (
     <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
   ),
+  "Upload File": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "List Files": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Read Rows": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
+  "Append Rows": (
+    <Image src="/google.png" alt="Google" width={12} height={12} className="object-contain" />
+  ),
 };
