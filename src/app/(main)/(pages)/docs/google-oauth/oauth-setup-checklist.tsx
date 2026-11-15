@@ -60,25 +60,21 @@ export function OAuthSetupChecklist({
             const checked = Boolean(done[step.id]);
             return (
               <li key={step.id}>
-                <label
-                  htmlFor={`oauth-step-${step.id}`}
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={checked}
+                  onClick={() => toggle(step.id)}
                   className={cn(
-                    "flex cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2 text-xs transition-colors",
+                    "flex w-full cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                     checked
                       ? "border-emerald-500/60 bg-emerald-500/10"
                       : "border-border hover:border-primary/40",
                   )}
                 >
-                  <input
-                    id={`oauth-step-${step.id}`}
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={checked}
-                    onChange={() => toggle(step.id)}
-                  />
                   <span
                     className={cn(
-                      "mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring/50",
+                      "mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                       checked
                         ? "border-emerald-500 bg-emerald-500 text-white"
                         : "border-input bg-transparent",
@@ -104,7 +100,7 @@ export function OAuthSetupChecklist({
                   >
                     {step.label}
                   </span>
-                </label>
+                </button>
               </li>
             );
           })}
