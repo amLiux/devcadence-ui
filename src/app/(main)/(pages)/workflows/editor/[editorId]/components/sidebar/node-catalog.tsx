@@ -1,6 +1,13 @@
 import type { Connection, EditorNodeData } from "@/lib/types";
 
-export type NodeCategory = "Communication" | "Repository" | "Data" | "AI" | "Core" | "Security";
+export type NodeCategory =
+  | "Communication"
+  | "Scheduling"
+  | "Repository"
+  | "Data"
+  | "AI"
+  | "Core"
+  | "Security";
 
 export interface NodeCardDef {
   type: EditorNodeData["type"];
@@ -14,6 +21,7 @@ export const MAX_EXPANDED_CATEGORIES = 2;
 
 export const categoryOrder: NodeCategory[] = [
   "Communication",
+  "Scheduling",
   "Repository",
   "Data",
   "AI",
@@ -23,6 +31,7 @@ export const categoryOrder: NodeCategory[] = [
 
 export const categoryLabels: Record<NodeCategory, string> = {
   Communication: "Communication",
+  Scheduling: "Scheduling",
   Repository: "Repository",
   Data: "Data",
   AI: "AI",

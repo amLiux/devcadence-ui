@@ -1,4 +1,5 @@
-import { Calendar, Clock, GitBranch, Hand, Mail, MessageCircle, Repeat, Webhook } from "lucide-react";
+import Image from "next/image";
+import { Clock, GitBranch, Hand, MessageCircle, Repeat, Webhook } from "lucide-react";
 import type { WorkflowTriggerType } from "@/lib/types";
 
 export const triggerIcons: Record<WorkflowTriggerType, React.ReactNode> = {
@@ -6,8 +7,12 @@ export const triggerIcons: Record<WorkflowTriggerType, React.ReactNode> = {
   schedule: <Clock className="h-5 w-5" />,
   github: <GitBranch className="h-5 w-5" />,
   discord: <MessageCircle className="h-5 w-5" />,
-  gmail: <Mail className="h-5 w-5" />,
-  calendar: <Calendar className="h-5 w-5" />,
+  gmail: (
+    <Image src="/gmail.png" alt="Gmail" width={20} height={20} className="object-contain" />
+  ),
+  calendar: (
+    <Image src="/google-calendar.png" alt="Google Calendar" width={20} height={20} className="object-contain" />
+  ),
   "sub-workflow": <Repeat className="h-5 w-5" />,
   manual: <Hand className="h-5 w-5" />,
 };

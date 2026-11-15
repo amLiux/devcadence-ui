@@ -153,14 +153,14 @@ export const actionNodes: NodeCardDef[] = [
     title: "List Events",
     description: "List calendar events in a time window",
     requiresConnection: "Google",
-    category: "Communication",
+    category: "Scheduling",
   },
   {
     type: "Action",
     title: "Create Event",
     description: "Create a calendar event with attendees",
     requiresConnection: "Google",
-    category: "Communication",
+    category: "Scheduling",
   },
   {
     type: "Action",
