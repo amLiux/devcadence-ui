@@ -11,11 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { JsonField } from "@/components/composed/json-field";
 import { useEditor } from "@/providers/editor-provider";
 import { NodeSettingsProps } from "./types";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "./expression-nodes";
 import { groupReusableWorkflows } from "@/lib/workflows/projects";
+import { CallWorkflowInputs } from "./call-workflow-inputs";
+import { useCallWorkflowContract } from "./use-call-workflow-contract";
 
 export function CallWorkflowSettings({
   meta,
@@ -26,6 +27,7 @@ export function CallWorkflowSettings({
 }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
   const { reusableWorkflows, reusableWorkflowsLoading, projectId } = useEditor();
   const groups = groupReusableWorkflows(reusableWorkflows, projectId);
+  const contract = useCallWorkflowContract(meta.workflowId || "");
 
   return (
     <div className="space-y-3">
@@ -81,13 +83,14 @@ export function CallWorkflowSettings({
         )}
       </div>
 
-      <JsonField
-        label="Input (JSON)"
+      <CallWorkflowInputs
+        workflowId={meta.workflowId || ""}
+        fields={contract.fields}
+        loading={contract.loading}
+        error={contract.error}
         value={meta.input || "{}"}
         onChange={(value) => handleChange("input", value)}
-        placeholder={'{"key": "value"}'}
-        minHeight={80}
-        hint={<>Values passed to the target workflow&apos;s Input node as {"{{input.*}}"}</>}
+        onRefresh={contract.refresh}
       />
 
       <div className="space-y-1.5">
