@@ -4,13 +4,14 @@ import { Switch } from "@/components/ui/switch";
 import { SelectField } from "@/components/composed/select-field";
 import { TextAreaField } from "@/components/composed/text-area-field";
 import { TextField } from "@/components/composed/text-field";
-import { TEXT_MIME_TYPES } from "@/lib/mime-types";
+import { TEXT_MIME_TYPES, canConvertToGoogleDoc } from "@/lib/mime-types";
 import type { NodeSettingsProps } from "../types";
 import { GoogleSettingsShell } from "../google/settings-shell";
 
 export function UploadFileSettings({
   meta,
   handleChange,
+  updateMeta,
   parentOutput,
   hasParentEdge,
 }: NodeSettingsProps & { parentOutput?: unknown; hasParentEdge?: boolean }) {
@@ -36,7 +37,15 @@ export function UploadFileSettings({
       <SelectField
         label="MIME type"
         value={meta.mimeType || ""}
-        onChange={(value) => handleChange("mimeType", value)}
+        onChange={(value) => {
+          const resetConvert = !canConvertToGoogleDoc(value) && meta.convertToGoogleDoc === "true";
+          if (resetConvert && updateMeta) {
+            updateMeta({ mimeType: value, convertToGoogleDoc: "false" });
+            return;
+          }
+          handleChange("mimeType", value);
+          if (resetConvert) handleChange("convertToGoogleDoc", "false");
+        }}
         options={TEXT_MIME_TYPES}
         hint="Text-based formats only. Binary uploads are not supported yet."
       />
@@ -54,7 +63,7 @@ export function UploadFileSettings({
           </>
         }
       />
-      <div className="space-y-1">
+      {canConvertToGoogleDoc(meta.mimeType) && (
         <label className="flex items-center justify-between gap-2 text-xs">
           <span>Convert to Google Doc</span>
           <Switch
@@ -62,10 +71,7 @@ export function UploadFileSettings({
             onCheckedChange={(checked) => handleChange("convertToGoogleDoc", String(checked))}
           />
         </label>
-        <p className="text-[10px] text-muted-foreground">
-          Intended for plain text or Markdown content.
-        </p>
-      </div>
+      )}
       <p className="text-[10px] text-muted-foreground">
         Output: <code className="bg-muted px-1 rounded">file</code> with id, name and webViewLink.
       </p>

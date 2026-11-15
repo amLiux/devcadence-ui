@@ -102,6 +102,24 @@ describe("drive handlers", () => {
 
     expect(uploadMock).toHaveBeenCalledWith(expect.objectContaining({ name: "Ana.csv" }));
   });
+
+  it("ignores convert-to-doc for a CSV upload", async () => {
+    uploadMock.mockResolvedValue({ id: "f1", name: "report.csv" } as never);
+
+    await handleUploadFile(
+      {
+        fileName: "report.csv",
+        content: "a,b",
+        mimeType: "text/csv",
+        convertToGoogleDoc: "true",
+      },
+      chain,
+    );
+
+    expect(uploadMock).toHaveBeenCalledWith(
+      expect.objectContaining({ convertToGoogleDoc: false }),
+    );
+  });
 });
 
 describe("sheets handlers", () => {

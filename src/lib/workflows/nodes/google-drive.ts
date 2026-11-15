@@ -1,5 +1,5 @@
 import { listFiles, uploadFile } from "@/lib/google-drive/client";
-import { resolveMimeType } from "@/lib/mime-types";
+import { canConvertToGoogleDoc, resolveMimeType } from "@/lib/mime-types";
 import { resolveTemplates } from "@/lib/workflow-context";
 import type { ContextStep } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
@@ -31,7 +31,8 @@ export async function handleUploadFile(
       content,
       mimeType: resolveMimeType(meta.mimeType),
       folderId: meta.folderId || undefined,
-      convertToGoogleDoc: meta.convertToGoogleDoc === "true",
+      convertToGoogleDoc:
+        canConvertToGoogleDoc(meta.mimeType) && meta.convertToGoogleDoc === "true",
     });
     logs.push({ type: "success", message: `Uploaded ${file.name}`, timestamp: now() });
     return { success: true, message: `Uploaded ${file.name}`, data: { file }, logs };

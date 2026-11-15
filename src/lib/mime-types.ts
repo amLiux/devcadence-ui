@@ -20,3 +20,10 @@ export function resolveMimeType(value: string | undefined): string {
     ? value
     : DEFAULT_MIME_TYPE;
 }
+
+/** Drive can import these into a Google Doc; CSV would become a Sheet, not a Doc. */
+export const CONVERTIBLE_MIME_TYPES = ["text/plain", "text/markdown"] as const;
+
+export function canConvertToGoogleDoc(value: string | undefined): boolean {
+  return (CONVERTIBLE_MIME_TYPES as readonly string[]).includes(resolveMimeType(value));
+}
