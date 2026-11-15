@@ -52,3 +52,12 @@ describe("useOAuthChecklist", () => {
     expect(result.current.allDone).toBe(true);
   });
 });
+
+describe("guide steps and checklist stay in sync", () => {
+  it("uses the same ids in the same order", async () => {
+    const { OAUTH_GUIDE_STEPS } = await import("./steps");
+    expect(OAUTH_GUIDE_STEPS.map((step) => step.id)).toEqual(
+      OAUTH_SETUP_STEPS.map((step) => step.id),
+    );
+  });
+});

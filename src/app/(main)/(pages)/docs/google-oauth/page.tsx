@@ -4,69 +4,13 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ArrowRight, KeyRound, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 import { OAuthSetupChecklist } from "./oauth-setup-checklist";
+import { OAuthStepCard } from "./oauth-step-card";
+import { useOAuthChecklist } from "./use-oauth-checklist";
+import { OAUTH_GUIDE_STEPS } from "./steps";
 
-interface Step {
-  title: string;
-  body: string;
-  code?: string;
-}
-
-const steps: Step[] = [
-  {
-    title: "Create (or pick) a Google Cloud project",
-    body: "Every DevCadence instance uses its own OAuth client. Do not reuse another team's project: the consent screen, quota and verification status belong to whoever owns it.",
-    code: "https://console.cloud.google.com/projectcreate",
-  },
-  {
-    title: "Enable the APIs you will use",
-    body: "A node fails with 403 if its API is disabled, even when the scope was granted. Enable only the four below plus Docs if you use it.",
-    code: `https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=PROJECT_ID
-https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=PROJECT_ID
-https://console.cloud.google.com/apis/library/drive.googleapis.com?project=PROJECT_ID
-https://console.cloud.google.com/apis/library/sheets.googleapis.com?project=PROJECT_ID
-https://console.cloud.google.com/apis/library/docs.googleapis.com?project=PROJECT_ID`,
-  },
-  {
-    title: "Configure the consent screen",
-    body: "Google Auth Platform → Get started. User type External, publishing status Testing while you validate. Add your own account under Test users, otherwise the consent is rejected with access_denied.",
-    code: `https://console.cloud.google.com/auth/overview?project=PROJECT_ID
-https://console.cloud.google.com/auth/audience?project=PROJECT_ID`,
-  },
-  {
-    title: "Declare the scopes",
-    body: "Data access → Add or remove scopes. If a scope is missing from the table, enable its API first or paste it in \"Manually add scopes\". DevCadence only requests the scopes of the services selected on the connection.",
-    code: `openid
-https://www.googleapis.com/auth/userinfo.email
-https://www.googleapis.com/auth/userinfo.profile
-https://www.googleapis.com/auth/gmail.modify
-https://www.googleapis.com/auth/calendar.readonly
-https://www.googleapis.com/auth/calendar.events
-https://www.googleapis.com/auth/drive.file
-https://www.googleapis.com/auth/spreadsheets
-https://www.googleapis.com/auth/documents`,
-  },
-  {
-    title: "Create the OAuth client",
-    body: "Credentials → Create client → Web application. The redirect URI must match exactly, including scheme, host, port and path.",
-    code: "http://localhost:3000/api/oauth/google/callback",
-  },
-  {
-    title: "Put the credentials in the environment",
-    body: "Add the client id and secret to the instance env file and restart the app: environment variables are read at boot, not on hot reload. The secret is never exposed to the browser.",
-    code: `GOOGLE_CLIENT_ID="....apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="GOCSPX-..."
-# Optional, when the app is served from another host:
-# GOOGLE_REDIRECT_URI="https://devcadence.example.com/api/oauth/google/callback"`,
-  },
-  {
-    title: "Authorize the account from Connections",
-    body: "Connections → Add Connection → Google → pick the services → Connect Google account. Return to the app with the green banner and the connection shows Connected as <email>. Reconnect whenever you add a service; Disconnect revokes the token and clears the stored credentials.",
-  },
-];
 
 const scopes = [
   { scope: "gmail.modify", service: "Gmail", type: "Restricted", verify: "Verification + CASA" },
@@ -86,16 +30,10 @@ const troubleshooting = [
   { error: "the Google account has no storage left", cause: "Drive/Docs/Sheets writes need free Google storage" },
 ];
 
-function CodeBlock({ children }: { children: string }) {
-  return (
-    <pre className="mt-2 overflow-x-auto rounded-lg border border-border bg-muted/50 p-3 text-[11px] leading-relaxed">
-      <code>{children}</code>
-    </pre>
-  );
-}
 
 export default function GoogleOAuthDocsPage() {
   const { markPage } = useDocsProgress();
+  const checklist = useOAuthChecklist();
   useEffect(() => { markPage("google-oauth"); }, [markPage]);
 
   return (
@@ -126,24 +64,17 @@ export default function GoogleOAuthDocsPage() {
         </CardContent>
       </Card>
 
-      <OAuthSetupChecklist />
+      <OAuthSetupChecklist {...checklist} />
 
       <div className="space-y-4">
-        {steps.map((step, index) => (
-          <Card key={step.title}>
-            <CardContent className="space-y-2 p-4">
-              <div className="flex items-start gap-3">
-                <Badge variant="outline" className="mt-0.5 shrink-0">
-                  {index + 1}
-                </Badge>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground">{step.body}</p>
-                  {step.code && <CodeBlock>{step.code}</CodeBlock>}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {OAUTH_GUIDE_STEPS.map((step, index) => (
+          <OAuthStepCard
+            key={step.id}
+            step={step}
+            index={index}
+            checked={Boolean(checklist.done[step.id])}
+            onToggle={() => checklist.toggle(step.id)}
+          />
         ))}
       </div>
 

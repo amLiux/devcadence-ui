@@ -4,11 +4,23 @@ import { Check, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { OAUTH_SETUP_STEPS, useOAuthChecklist } from "./use-oauth-checklist";
+import { OAUTH_SETUP_STEPS, type OAuthSetupStepId } from "./use-oauth-checklist";
 
-export function OAuthSetupChecklist() {
-  const { done, toggle, reset, doneCount, total, allDone } = useOAuthChecklist();
-
+export function OAuthSetupChecklist({
+  done,
+  toggle,
+  reset,
+  doneCount,
+  total,
+  allDone,
+}: {
+  done: Record<string, boolean>;
+  toggle: (id: OAuthSetupStepId) => void;
+  reset: () => void;
+  doneCount: number;
+  total: number;
+  allDone: boolean;
+}) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
