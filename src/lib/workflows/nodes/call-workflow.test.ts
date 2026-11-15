@@ -81,3 +81,19 @@ describe("handleCallWorkflow", () => {
     expect(result.data).toEqual({ message: "done" });
   });
 });
+
+describe("handleCallWorkflow failure propagation", () => {
+  it("fails the node when the child reports a failed run", async () => {
+    mockExecuteSubWorkflow({
+      success: false,
+      error: "Send Slack Message: channel_not_found",
+      runId: "run-9",
+    });
+
+    const result = await handleCallWorkflow({ workflowId: "wf-sub", input: "{}" });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("channel_not_found");
+    expect(result.logs?.at(-1)?.message).toContain("run-9");
+  });
+});

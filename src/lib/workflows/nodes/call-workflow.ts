@@ -52,6 +52,16 @@ export async function handleCallWorkflow(
 
   const result = await response.json();
 
+  if (result.success === false) {
+    const message = `Sub-workflow failed: ${result.error || "unknown error"}`;
+    logs.push({
+      type: "error",
+      message: result.runId ? `${message} (run ${result.runId})` : message,
+      timestamp: new Date().toISOString(),
+    });
+    return { success: false, message, logs };
+  }
+
   return {
     success: true,
     message: `Called workflow "${workflowId}" successfully`,

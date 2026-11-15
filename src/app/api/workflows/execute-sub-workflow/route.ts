@@ -5,6 +5,7 @@ import { readJsonBody } from "@/lib/api/body";
 import { findRoots } from "@/lib/workflow-context";
 import { sanitize } from "@/lib/workflows/sanitize";
 import { runSubWorkflow } from "@/lib/workflows/execute-sub-workflow";
+import { injectInput } from "@/lib/workflows/inject-input";
 import { parseWorkflowVariables } from "@/lib/workflows/variables";
 import type { EditorNode, EditorEdge } from "@/lib/types";
 import type { NodeOutput } from "@/lib/workflow-context";
@@ -14,17 +15,6 @@ const executeSubWorkflowSchema = z.object({
   input: z.record(z.string(), z.unknown()).default({}),
 });
 
-function injectInput(nodes: EditorNode[], input: Record<string, unknown>): void {
-  const inputNode = nodes.find((node) => node.data.title === "Input");
-  if (!inputNode) return;
-
-  const inputMeta = (inputNode.data.metadata || {}) as Record<string, string>;
-  Object.values(input).forEach((value, index) => {
-    inputMeta[`input_${index + 1}`] =
-      typeof value === "string" ? value : JSON.stringify(value);
-  });
-  inputNode.data.metadata = inputMeta;
-}
 
 function returnOutput(
   nodes: EditorNode[],
@@ -89,9 +79,19 @@ export async function POST(req: Request) {
       },
     });
 
+    const failed = result.debugLogs.filter((log) => !log.success);
+    const failureMessage =
+      failed
+        .map((log) => {
+          const detail = log.logs.find((entry) => entry.type === "error")?.message;
+          return detail ? `${log.title}: ${detail}` : log.title;
+        })
+        .join("; ") || "One or more nodes failed";
+
     return NextResponse.json({
-      success: true,
-      output: returnOutput(nodes, result.context, result.lastResult),
+      success: allPassed,
+      ...(allPassed ? { output: returnOutput(nodes, result.context, result.lastResult) } : {}),
+      ...(allPassed ? {} : { error: failureMessage }),
       debugLogs: result.debugLogs,
       runId: run.id,
     });

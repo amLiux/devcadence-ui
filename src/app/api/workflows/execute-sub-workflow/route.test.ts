@@ -79,3 +79,29 @@ describe("POST /api/workflows/execute-sub-workflow", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("sub-workflow failure propagation", () => {
+  it("returns success:false with the failed node message", async () => {
+    mocks.run.mockResolvedValue({
+      debugLogs: [
+        {
+          nodeId: "slack",
+          title: "Send Slack Message",
+          success: false,
+          logs: [{ type: "error", message: "channel_not_found", timestamp: "" }],
+        },
+        { nodeId: "return", title: "Return", success: true, logs: [] },
+      ],
+      context: {},
+      lastResult: null,
+    });
+
+    const response = await post(JSON.stringify({ workflowId: "wf-1", input: {} }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(false);
+    expect(body.error).toContain("Send Slack Message: channel_not_found");
+    expect(body).not.toHaveProperty("output");
+  });
+});
