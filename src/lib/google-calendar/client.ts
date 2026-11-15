@@ -56,6 +56,16 @@ function toEvent(raw: RawEvent): CalendarEvent {
   };
 }
 
+/**
+ * Google requires RFC3339 date-times with seconds. The picker produces
+ * "YYYY-MM-DDTHH:mm", which Google rejects with a bare 400.
+ */
+export function normalizeDateTime(value?: string): string | undefined {
+  if (!value) return value;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return `${value}:00`;
+  return value;
+}
+
 async function fail(response: Response): Promise<never> {
   const body = await response.text();
   let detail = body;
@@ -82,6 +92,11 @@ async function fail(response: Response): Promise<never> {
   if (response.status === 429) {
     throw new Error("Calendar rate limit reached. Retry later.");
   }
+  if (response.status === 400) {
+    throw new Error(
+      `Calendar rejected the request: ${detail}. Check that start/end are valid date-times and that end is after start.`,
+    );
+  }
   throw new Error(`Calendar API ${response.status}: ${detail}`);
 }
 
@@ -104,8 +119,10 @@ export async function listEvents(input: {
     orderBy: "startTime",
     maxResults: String(Math.min(Math.max(input.maxResults ?? 10, 1), 50)),
   });
-  if (input.timeMin) params.set("timeMin", input.timeMin);
-  if (input.timeMax) params.set("timeMax", input.timeMax);
+  const timeMin = normalizeDateTime(input.timeMin);
+  const timeMax = normalizeDateTime(input.timeMax);
+  if (timeMin) params.set("timeMin", timeMin);
+  if (timeMax) params.set("timeMax", timeMax);
   if (input.query) params.set("q", input.query);
 
   const body = await getJson<{ items?: RawEvent[] }>(
@@ -132,8 +149,8 @@ export async function createEvent(input: {
     summary: input.summary,
     ...(input.description ? { description: input.description } : {}),
     ...(input.location ? { location: input.location } : {}),
-    start: { dateTime: input.start, ...(timeZone ? { timeZone } : {}) },
-    end: { dateTime: input.end, ...(timeZone ? { timeZone } : {}) },
+    start: { dateTime: normalizeDateTime(input.start), ...(timeZone ? { timeZone } : {}) },
+    end: { dateTime: normalizeDateTime(input.end), ...(timeZone ? { timeZone } : {}) },
     ...(input.attendees?.length
       ? { attendees: input.attendees.map((email) => ({ email })) }
       : {}),

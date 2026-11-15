@@ -4,6 +4,7 @@ import {
   createEvent,
   listEvents,
   listEventsIncremental,
+  normalizeDateTime,
   SyncTokenExpiredError,
 } from "./client";
 
@@ -70,6 +71,7 @@ describe("createEvent", () => {
 
     expect(String(fetchMock.mock.calls[0][0])).toContain("conferenceDataVersion=1");
     expect(payload.summary).toBe("Sync");
+    expect(payload.start.dateTime).toBe("2026-11-20T10:00:00-06:00");
     expect(payload.attendees).toEqual([{ email: "a@b.com" }]);
     expect(payload.conferenceData.createRequest.conferenceSolutionKey.type).toBe("hangoutsMeet");
   });
@@ -90,5 +92,17 @@ describe("listEventsIncremental", () => {
     await expect(listEventsIncremental({ syncToken: "old" })).rejects.toBeInstanceOf(
       SyncTokenExpiredError,
     );
+  });
+});
+
+describe("normalizeDateTime", () => {
+  it("adds seconds to picker values", () => {
+    expect(normalizeDateTime("2026-11-16T09:00")).toBe("2026-11-16T09:00:00");
+  });
+
+  it("leaves full ISO values alone", () => {
+    expect(normalizeDateTime("2026-11-16T09:00:00-06:00")).toBe("2026-11-16T09:00:00-06:00");
+    expect(normalizeDateTime("2026-11-16")).toBe("2026-11-16");
+    expect(normalizeDateTime(undefined)).toBeUndefined();
   });
 });
