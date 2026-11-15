@@ -48,39 +48,63 @@ export async function handleListCalendarEvents(
   }
 }
 
+function hasUtcOffset(value: string): boolean {
+  return /([zZ]|[+-]\d{2}:?\d{2})$/.test(value.trim());
+}
+
+interface ResolvedEventInput {
+  summary: string;
+  start: string;
+  end: string;
+  timeZone?: string;
+  description?: string;
+  location?: string;
+  attendees?: string[];
+}
+
+function resolveEventInput(
+  meta: Record<string, string>,
+  ancestorChain?: ContextStep,
+): ResolvedEventInput {
+  return {
+    summary: resolveTemplates(meta.summary || "", ancestorChain).trim(),
+    start: resolveTemplates(meta.start || "", ancestorChain).trim(),
+    end: resolveTemplates(meta.end || "", ancestorChain).trim(),
+    timeZone: (meta.timeZone || "").trim() || undefined,
+    description: meta.description ? resolveTemplates(meta.description, ancestorChain) : undefined,
+    location: meta.location ? resolveTemplates(meta.location, ancestorChain) : undefined,
+    attendees: meta.attendees
+      ? resolveTemplates(meta.attendees, ancestorChain)
+          .split(",")
+          .map((email) => email.trim())
+          .filter(Boolean)
+      : undefined,
+  };
+}
+
+function validateEventInput(input: ResolvedEventInput): string | null {
+  if (!input.summary) return "Event summary is required";
+  if (!input.start || !input.end) return "Start and end are required";
+  if (!input.timeZone && (!hasUtcOffset(input.start) || !hasUtcOffset(input.end))) {
+    return "Time zone is required for picker values. Select one, or use an ISO date-time with an offset.";
+  }
+  return null;
+}
+
 export async function handleCreateCalendarEvent(
   meta: Record<string, string>,
   ancestorChain?: ContextStep,
 ): Promise<NodeHandlerResult> {
   const logs: Log[] = [];
-  const summary = resolveTemplates(meta.summary || "", ancestorChain).trim();
-  const start = resolveTemplates(meta.start || "", ancestorChain).trim();
-  const end = resolveTemplates(meta.end || "", ancestorChain).trim();
-  const description = meta.description
-    ? resolveTemplates(meta.description, ancestorChain)
-    : undefined;
-  const location = meta.location ? resolveTemplates(meta.location, ancestorChain) : undefined;
-  const attendees = meta.attendees
-    ? resolveTemplates(meta.attendees, ancestorChain)
-        .split(",")
-        .map((email) => email.trim())
-        .filter(Boolean)
-    : undefined;
-
-  if (!summary) return failure("Event summary is required", logs);
-  if (!start || !end) return failure("Start and end are required (ISO date-time)", logs);
+  const input = resolveEventInput(meta, ancestorChain);
+  const invalid = validateEventInput(input);
+  if (invalid) return failure(invalid, logs);
 
   try {
-    logs.push({ type: "info", message: `Creating event "${summary}"`, timestamp: now() });
+    logs.push({ type: "info", message: `Creating event "${input.summary}"`, timestamp: now() });
     const event = await createEvent({
       calendarId: meta.calendarId || "primary",
-      summary,
-      start,
-      end,
-      description,
-      location,
-      timeZone: meta.timeZone || undefined,
-      attendees,
+      ...input,
       addMeetLink: meta.addMeetLink === "true",
     });
     logs.push({ type: "success", message: `Event created: ${event.htmlLink}`, timestamp: now() });

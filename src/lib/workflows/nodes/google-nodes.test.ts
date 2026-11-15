@@ -48,7 +48,7 @@ describe("calendar handlers", () => {
     });
     await expect(handleCreateCalendarEvent({ summary: "Sync" }, chain)).resolves.toMatchObject({
       success: false,
-      message: "Start and end are required (ISO date-time)",
+      message: "Start and end are required",
     });
   });
 
@@ -110,6 +110,24 @@ describe("drive handlers", () => {
     await handleUploadFile({ fileName: "{{previousStep.name}}.csv", content: "a,b" }, chain);
 
     expect(uploadMock).toHaveBeenCalledWith(expect.objectContaining({ name: "Ana.csv" }));
+  });
+
+  it("ignores convert-to-doc for a CSV upload", async () => {
+    uploadMock.mockResolvedValue({ id: "f1", name: "report.csv" } as never);
+
+    await handleUploadFile(
+      {
+        fileName: "report.csv",
+        content: "a,b",
+        mimeType: "text/csv",
+        convertToGoogleDoc: "true",
+      },
+      chain,
+    );
+
+    expect(uploadMock).toHaveBeenCalledWith(
+      expect.objectContaining({ convertToGoogleDoc: false }),
+    );
   });
 });
 

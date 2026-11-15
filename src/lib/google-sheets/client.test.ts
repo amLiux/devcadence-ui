@@ -54,3 +54,15 @@ describe("appendRows", () => {
     expect(result).toEqual({ updatedRange: "Sheet1!A2:B2", updatedRows: 1 });
   });
 });
+
+describe("range errors", () => {
+  it("explains how to write a range when Google cannot parse it", async () => {
+    fetchMock.mockResolvedValue(
+      json({ error: { message: "Unable to parse range: Sheet1!A1:B2" } }, 400),
+    );
+
+    await expect(readRows({ spreadsheetId: "s", range: "Sheet1!A1:B2" })).rejects.toThrow(
+      /Use A1:B2 for the first tab/,
+    );
+  });
+});

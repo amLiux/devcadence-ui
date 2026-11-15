@@ -1,8 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { TextAreaField } from "@/components/composed/text-area-field";
+import { TextField } from "@/components/composed/text-field";
 import type { NodeSettingsProps } from "../types";
 import { GoogleSettingsShell } from "../google/settings-shell";
 
@@ -19,36 +18,37 @@ export function AppendRowsSettings({
       parentOutput={parentOutput}
       hasParentEdge={hasParentEdge}
     >
-      <div className="space-y-1.5">
-        <Label className="text-xs">Spreadsheet ID</Label>
-        <Input
-          className="h-8 text-xs font-mono"
-          placeholder="1AbC... (from the sheet URL)"
-          value={meta.spreadsheetId || ""}
-          onChange={(event) => handleChange("spreadsheetId", event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Range</Label>
-        <Input
-          className="h-8 text-xs font-mono"
-          placeholder="Sheet1!A1"
-          value={meta.range || ""}
-          onChange={(event) => handleChange("range", event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Rows (JSON array)</Label>
-        <Textarea
-          className="min-h-20 text-xs font-mono"
-          placeholder={'[["2026-11-14","ok",42]]'}
-          value={meta.rows || ""}
-          onChange={(event) => handleChange("rows", event.target.value)}
-        />
-        <p className="text-[10px] text-muted-foreground">
-          One row per inner array. Also accepts {"{{previousStep.rows}}"}.
-        </p>
-      </div>
+      <TextField
+        label="Spreadsheet ID"
+        value={meta.spreadsheetId || ""}
+        onChange={(value) => handleChange("spreadsheetId", value)}
+        placeholder="1AbC..."
+        inputClassName="font-mono"
+        hint="From the sheet URL: docs.google.com/spreadsheets/d/<ID>/edit."
+      />
+      <TextField
+        label="Range"
+        value={meta.range || ""}
+        onChange={(value) => handleChange("range", value)}
+        placeholder="A1"
+        inputClassName="font-mono"
+        hint="Start point: A1, or 'Hoja 1'!A1 when the tab has spaces."
+      />
+      <TextAreaField
+        label="Rows (JSON array)"
+        mono
+        value={meta.rows || ""}
+        onChange={(value) => handleChange("rows", value)}
+        placeholder={'[["2026-11-15","ok",42]]'}
+        hint={
+          <>
+            One inner array per row, in column order from the range.{" "}
+            <code className="bg-muted px-1 rounded">[[&quot;d&quot;,&quot;e&quot;,&quot;f&quot;]]</code>{" "}
+            writes three cells; pad with empty strings to skip columns. Also accepts{" "}
+            {"{{previousStep.rows}}"}.
+          </>
+        }
+      />
       <p className="text-[10px] text-muted-foreground">
         Output: <code className="bg-muted px-1 rounded">updatedRange</code> and{" "}
         <code className="bg-muted px-1 rounded">updatedRows</code>.

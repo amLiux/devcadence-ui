@@ -56,6 +56,16 @@ function toEvent(raw: RawEvent): CalendarEvent {
   };
 }
 
+/**
+ * Google requires RFC3339 date-times with seconds. The picker produces
+ * "YYYY-MM-DDTHH:mm", which Google rejects with a bare 400.
+ */
+export function normalizeDateTime(value?: string): string | undefined {
+  if (!value) return value;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return `${value}:00`;
+  return value;
+}
+
 async function fail(response: Response): Promise<never> {
   const body = await response.text();
   let detail = body;
@@ -82,6 +92,11 @@ async function fail(response: Response): Promise<never> {
   if (response.status === 429) {
     throw new Error("Calendar rate limit reached. Retry later.");
   }
+  if (response.status === 400) {
+    throw new Error(
+      `Calendar rejected the request: ${detail}. Check that start/end are valid date-times and that end is after start.`,
+    );
+  }
   throw new Error(`Calendar API ${response.status}: ${detail}`);
 }
 
@@ -104,8 +119,10 @@ export async function listEvents(input: {
     orderBy: "startTime",
     maxResults: String(Math.min(Math.max(input.maxResults ?? 10, 1), 50)),
   });
-  if (input.timeMin) params.set("timeMin", input.timeMin);
-  if (input.timeMax) params.set("timeMax", input.timeMax);
+  const timeMin = normalizeDateTime(input.timeMin);
+  const timeMax = normalizeDateTime(input.timeMax);
+  if (timeMin) params.set("timeMin", timeMin);
+  if (timeMax) params.set("timeMax", timeMax);
   if (input.query) params.set("q", input.query);
 
   const body = await getJson<{ items?: RawEvent[] }>(
@@ -132,8 +149,8 @@ export async function createEvent(input: {
     summary: input.summary,
     ...(input.description ? { description: input.description } : {}),
     ...(input.location ? { location: input.location } : {}),
-    start: { dateTime: input.start, ...(timeZone ? { timeZone } : {}) },
-    end: { dateTime: input.end, ...(timeZone ? { timeZone } : {}) },
+    start: { dateTime: normalizeDateTime(input.start), ...(timeZone ? { timeZone } : {}) },
+    end: { dateTime: normalizeDateTime(input.end), ...(timeZone ? { timeZone } : {}) },
     ...(input.attendees?.length
       ? { attendees: input.attendees.map((email) => ({ email })) }
       : {}),
@@ -189,23 +206,44 @@ export async function listEventsIncremental(input: {
   };
 }
 
-/** Full sync used for the first poll and after a sync token expires. */
+/**
+ * Full sync used for the first poll and after a sync token expires.
+ *
+ * `orderBy=startTime` must not be sent here: Google omits `nextSyncToken` when
+ * it is present, which would leave the trigger with no cursor forever. Results
+ * are ordered client-side instead, and pages are walked until Google returns
+ * the token on the last one.
+ */
 export async function listUpcomingEvents(input: {
   calendarId?: string;
 }): Promise<{ events: CalendarEvent[]; nextSyncToken: string | null }> {
   const calendarId = encodeURIComponent(input.calendarId || "primary");
   const params = new URLSearchParams({
     singleEvents: "true",
-    orderBy: "startTime",
     timeMin: new Date().toISOString(),
     maxResults: "50",
   });
 
-  const body = await getJson<{ items?: RawEvent[]; nextSyncToken?: string }>(
-    `${BASE}/calendars/${calendarId}/events?${params.toString()}`,
-  );
+  const items: RawEvent[] = [];
+  let nextSyncToken: string | null = null;
+  let pageToken: string | undefined;
+
+  for (let page = 0; page < 10; page += 1) {
+    if (pageToken) params.set("pageToken", pageToken);
+    const body = await getJson<{
+      items?: RawEvent[];
+      nextSyncToken?: string;
+      nextPageToken?: string;
+    }>(`${BASE}/calendars/${calendarId}/events?${params.toString()}`);
+
+    items.push(...(body.items ?? []));
+    nextSyncToken = body.nextSyncToken ?? null;
+    pageToken = body.nextPageToken;
+    if (!pageToken) break;
+  }
+
   return {
-    events: (body.items ?? []).map(toEvent),
-    nextSyncToken: body.nextSyncToken ?? null,
+    events: items.map(toEvent).sort((a, b) => a.start.localeCompare(b.start)),
+    nextSyncToken,
   };
 }
