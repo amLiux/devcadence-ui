@@ -1,7 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { TextField } from "@/components/composed/text-field";
 import type { NodeSettingsProps } from "../types";
 import { GoogleSettingsShell } from "../google/settings-shell";
 
@@ -18,32 +17,33 @@ export function ListFilesSettings({
       parentOutput={parentOutput}
       hasParentEdge={hasParentEdge}
     >
-      <div className="space-y-1.5">
-        <Label className="text-xs">Name contains (optional)</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="invoice"
-          value={meta.query || ""}
-          onChange={(event) => handleChange("query", event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Folder ID (optional)</Label>
-        <Input
-          className="h-8 text-xs"
-          value={meta.folderId || ""}
-          onChange={(event) => handleChange("folderId", event.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Page size (1-100)</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="20"
-          value={meta.pageSize || ""}
-          onChange={(event) => handleChange("pageSize", event.target.value)}
-        />
-      </div>
+      <TextField
+        label="Name contains"
+        optional
+        value={meta.query || ""}
+        onChange={(value) => handleChange("query", value)}
+        placeholder="invoice"
+      />
+      <TextField
+        label="Folder ID"
+        optional
+        value={meta.folderId || ""}
+        onChange={(value) => handleChange("folderId", value)}
+        placeholder="1AbC..."
+        hint={
+          <>
+            From the folder URL:{" "}
+            <code className="bg-muted px-1 rounded">drive.google.com/drive/folders/&lt;ID&gt;</code>.
+          </>
+        }
+      />
+      <TextField
+        label="Page size"
+        value={meta.pageSize || ""}
+        onChange={(value) => handleChange("pageSize", value)}
+        placeholder="20"
+        hint="1-100."
+      />
       <p className="text-[10px] text-muted-foreground">
         With <code className="bg-muted px-1 rounded">drive.file</code> only files created by the app
         or picked by the user are visible. Output:{" "}
