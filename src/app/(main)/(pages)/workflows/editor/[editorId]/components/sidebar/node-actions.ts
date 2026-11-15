@@ -55,6 +55,12 @@ export const actionNodes: NodeCardDef[] = [
   },
   {
     type: "Action",
+    title: "For Each",
+    description: "Run a reusable sub-workflow once per array item",
+    category: "Core",
+  },
+  {
+    type: "Action",
     title: "Retry Loop",
     description: "HTTP request with retry until condition met",
     category: "Core",

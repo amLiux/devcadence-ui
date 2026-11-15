@@ -7,6 +7,7 @@ import {
   LogIn,
   LogOut,
   Mail,
+  Repeat,
   Settings,
   Shield,
   Sparkles,
@@ -27,6 +28,7 @@ export const iconMap: Record<string, React.ReactNode> = {
   Slack: <Image src="/slack.png" alt="Slack" width={12} height={12} className="object-contain" />,
   Security: <Shield className="h-3 w-3 text-emerald-500" />,
   "Scan Dependencies": <Shield className="h-3 w-3 text-emerald-500" />,
+  "For Each": <Repeat className="h-3 w-3 text-emerald-500" />,
   Discord: <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />,
   "Send Discord Message": (
     <Image src="/discord.png" alt="Discord" width={12} height={12} className="object-contain" />

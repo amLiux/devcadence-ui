@@ -89,6 +89,31 @@ describe("summarizeNode — HTTP Request", () => {
   });
 });
 
+describe("summarizeNode — For Each", () => {
+  it("shows the target workflow and the item limit", () => {
+    expect(
+      summarizeNode(
+        { workflowId: "wf-1", workflowName: "Helper", maxItems: "10" },
+        "For Each",
+      ),
+    ).toBe("Helper · max 10");
+  });
+
+  it("uses the live workflow name when available", () => {
+    expect(
+      summarizeNode(
+        { workflowId: "wf-1", workflowName: "Old", maxItems: "5" },
+        "For Each",
+        { workflowNames: { "wf-1": "New" } },
+      ),
+    ).toBe("New · max 5");
+  });
+
+  it("returns null without a target", () => {
+    expect(summarizeNode({ maxItems: "10" }, "For Each")).toBeNull();
+  });
+});
+
 describe("summarizeNode — Slack", () => {
   it("shows the channel and a truncated message", () => {
     expect(
