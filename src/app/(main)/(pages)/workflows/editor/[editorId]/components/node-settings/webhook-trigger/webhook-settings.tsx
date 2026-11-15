@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { JsonField } from "@/components/composed/json-field";
 import { inferSchemaFromPayload } from "@/lib/json-schema";
 import type { NodeSettingsProps } from "../types";
-import { WebhookConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
   const [copied, setCopied] = useState(false);
@@ -36,7 +36,8 @@ export function WebhookSettings({ meta, handleChange }: NodeSettingsProps) {
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label className="text-xs">Webhook Connection</Label>
-        <WebhookConnectionSelect
+        <ConnectionSelect
+          type="Webhook"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />

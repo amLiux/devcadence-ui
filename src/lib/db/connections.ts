@@ -24,8 +24,11 @@ export async function getConnection(id: string): Promise<ConnectionWithDecrypted
   return decrypt(conn);
 }
 
-export async function getConnections(): Promise<ConnectionWithDecryptedConfig[]> {
-  const conns = await prisma.connection.findMany({ orderBy: { updatedAt: "desc" } });
+export async function getConnections(type?: string): Promise<ConnectionWithDecryptedConfig[]> {
+  const conns = await prisma.connection.findMany({
+    where: type ? { type } : undefined,
+    orderBy: { updatedAt: "desc" },
+  });
   return conns.map(decrypt);
 }
 
@@ -73,11 +76,17 @@ export async function deleteConnection(id: string): Promise<void> {
   await prisma.connection.delete({ where: { id } });
 }
 
-export async function getLatestGitHubConnection(): Promise<ConnectionWithDecryptedConfig | null> {
+export async function getLatestConnectionByType(
+  type: string,
+): Promise<ConnectionWithDecryptedConfig | null> {
   const conn = await prisma.connection.findFirst({
-    where: { type: "GitHub" },
+    where: { type },
     orderBy: { updatedAt: "desc" },
   });
   if (!conn) return null;
   return decrypt(conn);
+}
+
+export async function getLatestGitHubConnection(): Promise<ConnectionWithDecryptedConfig | null> {
+  return getLatestConnectionByType("GitHub");
 }

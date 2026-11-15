@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useApi } from "@/hooks/use-api";
+import { invalidateConnections } from "@/hooks/use-connections";
 import { useModal } from "@/providers/modal-provider";
 import { CustomModal } from "@/components/composed/custom-modal";
 import { ConnectionForm } from "@/components/forms/connections/connection-form";
+import { OAuthNotice } from "./components/oauth-notice";
 import { connectionIcons, TESTABLE_CONNECTION_TYPES } from "@/lib/constants";
 import type { Connection, ConnectionData, ConnectionTestResult, ConnectionType } from "@/lib/types";
 
@@ -33,12 +35,14 @@ export default function ConnectionsPage() {
       data,
     });
     if (newConn) setConnections((prev) => [newConn, ...prev]);
+    invalidateConnections();
     setClose();
   };
 
   const handleDelete = async (id: string) => {
     await request({ endpoint: `/api/connections/${id}`, method: "DELETE" });
     setConnections((prev) => prev.filter((c) => c.id !== id));
+    invalidateConnections();
   };
 
   const handleUpdate = async (id: string, data: ConnectionData) => {
@@ -99,6 +103,7 @@ export default function ConnectionsPage() {
           Add Connection
         </Button>
       </div>
+      <OAuthNotice />
 
       {connections.length === 0 && !loading && (
         <Card>

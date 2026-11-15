@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "./route";
 import { getConnections, createConnection } from "@/lib/db/connections";
+import { SECRET_PLACEHOLDER } from "@/lib/connections/redact";
 
 vi.mock("@/lib/db/connections", () => ({
   getConnections: vi.fn(),
@@ -41,7 +42,7 @@ describe("GET /api/connections", () => {
   it("serializes connections with ISO timestamps", async () => {
     getConnectionsMock.mockResolvedValue([dbRow()] as never);
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/connections"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -51,17 +52,28 @@ describe("GET /api/connections", () => {
         type: "Slack",
         name: "Team Slack",
         description: "main channel",
-        config: { botToken: "xoxb" },
+        config: { botToken: SECRET_PLACEHOLDER },
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ]);
   });
 
+  it("never serializes a stored secret value", async () => {
+    getConnectionsMock.mockResolvedValue([
+      dbRow({ type: "PostgreSQL", config: { host: "db", password: "hunter2" } }),
+    ] as never);
+
+    const body = await (await GET(new Request("http://localhost/api/connections"))).json();
+
+    expect(JSON.stringify(body)).not.toContain("hunter2");
+    expect(body[0].config).toEqual({ host: "db", password: SECRET_PLACEHOLDER });
+  });
+
   it("returns 500 when the query fails", async () => {
     getConnectionsMock.mockRejectedValue(new Error("db down"));
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/connections"));
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Failed to fetch connections" });
@@ -98,7 +110,25 @@ describe("POST /api/connections", () => {
       config: { botToken: "xoxb" },
     });
     expect(response.status).toBe(201);
-    expect((await response.json()).id).toBe("conn-1");
+    const body = await response.json();
+    expect(body.id).toBe("conn-1");
+    expect(body.config).toEqual({ botToken: SECRET_PLACEHOLDER });
+  });
+
+  it("drops a placeholder that has no stored value to resolve to", async () => {
+    createConnectionMock.mockResolvedValue(dbRow({ config: { botToken: "" } }) as never);
+
+    await POST(
+      postRequest({
+        type: "Slack",
+        name: "Team Slack",
+        config: { botToken: SECRET_PLACEHOLDER },
+      }),
+    );
+
+    expect(createConnectionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ config: {} }),
+    );
   });
 
   it("defaults config to an empty object", async () => {
@@ -118,5 +148,25 @@ describe("POST /api/connections", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "unique constraint" });
+  });
+});
+
+describe("GET /api/connections?type", () => {
+  it("filters by connection type on the server", async () => {
+    getConnectionsMock.mockResolvedValue([dbRow({ type: "Google" })] as never);
+
+    const response = await GET(new Request("http://localhost/api/connections?type=Google"));
+    const body = await response.json();
+
+    expect(getConnectionsMock).toHaveBeenCalledWith("Google");
+    expect(body[0].type).toBe("Google");
+  });
+
+  it("passes no type when the query is missing", async () => {
+    getConnectionsMock.mockResolvedValue([] as never);
+
+    await GET(new Request("http://localhost/api/connections"));
+
+    expect(getConnectionsMock).toHaveBeenCalledWith(undefined);
   });
 });

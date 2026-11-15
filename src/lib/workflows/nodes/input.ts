@@ -2,7 +2,14 @@ import { resolveTemplates, type ContextStep } from "@/lib/workflow-context";
 import { NodeHandlerResult } from "./types";
 
 function parseValue(value: string, ancestorChain?: ContextStep): unknown {
-  const resolved = resolveTemplates(value, ancestorChain);
+  const resolved = resolveTemplates(value, ancestorChain).trim();
+
+  // IDs such as Discord snowflakes exceed Number.MAX_SAFE_INTEGER. JSON.parse
+  // would round them (…660 -> …600) and downstream APIs then see an unknown id.
+  if (/^-?\d+$/.test(resolved) && !Number.isSafeInteger(Number(resolved))) {
+    return resolved;
+  }
+
   try {
     return JSON.parse(resolved);
   } catch {

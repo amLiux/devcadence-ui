@@ -18,6 +18,15 @@ export async function handleCallWorkflow(
   const logs: LogEntry[] = [];
   let inputData: Record<string, unknown>;
 
+  if (/:\s*-?\d{16,}/.test(inputRaw)) {
+    logs.push({
+      type: "warning",
+      message:
+        "A numeric id in the input is too large for JSON and loses precision. Quote ids as strings, e.g. \"discordChannelId\": \"1566642396014448660\".",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   try {
     inputData = JSON.parse(inputRaw);
   } catch {
@@ -51,6 +60,16 @@ export async function handleCallWorkflow(
   }
 
   const result = await response.json();
+
+  if (result.success === false) {
+    const message = `Sub-workflow failed: ${result.error || "unknown error"}`;
+    logs.push({
+      type: "error",
+      message: result.runId ? `${message} (run ${result.runId})` : message,
+      timestamp: new Date().toISOString(),
+    });
+    return { success: false, message, logs };
+  }
 
   return {
     success: true,

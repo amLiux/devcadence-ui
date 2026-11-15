@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "../expression-nodes";
 import type { NodeSettingsProps } from "../types";
-import { PostgresConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function PostgresInsertSettings({
   meta,
@@ -22,7 +22,8 @@ export function PostgresInsertSettings({
         ))}
       <div className="space-y-1.5">
         <Label className="text-xs">Connection</Label>
-        <PostgresConnectionSelect
+        <ConnectionSelect
+          type="PostgreSQL"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />

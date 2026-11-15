@@ -81,3 +81,32 @@ describe("handleCallWorkflow", () => {
     expect(result.data).toEqual({ message: "done" });
   });
 });
+
+describe("handleCallWorkflow failure propagation", () => {
+  it("fails the node when the child reports a failed run", async () => {
+    mockExecuteSubWorkflow({
+      success: false,
+      error: "Send Slack Message: channel_not_found",
+      runId: "run-9",
+    });
+
+    const result = await handleCallWorkflow({ workflowId: "wf-sub", input: "{}" });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("channel_not_found");
+    expect(result.logs?.at(-1)?.message).toContain("run-9");
+  });
+});
+
+describe("handleCallWorkflow unsafe ids", () => {
+  it("warns when an input id is a bare large number", async () => {
+    mockExecuteSubWorkflow({ success: true, output: null });
+
+    const result = await handleCallWorkflow({
+      workflowId: "wf-sub",
+      input: '{"discordChannelId": 1566642396014448660}',
+    });
+
+    expect(result.logs?.[0]?.message).toMatch(/quote ids as strings/i);
+  });
+});

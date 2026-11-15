@@ -5,7 +5,7 @@ export const QUEUE_CONNECTION = { url: process.env.REDIS_URL || "redis://localho
 
 export interface WorkflowJobData {
   workflowId: string;
-  source: "webhook" | "schedule" | "subWorkflow" | "discord-listen" | "manual";
+  source: "webhook" | "schedule" | "subWorkflow" | "discord-listen" | "gmail-listen" | "calendar-listen" | "manual";
   body?: unknown;
   /** When set, the worker executes this existing run instead of creating one. */
   runId?: string;

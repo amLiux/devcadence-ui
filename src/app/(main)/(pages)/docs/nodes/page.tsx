@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,7 @@ import {
 import { useDocsProgress } from "@/hooks/use-tutorial-progress";
 
 type NodeCategory = "Triggers" | "Actions" | "Security";
-type NodeProvider = "None" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord" | "Webhook" | "Sub-workflow" | "Security";
+type NodeProvider = "None" | "GitHub" | "PostgreSQL" | "AI" | "SMTP" | "Discord" | "Webhook" | "Sub-workflow" | "Security" | "Google";
 
 interface NodeDoc {
   title: string;
@@ -445,6 +446,22 @@ const NODE_DOCS: NodeDoc[] = [
     provider: "GitHub",
   },
   {
+    title: "Watch Emails",
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Trigger on new Gmail messages matching a query. Polls on a cron schedule.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to poll." },
+      { key: "query", desc: "Gmail search query, e.g. is:unread label:inbox." },
+      { key: "cron", desc: "How often to poll, e.g. */5 * * * *." },
+      { key: "maxResults", desc: "Messages fetched per poll (1-50)." },
+    ],
+    examples: ["is:unread from:boss@example.com every 5 minutes"],
+    category: "Triggers",
+    provider: "Google",
+  },
+  {
     title: "Send Email",
     icon: <Mail className="h-4 w-4 text-red-500" />,
     color: "border-red-500/30",
@@ -459,6 +476,218 @@ const NODE_DOCS: NodeDoc[] = [
     examples: ["Send daily report to ops@example.com"],
     category: "Actions",
     provider: "SMTP",
+  },
+  {
+    title: "Send Gmail",
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Send an email through the authorized Gmail account.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to send with." },
+      { key: "to", desc: "Recipient. Supports {{expression}}." },
+      { key: "cc", desc: "Optional CC list." },
+      { key: "bcc", desc: "Optional BCC list." },
+      { key: "subject", desc: "Subject. Supports {{expression}}." },
+      { key: "body", desc: "Plain text body." },
+      { key: "html", desc: "Optional HTML body; sends multipart/alternative." },
+    ],
+    examples: ["Notify a customer with {{previousStep.name}}"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Search Emails",
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Search Gmail and return matching messages as an array.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to search with." },
+      { key: "query", desc: "Gmail search query. Supports {{expression}}." },
+      { key: "maxResults", desc: "How many messages to return (1-50)." },
+    ],
+    examples: ["Fetch unread invoices and pass them to For Each"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Reply to Email",
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Reply inside an existing Gmail thread, keeping the subject and headers.",
+    requires: "Google connection (Gmail service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to reply with." },
+      { key: "threadId", desc: "Thread to reply in. Usually {{previousStep.threadId}}." },
+      { key: "body", desc: "Reply text." },
+      { key: "html", desc: "Optional HTML body." },
+    ],
+    examples: ["Auto-reply to support emails"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "New Calendar Event",
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Trigger on new or updated calendar events via incremental sync.",
+    requires: "Google connection (Calendar service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to poll." },
+      { key: "calendarId", desc: "Calendar ID, defaults to primary." },
+      { key: "cron", desc: "How often to poll, e.g. */5 * * * *." },
+    ],
+    examples: ["Notify a channel when a new meeting is booked"],
+    category: "Triggers",
+    provider: "Google",
+  },
+  {
+    title: "List Events",
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "List calendar events in a time window, optionally filtered by text.",
+    requires: "Google connection (Calendar service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to read." },
+      { key: "calendarId", desc: "Calendar ID, defaults to primary." },
+      { key: "timeMin", desc: "Start of the window: date-time picker or {{expression}}." },
+      { key: "timeMax", desc: "End of the window: date-time picker or {{expression}}." },
+      { key: "query", desc: "Optional free-text search." },
+      { key: "maxResults", desc: "How many events to return (1-50)." },
+    ],
+    examples: ["List tomorrow meetings and summarize them"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Create Event",
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Create a calendar event with attendees and an optional Google Meet link.",
+    requires: "Google connection (Calendar service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to write with." },
+      { key: "calendarId", desc: "Calendar ID, defaults to primary." },
+      { key: "summary", desc: "Event title. Supports {{expression}}." },
+      { key: "start", desc: "Date-time picker or an expression; picked values use the selected time zone." },
+      { key: "end", desc: "Date-time picker or an expression." },
+      { key: "timeZone", desc: "IANA time zone select; required for picked values." },
+      { key: "attendees", desc: "Comma separated emails." },
+      { key: "addMeetLink", desc: "Create a Google Meet conference." },
+    ],
+    examples: ["Book a follow-up meeting from a form submission"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Upload File",
+    icon: <Image src="/google-drive.png" alt="Google Drive" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Upload text content to Google Drive as a file.",
+    requires: "Google connection (Drive service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to upload with." },
+      { key: "fileName", desc: "File name. Supports {{expression}}." },
+      { key: "content", desc: "File content, usually {{previousStep.output}}." },
+      { key: "mimeType", desc: "Media type, defaults to text/plain." },
+      { key: "folderId", desc: "Optional destination folder." },
+      { key: "convertToGoogleDoc", desc: "Convert the upload to a Google Doc." },
+    ],
+    examples: ["Upload a generated CSV report"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "List Files",
+    icon: <Image src="/google-drive.png" alt="Google Drive" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "List Drive files visible to the connection.",
+    requires: "Google connection (Drive service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to list with." },
+      { key: "query", desc: "Name contains filter." },
+      { key: "folderId", desc: "Optional folder to scope the listing." },
+      { key: "pageSize", desc: "How many files to return (1-100)." },
+    ],
+    examples: ["Find the latest report and send its link"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Read Rows",
+    icon: <Image src="/google-sheets.png" alt="Google Sheets" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Read rows from a Google Sheet as an array of arrays.",
+    requires: "Google connection (Sheets service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to read with." },
+      { key: "spreadsheetId", desc: "Spreadsheet ID from the sheet URL." },
+      { key: "range", desc: "A1 notation, e.g. Sheet1!A1:D50." },
+    ],
+    examples: ["Read invoice rows and loop over them"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Append Rows",
+    icon: <Image src="/google-sheets.png" alt="Google Sheets" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Append rows to a Google Sheet.",
+    requires: "Google connection (Sheets service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to write with." },
+      { key: "spreadsheetId", desc: "Spreadsheet ID from the sheet URL." },
+      { key: "range", desc: "A1 notation target, e.g. Sheet1!A1." },
+      { key: "rows", desc: "JSON array of rows, or {{previousStep.rows}}." },
+    ],
+    examples: ["Log every run into an audit sheet"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Create Document",
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Create a Google Doc with an optional initial body.",
+    requires: "Google connection (Docs service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to write with." },
+      { key: "title", desc: "Document title. Supports {{expression}}." },
+      { key: "initialText", desc: "Optional starting text." },
+    ],
+    examples: ["Create a report document from workflow output"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Read Document",
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Read a Google Doc and return its plain text.",
+    requires: "Google connection (Docs service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to read with." },
+      { key: "documentId", desc: "Document ID from the URL." },
+    ],
+    examples: ["Summarize a meeting notes document"],
+    category: "Actions",
+    provider: "Google",
+  },
+  {
+    title: "Append Text",
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
+    color: "border-blue-500/30",
+    description: "Append text at the end of a Google Doc.",
+    requires: "Google connection (Docs service)",
+    settings: [
+      { key: "connectionId", desc: "Google connection to write with." },
+      { key: "documentId", desc: "Document ID from the URL." },
+      { key: "text", desc: "Text to append. Supports {{expression}}." },
+    ],
+    examples: ["Append a daily summary to a running log doc"],
+    category: "Actions",
+    provider: "Google",
   },
   {
     title: "Send Discord Message",
@@ -591,7 +820,7 @@ const NODE_DOCS: NodeDoc[] = [
 
 type ProviderFilter = NodeProvider | "All";
 
-const PROVIDERS: ProviderFilter[] = ["All", "None", "GitHub", "PostgreSQL", "AI", "SMTP", "Discord", "Webhook", "Sub-workflow", "Security"];
+const PROVIDERS: ProviderFilter[] = ["All", "None", "GitHub", "PostgreSQL", "AI", "SMTP", "Discord", "Google", "Webhook", "Sub-workflow", "Security"];
 
 function NodeDocCard({ doc }: { doc: NodeDoc }) {
   const [open, setOpen] = useState(false);

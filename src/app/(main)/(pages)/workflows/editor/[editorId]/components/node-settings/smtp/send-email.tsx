@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "../expression-nodes";
 import type { NodeSettingsProps } from "../types";
-import { SmtpConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function SendEmailSettings({
   meta,
@@ -23,7 +23,8 @@ export function SendEmailSettings({
         ))}
       <div className="space-y-1.5">
         <Label className="text-xs">SMTP Connection</Label>
-        <SmtpConnectionSelect
+        <ConnectionSelect
+          type="SMTP"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toString as cronToString } from "cronstrue";
 import type { NodeSettingsProps } from "../types";
-import { DiscordConnectionSelect } from "./connection-select";
+import { ConnectionSelect } from "../connection-select";
 
 export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettingsProps) {
   let cronPreview = "";
@@ -20,7 +20,8 @@ export function ListenDiscordMessagesSettings({ meta, handleChange }: NodeSettin
     <div className="space-y-3">
       <div className="space-y-1.5">
         <Label className="text-xs">Discord Connection</Label>
-        <DiscordConnectionSelect
+        <ConnectionSelect
+          type="Discord"
           value={meta.connectionId || ""}
           onChange={(value) => handleChange("connectionId", value)}
         />
