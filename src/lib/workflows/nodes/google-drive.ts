@@ -1,4 +1,5 @@
 import { listFiles, uploadFile } from "@/lib/google-drive/client";
+import { resolveMimeType } from "@/lib/mime-types";
 import { resolveTemplates } from "@/lib/workflow-context";
 import type { ContextStep } from "@/lib/workflow-context";
 import type { NodeHandlerResult } from "./types";
@@ -28,7 +29,7 @@ export async function handleUploadFile(
     const file = await uploadFile({
       name,
       content,
-      mimeType: meta.mimeType || undefined,
+      mimeType: resolveMimeType(meta.mimeType),
       folderId: meta.folderId || undefined,
       convertToGoogleDoc: meta.convertToGoogleDoc === "true",
     });
