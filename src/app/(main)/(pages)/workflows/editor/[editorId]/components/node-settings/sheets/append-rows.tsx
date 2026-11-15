@@ -46,9 +46,11 @@ export function AppendRowsSettings({
           onChange={(event) => handleChange("rows", event.target.value)}
         />
         <p className="text-[10px] text-muted-foreground">
-          One row per inner array. Also accepts {"{{previousStep.rows}}"}. The range is the start
-          point: <code className="bg-muted px-1 rounded">A1</code> or{" "}
-          <code className="bg-muted px-1 rounded">&apos;Hoja 1&apos;!A1</code>.
+          One inner array per row, in column order from the range.{" "}
+          <code className="bg-muted px-1 rounded">[[&quot;d&quot;,&quot;e&quot;,&quot;f&quot;]]</code> writes
+          three cells starting at the range; pad with empty strings to skip columns:{" "}
+          <code className="bg-muted px-1 rounded">[[&quot;&quot;,&quot;&quot;,&quot;d&quot;,&quot;e&quot;,&quot;f&quot;]]</code>.
+          Also accepts {"{{previousStep.rows}}"}.
         </p>
       </div>
       <p className="text-[10px] text-muted-foreground">
