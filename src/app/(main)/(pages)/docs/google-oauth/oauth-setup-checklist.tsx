@@ -1,8 +1,9 @@
 "use client";
 
-import { CheckCircle2, RotateCcw } from "lucide-react";
+import { Check, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { OAUTH_SETUP_STEPS, useOAuthChecklist } from "./use-oauth-checklist";
 
 export function OAuthSetupChecklist() {
@@ -34,28 +35,61 @@ export function OAuthSetupChecklist() {
 
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-all"
+            className={cn(
+              "h-full rounded-full transition-all",
+              allDone ? "bg-emerald-500" : "bg-primary",
+            )}
             style={{ width: `${Math.round((doneCount / total) * 100)}%` }}
           />
         </div>
 
         <ul className="space-y-1.5">
-          {OAUTH_SETUP_STEPS.map((step) => {
+          {OAUTH_SETUP_STEPS.map((step, index) => {
             const checked = Boolean(done[step.id]);
             return (
               <li key={step.id}>
                 <label
                   htmlFor={`oauth-step-${step.id}`}
-                  className="flex cursor-pointer items-start gap-2 text-xs"
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2.5 rounded-md border px-2.5 py-2 text-xs transition-colors",
+                    checked
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-border hover:border-primary/40",
+                  )}
                 >
                   <input
                     id={`oauth-step-${step.id}`}
                     type="checkbox"
-                    className="mt-0.5"
+                    className="peer sr-only"
                     checked={checked}
                     onChange={() => toggle(step.id)}
                   />
-                  <span className={checked ? "text-muted-foreground line-through" : ""}>
+                  <span
+                    className={cn(
+                      "mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring/50",
+                      checked
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-input bg-transparent",
+                    )}
+                    aria-hidden="true"
+                  >
+                    {checked && <Check className="h-3 w-3" />}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-px w-4 shrink-0 text-right text-[10px] tabular-nums",
+                      checked ? "text-emerald-500" : "text-muted-foreground",
+                    )}
+                    aria-hidden="true"
+                  >
+                    {index + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex-1",
+                      checked ? "text-muted-foreground line-through" : "text-foreground",
+                    )}
+                  >
                     {step.label}
                   </span>
                 </label>
