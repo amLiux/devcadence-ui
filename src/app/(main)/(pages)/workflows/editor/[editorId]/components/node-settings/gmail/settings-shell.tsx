@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { InheritedDataPanel, InheritedDataPanelDisabled } from "../expression-nodes";
 import type { NodeSettingsProps } from "../types";
-import { GoogleConnectionSelect } from "./connection-select";
+import { GoogleConnectionSelect } from "../google/connection-select";
 
 export function GmailSettingsShell({
   meta,

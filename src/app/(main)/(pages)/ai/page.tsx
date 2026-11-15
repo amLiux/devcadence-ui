@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApi } from "@/hooks/use-api";
+import { useConnections } from "@/hooks/use-connections";
 import { useAiCollection } from "@/hooks/use-ai-collection";
 import { CollectionTab } from "@/app/(main)/(pages)/ai/components/collection-tab";
 import { ContentForm } from "@/app/(main)/(pages)/ai/components/content-form";
 import { PersonaForm } from "@/app/(main)/(pages)/ai/components/persona-form";
 import { PromptForm } from "@/app/(main)/(pages)/ai/components/prompt-form";
-import type { AIContent, AIPersona, AIPrompt, Connection } from "@/lib/types";
+import type { AIContent, AIPersona, AIPrompt } from "@/lib/types";
 
 export default function AIPage() {
   const { request } = useApi();
-  const [hasAIConnection, setHasAIConnection] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { connections: aiConnections, loading } = useConnections("AI");
+  const hasAIConnection = aiConnections.length > 0;
 
   const personas = useAiCollection<AIPersona>("/api/ai/personas", "systemPrompt");
   const prompts = useAiCollection<AIPrompt>("/api/ai/prompts", "template");
@@ -28,19 +29,6 @@ export default function AIPage() {
   const { setItems: setContexts } = contexts;
   const { setItems: setMemories } = memories;
 
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const connections = await request<Connection[]>({ endpoint: "/api/connections" });
-        setHasAIConnection(connections?.some((c) => c.type === "AI") ?? false);
-      } catch {
-        setHasAIConnection(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkConnection();
-  }, [request]);
 
   useEffect(() => {
     if (!hasAIConnection) return;

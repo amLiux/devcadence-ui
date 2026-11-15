@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { TextField } from "@/components/composed/text-field";
 import { toString as cronToString } from "cronstrue";
 import type { NodeSettingsProps } from "../types";
-import { GoogleConnectionSelect } from "./connection-select";
+import { GoogleConnectionSelect } from "../google/connection-select";
 
 export function WatchEmailsSettings({ meta, handleChange }: NodeSettingsProps) {
   let cronPreview = "";

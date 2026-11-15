@@ -12,9 +12,10 @@ const createConnectionSchema = z.object({
   config: z.record(z.string(), z.unknown()).optional(),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const connections = await getConnections();
+    const type = new URL(req.url).searchParams.get("type") ?? undefined;
+    const connections = await getConnections(type);
     return NextResponse.json(connections.map(toClientConnection));
   } catch (error) {
     console.error("GET /api/connections error:", error);

@@ -24,8 +24,11 @@ export async function getConnection(id: string): Promise<ConnectionWithDecrypted
   return decrypt(conn);
 }
 
-export async function getConnections(): Promise<ConnectionWithDecryptedConfig[]> {
-  const conns = await prisma.connection.findMany({ orderBy: { updatedAt: "desc" } });
+export async function getConnections(type?: string): Promise<ConnectionWithDecryptedConfig[]> {
+  const conns = await prisma.connection.findMany({
+    where: type ? { type } : undefined,
+    orderBy: { updatedAt: "desc" },
+  });
   return conns.map(decrypt);
 }
 
