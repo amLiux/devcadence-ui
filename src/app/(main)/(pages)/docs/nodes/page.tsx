@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SubpageHeader } from "@/components/composed/subpage-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -446,7 +447,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Watch Emails",
-    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Trigger on new Gmail messages matching a query. Polls on a cron schedule.",
     requires: "Google connection (Gmail service)",
@@ -478,7 +479,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Send Gmail",
-    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Send an email through the authorized Gmail account.",
     requires: "Google connection (Gmail service)",
@@ -497,7 +498,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Search Emails",
-    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Search Gmail and return matching messages as an array.",
     requires: "Google connection (Gmail service)",
@@ -512,7 +513,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Reply to Email",
-    icon: <Mail className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/gmail.png" alt="Gmail" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Reply inside an existing Gmail thread, keeping the subject and headers.",
     requires: "Google connection (Gmail service)",
@@ -528,7 +529,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "New Calendar Event",
-    icon: <Calendar className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Trigger on new or updated calendar events via incremental sync.",
     requires: "Google connection (Calendar service)",
@@ -543,7 +544,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "List Events",
-    icon: <Calendar className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "List calendar events in a time window, optionally filtered by text.",
     requires: "Google connection (Calendar service)",
@@ -561,7 +562,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Create Event",
-    icon: <Calendar className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-calendar.png" alt="Google Calendar" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Create a calendar event with attendees and an optional Google Meet link.",
     requires: "Google connection (Calendar service)",
@@ -581,7 +582,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Upload File",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-drive.png" alt="Google Drive" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Upload text content to Google Drive as a file.",
     requires: "Google connection (Drive service)",
@@ -599,7 +600,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "List Files",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-drive.png" alt="Google Drive" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "List Drive files visible to the connection.",
     requires: "Google connection (Drive service)",
@@ -615,7 +616,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Read Rows",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-sheets.png" alt="Google Sheets" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Read rows from a Google Sheet as an array of arrays.",
     requires: "Google connection (Sheets service)",
@@ -630,7 +631,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Append Rows",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-sheets.png" alt="Google Sheets" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Append rows to a Google Sheet.",
     requires: "Google connection (Sheets service)",
@@ -646,7 +647,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Create Document",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Create a Google Doc with an optional initial body.",
     requires: "Google connection (Docs service)",
@@ -661,7 +662,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Read Document",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Read a Google Doc and return its plain text.",
     requires: "Google connection (Docs service)",
@@ -675,7 +676,7 @@ const NODE_DOCS: NodeDoc[] = [
   },
   {
     title: "Append Text",
-    icon: <Database className="h-4 w-4 text-blue-500" />,
+    icon: <Image src="/google-docs.png" alt="Google Docs" width={16} height={16} className="object-contain" />,
     color: "border-blue-500/30",
     description: "Append text at the end of a Google Doc.",
     requires: "Google connection (Docs service)",
