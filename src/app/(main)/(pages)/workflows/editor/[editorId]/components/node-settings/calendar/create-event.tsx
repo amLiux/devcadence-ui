@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { NodeSettingsProps } from "../types";
 import { GoogleSettingsShell } from "../google/settings-shell";
+import { DateTimeField } from "./date-time-field";
+import { TimezoneSelect } from "./timezone-select";
 
 export function CreateEventSettings({
   meta,
@@ -53,35 +55,21 @@ export function CreateEventSettings({
           onChange={(event) => handleChange("location", event.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Start (ISO)</Label>
-          <Input
-            className="h-8 text-xs"
-            placeholder="2026-11-20T10:00:00-06:00"
-            value={meta.start || ""}
-            onChange={(event) => handleChange("start", event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">End (ISO)</Label>
-          <Input
-            className="h-8 text-xs"
-            placeholder="2026-11-20T10:30:00-06:00"
-            value={meta.end || ""}
-            onChange={(event) => handleChange("end", event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs">Time zone (optional)</Label>
-        <Input
-          className="h-8 text-xs"
-          placeholder="America/Costa_Rica"
-          value={meta.timeZone || ""}
-          onChange={(event) => handleChange("timeZone", event.target.value)}
-        />
-      </div>
+      <DateTimeField
+        label="Start"
+        value={meta.start || ""}
+        onChange={(value) => handleChange("start", value)}
+        hint="Picked times use the time zone below. Switch to expression to use {{previousStep.*}}."
+      />
+      <DateTimeField
+        label="End"
+        value={meta.end || ""}
+        onChange={(value) => handleChange("end", value)}
+      />
+      <TimezoneSelect
+        value={meta.timeZone || ""}
+        onChange={(value) => handleChange("timeZone", value)}
+      />
       <div className="space-y-1.5">
         <Label className="text-xs">Attendees (comma separated)</Label>
         <Input

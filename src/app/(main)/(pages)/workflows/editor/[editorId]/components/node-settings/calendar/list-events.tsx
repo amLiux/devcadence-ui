@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { NodeSettingsProps } from "../types";
 import { GoogleSettingsShell } from "../google/settings-shell";
+import { DateTimeField } from "./date-time-field";
 
 export function ListEventsSettings({
   meta,
@@ -27,25 +28,19 @@ export function ListEventsSettings({
           onChange={(event) => handleChange("calendarId", event.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs">From (ISO)</Label>
-          <Input
-            className="h-8 text-xs"
-            placeholder="{{previousStep.start}}"
-            value={meta.timeMin || ""}
-            onChange={(event) => handleChange("timeMin", event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">To (ISO)</Label>
-          <Input
-            className="h-8 text-xs"
-            value={meta.timeMax || ""}
-            onChange={(event) => handleChange("timeMax", event.target.value)}
-          />
-        </div>
-      </div>
+      <DateTimeField
+        label="From"
+        value={meta.timeMin || ""}
+        onChange={(value) => handleChange("timeMin", value)}
+        placeholder="{{previousStep.start}}"
+        hint="Leave empty to start from now."
+      />
+      <DateTimeField
+        label="To"
+        value={meta.timeMax || ""}
+        onChange={(value) => handleChange("timeMax", value)}
+        hint="Leave empty for no upper bound."
+      />
       <div className="space-y-1.5">
         <Label className="text-xs">Search text (optional)</Label>
         <Input
