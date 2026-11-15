@@ -1,7 +1,14 @@
 "use client";
 
 import { Switch } from "@/components/ui/switch";
-import { SelectField } from "@/components/composed/select-field";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TextAreaField } from "@/components/composed/text-area-field";
 import { TextField } from "@/components/composed/text-field";
 import { TEXT_MIME_TYPES, canConvertToGoogleDoc } from "@/lib/mime-types";
@@ -34,21 +41,38 @@ export function UploadFileSettings({
         onChange={(value) => handleChange("content", value)}
         placeholder="{{previousStep.csv}}"
       />
-      <SelectField
-        label="MIME type"
-        value={meta.mimeType || ""}
-        onChange={(value) => {
-          const resetConvert = !canConvertToGoogleDoc(value) && meta.convertToGoogleDoc === "true";
-          if (resetConvert && updateMeta) {
-            updateMeta({ mimeType: value, convertToGoogleDoc: "false" });
-            return;
-          }
-          handleChange("mimeType", value);
-          if (resetConvert) handleChange("convertToGoogleDoc", "false");
-        }}
-        options={TEXT_MIME_TYPES}
-        hint="Text-based formats only. Binary uploads are not supported yet."
-      />
+      <div className="space-y-1.5">
+        <Label className="text-xs">MIME type</Label>
+        <Select
+          value={meta.mimeType || "auto"}
+          onValueChange={(selected) => {
+            const next = selected ?? "auto";
+            const value = next === "auto" ? "" : next;
+            const resetConvert =
+              !canConvertToGoogleDoc(value) && meta.convertToGoogleDoc === "true";
+            if (resetConvert && updateMeta) {
+              updateMeta({ mimeType: value, convertToGoogleDoc: "false" });
+              return;
+            }
+            handleChange("mimeType", value);
+            if (resetConvert) handleChange("convertToGoogleDoc", "false");
+          }}
+        >
+          <SelectTrigger className="h-8 w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TEXT_MIME_TYPES.map((option) => (
+              <SelectItem key={option.value || "auto"} value={option.value || "auto"}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Text-based formats only. Binary uploads are not supported yet.
+        </p>
+      </div>
       <TextField
         label="Folder ID"
         optional
