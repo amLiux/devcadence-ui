@@ -4,14 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Code2, CalendarClock } from "lucide-react";
-
-/** ISO strings keep the first 16 characters, which is what datetime-local understands. */
-function toLocalInput(value: string): string {
-  if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return value.slice(0, 16);
-  return "";
-}
+import { DateTimePicker } from "./date-time-picker";
 
 export function DateTimeField({
   label,
@@ -63,12 +56,7 @@ export function DateTimeField({
       </div>
 
       {mode === "picker" ? (
-        <Input
-          type="datetime-local"
-          className="h-8 text-xs"
-          value={toLocalInput(value)}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <DateTimePicker value={value} onChange={onChange} />
       ) : (
         <Input
           className="h-8 text-xs font-mono"
