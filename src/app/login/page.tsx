@@ -21,7 +21,7 @@ interface LoginPageProps {
 }
 
 function safeNext(value: string | undefined): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/workflows";
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
