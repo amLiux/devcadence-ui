@@ -5,11 +5,14 @@ import { INPUT_CLASS } from "./form-styles";
 
 export function CredentialsForm({ next }: { next: string }) {
   return (
-    <form method="post" action="/api/auth/login" className="mt-6 space-y-4">
+    <form method="post" action="/api/auth/login" className="mt-5 space-y-3">
       <input type="hidden" name="next" value={next} />
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="text-xs font-medium text-muted-foreground">
-          Email
+      <div className="space-y-1">
+        <label
+          htmlFor="email"
+          className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+        >
+          email
         </label>
         <input
           id="email"
@@ -21,9 +24,12 @@ export function CredentialsForm({ next }: { next: string }) {
           required
         />
       </div>
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="text-xs font-medium text-muted-foreground">
-          Password
+      <div className="space-y-1">
+        <label
+          htmlFor="password"
+          className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+        >
+          password
         </label>
         <input
           id="password"
@@ -35,9 +41,12 @@ export function CredentialsForm({ next }: { next: string }) {
           required
         />
       </div>
-      <button type="submit" className={cn(buttonVariants({ size: "lg" }), "h-11 w-full text-sm")}>
+      <button
+        type="submit"
+        className={cn(buttonVariants({ size: "lg" }), "mt-1 h-9 w-full text-sm")}
+      >
         <LogIn className="size-4" />
-        Sign in
+        sign in
         <ArrowRight className="ml-auto size-4" />
       </button>
     </form>
