@@ -118,6 +118,9 @@ the UI, or in `.env` for local development.
 > ⚠️ `.env*` files are gitignored; `.env.example` is the tracked template.
 > Never commit secrets.
 
+Sign-in is optional. To delegate authentication to an OpenID Connect provider
+(Hortus Clavis, Entra ID, Keycloak, Authentik…), see [`AUTH.md`](./AUTH.md).
+
 ### 4. Set up the database
 
 ```bash
@@ -228,7 +231,8 @@ Because it is a standard Next.js app, devdock deploys anywhere Next.js runs:
 ```env
 DATABASE_URL="postgresql://user:pass@host:5432/devdock"
 REDIS_URL="redis://host:6379"
-NEXTAUTH_SECRET="your-random-secret"
+AUTH_MODE="disabled"   # or "oidc"
+AUTH_SECRET="your-random-session-secret"
 GITHUB_TOKEN="your-github-pat"
 # Add connection secrets as needed
 ```

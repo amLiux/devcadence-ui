@@ -181,3 +181,35 @@ model TriggerState {
 
   @@unique([workflowId, triggerType, key])
 }
+
+// Authentication. Roles: "admin" | "author" | "viewer".
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  name           String         @default("")
+  role           String         @default("viewer")
+  isActive       Boolean        @default(true)
+  sessionVersion Int            @default(1)
+  lastLoginAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  identities     UserIdentity[]
+
+  @@index([role])
+}
+
+// One row per external identity. Key is (issuer, subject), never email.
+model UserIdentity {
+  id        String   @id @default(uuid())
+  provider  String
+  subject   String
+  userId    String
+  email     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+}
+
