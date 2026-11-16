@@ -1,88 +1,67 @@
+"use client";
+
+import { Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { BrandMark } from "./brand-mark";
-
-interface LogLine {
-  time: string;
-  level: "info" | "warn" | "done";
-  node: string;
-  message: string;
-  status: "ok" | "retry" | "done";
-}
-
-const RUN_LOG: LogLine[] = [
-  { time: "09:41:02", level: "info", node: "trigger", message: "github.push main", status: "ok" },
-  { time: "09:41:02", level: "info", node: "build-image", message: "docker build", status: "ok" },
-  { time: "09:41:03", level: "info", node: "migrate-db", message: "postgres migrate", status: "ok" },
-  { time: "09:41:03", level: "warn", node: "notify-slack", message: "retry 1/3", status: "retry" },
-  { time: "09:41:04", level: "info", node: "notify-slack", message: "message delivered", status: "ok" },
-  { time: "09:41:04", level: "done", node: "run", message: "#4821 success 2.8s", status: "done" },
-];
-
-const LEVEL_COLOR: Record<LogLine["level"], string> = {
-  info: "text-zinc-500",
-  warn: "text-amber-400",
-  done: "text-emerald-400",
-};
-
-const STATUS_MARK: Record<LogLine["status"], string> = {
-  ok: "✓",
-  retry: "↻",
-  done: "●",
-};
-
-const PIPELINE = ["github", "docker", "postgres", "slack"];
+import { RunLogPreview } from "./run-log-preview";
 
 export function BrandPanel() {
   return (
-    <section className="relative hidden flex-col justify-between overflow-hidden border-r border-white/5 bg-[#0b0d0f] p-10 text-zinc-300 lg:flex">
+    <section className="relative hidden flex-col overflow-hidden border-r border-border bg-muted/20 p-10 lg:flex">
       <header className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <BrandMark />
           <div>
-            <p className="font-mono text-sm lowercase tracking-tight text-white">devcadence</p>
-            <p className="font-mono text-[11px] text-zinc-500">self-hosted runner</p>
+            <p className="font-mono text-sm lowercase tracking-tight">devcadence</p>
+            <p className="font-mono text-[11px] text-muted-foreground">self-hosted runner</p>
           </div>
         </div>
-        <span className="font-mono text-[11px] text-zinc-600">v0.1.0</span>
+        <span className="font-mono text-[11px] text-muted-foreground">v0.1.0</span>
       </header>
 
-      <div className="space-y-4">
-        <div className="overflow-hidden rounded-lg border border-white/10 bg-[#08090a]">
-          <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2 font-mono text-[11px] text-zinc-500">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
-            <span>run.log</span>
-            <span className="text-zinc-700">·</span>
-            <span>live</span>
-            <span className="ml-auto">#4821</span>
-          </div>
+      <div className="mt-20 w-full max-w-md space-y-3">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          in your workspace
+        </p>
 
-          <div className="space-y-1.5 p-3 font-mono text-[11px] leading-5">
-            {RUN_LOG.map((line) => (
-              <div key={`${line.time}-${line.node}-${line.message}`} className="flex gap-2">
-                <span className="text-zinc-600">{line.time}</span>
-                <span className={`w-9 uppercase ${LEVEL_COLOR[line.level]}`}>{line.level}</span>
-                <span className="w-24 shrink-0 text-zinc-400">{line.node}</span>
-                <span className="min-w-0 flex-1 truncate text-zinc-300">{line.message}</span>
-                <span className={line.status === "done" ? "text-emerald-400" : "text-zinc-500"}>
-                  {STATUS_MARK[line.status]}
-                </span>
+        <Card size="sm" className="bg-card/80">
+          <div className="flex items-center gap-3 px-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+              <Clock className="size-4 text-yellow-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">nightly-digest</p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <Badge className="gap-0.5 px-1.5 py-0 text-[10px]">Active</Badge>
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  Schedule
+                </Badge>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  devcadence-ui
+                </Badge>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-zinc-500">
-          {PIPELINE.map((node, index) => (
-            <span key={node} className="flex items-center gap-1.5">
-              {index > 0 ? <span className="text-zinc-700">→</span> : null}
-              <span className="rounded border border-white/10 bg-white/[0.02] px-1.5 py-0.5">
-                {node}
+        <Card size="sm" className="bg-card/80">
+          <div className="flex items-center justify-between px-3 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                success
               </span>
-            </span>
-          ))}
-        </div>
+              <span className="font-medium">run #4821</span>
+            </div>
+            <span className="text-muted-foreground">2.8s</span>
+          </div>
+          <div className="px-2">
+            <RunLogPreview />
+          </div>
+        </Card>
       </div>
 
-      <footer className="flex items-center justify-between font-mono text-[10px] text-zinc-600">
+      <footer className="mt-auto flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>self-hosted · no telemetry</span>
         <span>workflow automation</span>
       </footer>
