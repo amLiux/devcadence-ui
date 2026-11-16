@@ -125,6 +125,10 @@ env-init: ## Create .env from .env.example when it is missing
 doctor: ## Check that the Prisma client and migrations match this branch
 	@node --env-file-if-exists=.env scripts/dev-doctor.ts
 
+.PHONY: auth-health
+auth-health: ## Check the auth provider /health when AUTH_MODE is enabled
+	@node --env-file-if-exists=.env scripts/auth-health.ts
+
 .PHONY: dev
 dev: env-init ## Start services, verify migrations and run the dev server
 	@echo "$(GREEN)Starting devcadence...$(NC)"
@@ -151,6 +155,7 @@ dev-and-worker: env-init ## Start dev server and worker simultaneously
 	@$(CONTAINER_RUNTIME) compose -f $(COMPOSE_FILE) up -d postgres redis
 	@npx prisma generate
 	@node --env-file-if-exists=.env scripts/dev-doctor.ts
+	@node --env-file-if-exists=.env scripts/auth-health.ts
 	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
 	@echo "$(GREEN)devcadence and worker are running$(NC)"
 
@@ -199,6 +204,7 @@ up: compose-up env-init ## Start everything: database + Redis + dev server + wor
 	@echo "$(GREEN)Starting dev server and worker...$(NC)"
 	@npx prisma generate
 	@node --env-file-if-exists=.env scripts/dev-doctor.ts
+	@node --env-file-if-exists=.env scripts/auth-health.ts
 	npx concurrently --names "dev,worker" --prefix-colors "blue,green" "npm run dev" "npx dotenv -e .env -- npx tsx src/worker.ts"
 	@echo "$(GREEN)devcadence is running at http://localhost:3000$(NC)"
 

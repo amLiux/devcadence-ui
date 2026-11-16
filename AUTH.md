@@ -36,6 +36,10 @@ Optional:
 | `AUTH_BOOTSTRAP_FIRST_USER` | `true` | First user becomes admin when no admin email matches |
 | `AUTH_UPSTREAM_LOGOUT` | `false` | End the provider session too (needs `client_id`-based logout support) |
 
+`make auth-health` checks `${AUTH_OIDC_ISSUER}/health` (or `${AUTH_API_URL}/health`
+in `hortus` mode) before `make dev-and-worker` starts. Set `AUTH_HEALTH_SKIP=1`
+to bypass it when the provider is intentionally off.
+
 ## 2. Register the client in Hortus Clavis
 
 Create the tenant service first (`POST /admin/services`), then the OAuth client:

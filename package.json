@@ -13,6 +13,7 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "doctor": "node --env-file-if-exists=.env scripts/dev-doctor.ts",
+    "auth:health": "node --env-file-if-exists=.env scripts/auth-health.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",

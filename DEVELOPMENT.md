@@ -28,6 +28,7 @@ brand-new database, run `make db-migrate` once first.
 | ------------------------ | -------------------------------------------- |
 | `make dev`               | Services + client + doctor + dev server      |
 | `make doctor`            | Client and migration check, no side effects  |
+| `make auth-health`       | Auth provider `/health` check (when enabled) |
 | `make env-init`          | Create `.env` from `.env.example` if missing |
 | `make db-migrate`        | Create/apply migrations during development   |
 | `make db-migrate-deploy` | Apply existing migrations (no new ones)      |
@@ -104,6 +105,9 @@ database.
 
 - `⚠ Redis: cannot reach ...` — Redis is down. Run `make redis-up`. The UI still
   loads, but queues, schedules and workflow runs need Redis.
+- `✗ Cannot reach OIDC provider / HortusClavis API` — `AUTH_MODE` is enabled but
+  the provider `/health` is down. Start it, or set `AUTH_HEALTH_SKIP=1` to bypass.
+  `make dev-and-worker` and `make up` run this check automatically.
 - `⚠ The Prisma client is older than prisma/schema.prisma` — run
   `npx prisma generate`. `make dev`, `npm run dev` and `npm run build` do it for
   you.
