@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/client";
-import type { AuthConfig } from "./config";
+import type { ProvisioningSettings } from "./config";
 import type { ResolvedProfile } from "./claims";
 import type { Role } from "./session";
 
@@ -19,7 +19,7 @@ interface UpsertInput {
   subject: string;
   profile: ResolvedProfile;
   role: Role;
-  config: AuthConfig;
+  config: ProvisioningSettings;
 }
 
 function toAuthUser(user: {
@@ -93,12 +93,12 @@ export async function upsertIdentityUser(input: UpsertInput): Promise<AuthUser> 
   return toAuthUser(created);
 }
 
-function canLinkByEmail(profile: ResolvedProfile, config: AuthConfig, role: Role): boolean {
+function canLinkByEmail(profile: ResolvedProfile, config: ProvisioningSettings, role: Role): boolean {
   if (role === "admin") return true;
   return profile.emailVerified || config.trustEmail;
 }
 
-async function firstUserRole(role: Role, config: AuthConfig): Promise<Role> {
+async function firstUserRole(role: Role, config: ProvisioningSettings): Promise<Role> {
   if (role !== "viewer" || !config.bootstrapFirstUser) return role;
   const count = await prisma.user.count();
   return count === 0 ? "admin" : role;

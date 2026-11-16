@@ -1,4 +1,4 @@
-import type { AuthConfig } from "./config";
+import type { SessionSettings } from "./config";
 import { decodeUtf8, encodeUtf8, fromBase64Url, toBase64Url } from "./encoding";
 
 export const SESSION_COOKIE = "dc_session";
@@ -76,7 +76,7 @@ async function verifyPayload<T extends { aud: string; exp: number }>(
 
 export async function createSessionToken(
   input: { userId: string; email: string; role: Role; version: number },
-  config: AuthConfig,
+  config: SessionSettings,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
@@ -93,14 +93,14 @@ export async function createSessionToken(
 
 export function readSessionToken(
   token: string | undefined,
-  config: AuthConfig,
+  config: SessionSettings,
 ): Promise<SessionPayload | null> {
   return verifyPayload<SessionPayload>(token, config.sessionSecret, SESSION_AUDIENCE);
 }
 
 export async function createTransactionToken(
   input: { state: string; nonce: string; verifier: string; returnTo: string },
-  config: AuthConfig,
+  config: SessionSettings,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload: TransactionPayload = {
@@ -114,12 +114,12 @@ export async function createTransactionToken(
 
 export function readTransactionToken(
   token: string | undefined,
-  config: AuthConfig,
+  config: SessionSettings,
 ): Promise<TransactionPayload | null> {
   return verifyPayload<TransactionPayload>(token, config.sessionSecret, TRANSACTION_AUDIENCE);
 }
 
-export function sessionCookieOptions(config: AuthConfig) {
+export function sessionCookieOptions(config: SessionSettings) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
@@ -129,7 +129,7 @@ export function sessionCookieOptions(config: AuthConfig) {
   };
 }
 
-export function transactionCookieOptions(config: AuthConfig) {
+export function transactionCookieOptions(config: SessionSettings) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,

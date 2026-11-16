@@ -7,7 +7,7 @@ Keycloak, Authentik or Google Workspace work with the same configuration.
 Authentication is **opt-in**. `AUTH_MODE=disabled` (the default) keeps the
 current single-user behaviour and does not protect routes.
 
-## 1. Enable it
+## 1. OIDC mode (recommended)
 
 ```bash
 AUTH_MODE="oidc"
@@ -88,6 +88,30 @@ Consider adding `run_workflows` to the service's `user` role and
 `/api/auth`, `/api/oauth` and `/api/webhooks`. API routes that need role checks
 should call `getCurrentUser()` from `src/lib/auth/current-user.ts`.
 
+## Alternative: DevCadence-branded login (Hortus API)
+
+If you do not want the browser to leave DevCadence, use `AUTH_MODE=hortus`.
+DevCadence renders its own login form and calls the Hortus API server-side:
+
+```bash
+AUTH_MODE="hortus"
+AUTH_API_URL="http://iam:8000"        # internal, server-to-server
+AUTH_API_SERVICE="devcadence"
+AUTH_SECRET="$(openssl rand -hex 32)"
+```
+
+Flow: `POST /api/auth/login` → `POST {AUTH_API_URL}/auth/login` → `POST
+{AUTH_API_URL}/auth/verify` → create the local session. The password is never
+stored or logged, but it does pass through the DevCadence server.
+
+Trade-offs:
+
+- No SSO, no BYO IdP and no OIDC PKCE in this mode. Use `AUTH_MODE=oidc` when
+  the provider supports OIDC.
+- Keep `AUTH_API_URL` on a private network and over HTTPS; the password travels
+  between DevCadence and Hortus.
+- `AUTH_UPSTREAM_LOGOUT` and the OIDC client settings do not apply.
+
 ## Security notes
 
 - Hortus Clavis currently emits `email_verified: false`. Email is treated as an
@@ -99,3 +123,6 @@ should call `getCurrentUser()` from `src/lib/auth/current-user.ts`.
   cookie; it cannot revoke a stolen token before it expires. Rotate
   `AUTH_SECRET` to invalidate every session at once.
 - There is no rate limiting on `/api/auth/login` yet.
+- In `AUTH_MODE=hortus`, the password transits the DevCadence server. Keep
+  `AUTH_API_URL` private, use HTTPS, and prefer OIDC when the provider supports
+  it. Failed logins are not rate-limited either.

@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
-import { tryGetAuthConfig } from "./config";
+import { getSessionSettings } from "./config";
 import { SESSION_COOKIE, readSessionToken } from "./session";
 import { getActiveUser, type AuthUser } from "./users";
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const config = tryGetAuthConfig();
+  const config = getSessionSettings();
   if (!config) return null;
 
   const cookieStore = await cookies();

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isAuthEnabled, tryGetAuthConfig } from "@/lib/auth/config";
+import { getSessionSettings, isAuthEnabled } from "@/lib/auth/config";
 import { isPublicPath } from "@/lib/auth/route-access";
 import { SESSION_COOKIE, readSessionToken } from "@/lib/auth/session";
 
@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest): Promise<Response> {
 
   let config;
   try {
-    config = tryGetAuthConfig();
+    config = getSessionSettings();
   } catch {
     return new NextResponse("Authentication is misconfigured", { status: 500 });
   }

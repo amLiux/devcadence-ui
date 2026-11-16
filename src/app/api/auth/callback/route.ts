@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { extractProfile, resolveRole } from "@/lib/auth/claims";
-import { getAuthConfig, isAuthEnabled } from "@/lib/auth/config";
+import { getAuthConfig, getAuthMode } from "@/lib/auth/config";
 import {
   exchangeAuthorizationCode,
   fetchUserInfo,
@@ -43,7 +43,7 @@ function failure(request: Request, code: string): NextResponse {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!isAuthEnabled()) return NextResponse.redirect(new URL("/", request.url));
+  if (getAuthMode() !== "oidc") return NextResponse.redirect(new URL("/login", request.url));
 
   try {
     const config = getAuthConfig();

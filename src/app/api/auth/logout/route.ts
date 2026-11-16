@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAuthConfig, isAuthEnabled } from "@/lib/auth/config";
+import { getAuthConfig, getAuthMode } from "@/lib/auth/config";
 import { getDiscovery } from "@/lib/auth/oidc";
 import { SESSION_COOKIE, TRANSACTION_COOKIE } from "@/lib/auth/session";
 
 async function upstreamLogoutUrl(request: Request): Promise<URL | null> {
-  if (!isAuthEnabled()) return null;
+  if (getAuthMode() !== "oidc") return null;
   try {
     const config = getAuthConfig();
     if (!config.upstreamLogout) return null;

@@ -1,4 +1,4 @@
-import type { AuthConfig } from "./config";
+import type { RoleSettings } from "./config";
 import type { IdTokenClaims } from "./oidc";
 import type { Role } from "./session";
 
@@ -59,7 +59,7 @@ function displayName(
   return email.split("@")[0];
 }
 
-export function resolveRole(profile: ResolvedProfile, config: AuthConfig): Role {
+export function resolveRole(profile: ResolvedProfile, config: RoleSettings): Role {
   const groups = new Set(profile.groups);
   if (config.adminEmails.includes(profile.email)) return "admin";
   if (config.adminGroups.some((group) => groups.has(group))) return "admin";
