@@ -39,7 +39,7 @@ const WORKFLOWS: PreviewWorkflow[] = [
     ],
   },
   {
-    name: "deploy-api",
+    name: "push-to-deploy",
     trigger: "Listen Commits",
     project: "infra",
     icon: GitBranch,
