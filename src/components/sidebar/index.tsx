@@ -31,7 +31,7 @@ const menuOptions: MenuOption[] = [
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ authEnabled = false }: { authEnabled?: boolean }) {
   const path = usePathname();
   // Subroutes such as /settings/notifications and /docs/nodes keep their parent active.
   const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
@@ -74,16 +74,24 @@ export default function Sidebar() {
       ))}
       <div className="mt-auto flex flex-col items-center gap-4">
         <Separator className="mb-2 w-8" />
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" />
-            }
-          >
-            <LogOut size={18} />
-          </TooltipTrigger>
-          <TooltipContent side="right">Sign out</TooltipContent>
-        </Tooltip>
+        {authEnabled ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <form action="/api/auth/logout" method="post">
+                  <button
+                    type="submit"
+                    aria-label="Sign out"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <LogOut size={18} />
+                  </button>
+                </form>
+              }
+            />
+            <TooltipContent side="right">Sign out</TooltipContent>
+          </Tooltip>
+        ) : null}
       </div>
     </nav>
   );
