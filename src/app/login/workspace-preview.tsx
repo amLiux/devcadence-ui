@@ -33,9 +33,9 @@ const WORKFLOWS: PreviewWorkflow[] = [
     duration: "2.8s",
     steps: [
       { node: "Schedule", ms: "0ms" },
-      { node: "PostgreSQL Query", ms: "240ms" },
-      { node: "Extract", ms: "1.1s" },
-      { node: "Send Slack Message", ms: "380ms" },
+      { node: "PostgreSQL Query", ms: "1.9s" },
+      { node: "Transform Data", ms: "90ms" },
+      { node: "Send Slack Message", ms: "780ms" },
     ],
   },
   {
@@ -48,9 +48,9 @@ const WORKFLOWS: PreviewWorkflow[] = [
     duration: "4.1s",
     steps: [
       { node: "Listen Commits", ms: "0ms" },
-      { node: "HTTP Request", ms: "620ms" },
+      { node: "HTTP Request", ms: "2.6s" },
       { node: "PostgreSQL Insert", ms: "90ms" },
-      { node: "Send Discord Message", ms: "410ms" },
+      { node: "Send Discord Message", ms: "1.4s" },
     ],
   },
   {
@@ -63,9 +63,9 @@ const WORKFLOWS: PreviewWorkflow[] = [
     duration: "3.2s",
     steps: [
       { node: "Watch Emails", ms: "0ms" },
-      { node: "Classify", ms: "980ms" },
+      { node: "Classify", ms: "1.4s" },
       { node: "HTTP Request", ms: "220ms" },
-      { node: "Send Slack Message", ms: "360ms" },
+      { node: "Send Slack Message", ms: "1.6s" },
     ],
   },
 ];
