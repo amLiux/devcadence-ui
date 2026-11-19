@@ -23,6 +23,11 @@ import { safeReturnTo } from "@/lib/auth/navigation";
 import { buildAuthorizeUrl, getDiscovery } from "@/lib/auth/oidc";
 import { createPkcePair } from "@/lib/auth/pkce";
 import {
+  checkLoginRateLimit,
+  clearLoginRateLimit,
+  clientIp,
+} from "@/lib/auth/rate-limit";
+import {
   createSessionToken,
   createTransactionToken,
   SESSION_COOKIE,
@@ -32,11 +37,61 @@ import {
 } from "@/lib/auth/session";
 import { upsertIdentityUser } from "@/lib/auth/users";
 
-function loginError(request: Request, code: string, next: string): NextResponse {
+function wantsHtml(request: Request): boolean {
+  return request.headers.get("accept")?.includes("text/html") ?? false;
+}
+
+function loginUrl(request: Request, code: string, next: string, retryAfter?: number): URL {
   const url = new URL("/login", request.url);
   url.searchParams.set("error", code);
   if (next !== "/") url.searchParams.set("next", next);
-  return NextResponse.redirect(url);
+  if (retryAfter !== undefined) url.searchParams.set("retry", String(retryAfter));
+  return url;
+}
+
+function loginError(request: Request, code: string, next: string): NextResponse {
+  return NextResponse.redirect(loginUrl(request, code, next));
+}
+
+/**
+ * 429 for API clients, a redirect with a friendly error for browser form posts.
+ * `Retry-After` is set in both cases.
+ */
+function rateLimitedResponse(request: Request, next: string, retryAfter: number): NextResponse {
+  if (wantsHtml(request)) {
+    const response = NextResponse.redirect(
+      loginUrl(request, "rate", next, retryAfter),
+      303,
+    );
+    response.headers.set("Retry-After", String(retryAfter));
+    return response;
+  }
+
+  return NextResponse.json(
+    { error: "rate_limited", retry_after: retryAfter },
+    { status: 429, headers: { "Retry-After": String(retryAfter) } },
+  );
+}
+
+/**
+ * Fail closed: a login that cannot be rate limited is not allowed. Browser
+ * requests get a minimal 503 page; API clients get JSON.
+ */
+function unavailableResponse(request: Request): NextResponse {
+  if (!wantsHtml(request)) {
+    return NextResponse.json(
+      { error: "auth_unavailable" },
+      { status: 503, headers: { "Retry-After": "5" } },
+    );
+  }
+
+  return new NextResponse(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><title>Sign-in unavailable</title><body style="font-family:system-ui;padding:2rem"><h1>Sign-in is temporarily unavailable</h1><p>The authentication service or its rate limiter cannot be reached. Try again in a moment.</p><p><a href="/login">Back to sign in</a></p></body></html>`,
+    {
+      status: 503,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": "5" },
+    },
+  );
 }
 
 async function handleOidcLogin(request: Request): Promise<Response> {
@@ -80,8 +135,17 @@ async function handleHortusLogin(request: Request): Promise<Response> {
 
   if (!email || !password) return loginError(request, "missing", next);
 
+  const ip = clientIp(request.headers);
+
   try {
     const config = getHortusConfig();
+
+    // Count the attempt before touching Hortus. If the limiter cannot reach
+    // Redis, fail closed with 503 instead of allowing unlimited guesses.
+    const rate = await checkLoginRateLimit({ ip, email }, config);
+    if (rate.status === "unavailable") return unavailableResponse(request);
+    if (rate.status === "limited") return rateLimitedResponse(request, next, rate.retryAfter);
+
     const identity = await authenticateWithHortus(config, email, password);
     const profile = profileFromHortus(identity, config.service);
     const role = resolveRole(profile, config);
@@ -92,6 +156,10 @@ async function handleHortusLogin(request: Request): Promise<Response> {
       role,
       config,
     });
+
+    // Successful login resets the buckets; a stale counter must not lock a
+    // legitimate user out on the next attempt.
+    await clearLoginRateLimit({ ip, email });
 
     const session = await createSessionToken(
       { userId: user.id, email: user.email, role: user.role, version: user.sessionVersion },

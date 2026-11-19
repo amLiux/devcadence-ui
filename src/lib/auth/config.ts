@@ -30,6 +30,11 @@ export interface ProvisioningSettings {
   bootstrapFirstUser: boolean;
 }
 
+export interface RateLimitSettings {
+  loginMaxAttempts: number;
+  loginWindowSeconds: number;
+}
+
 export interface AuthConfig extends SessionSettings, RoleSettings, ProvisioningSettings {
   issuer: string;
   clientId: string;
@@ -39,7 +44,11 @@ export interface AuthConfig extends SessionSettings, RoleSettings, ProvisioningS
   upstreamLogout: boolean;
 }
 
-export interface HortusConfig extends SessionSettings, RoleSettings, ProvisioningSettings {
+export interface HortusConfig
+  extends SessionSettings,
+    RoleSettings,
+    ProvisioningSettings,
+    RateLimitSettings {
   apiUrl: string;
   service: string;
 }
@@ -110,6 +119,8 @@ export function getHortusConfig(): HortusConfig {
     ...commonSettings(),
     apiUrl: required("AUTH_API_URL").replace(/\/$/, ""),
     service: process.env.AUTH_API_SERVICE || "devcadence",
+    loginMaxAttempts: positiveInt("AUTH_RATE_LIMIT_MAX", 5),
+    loginWindowSeconds: positiveInt("AUTH_RATE_LIMIT_WINDOW", 300),
   };
 }
 

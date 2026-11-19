@@ -35,6 +35,8 @@ Optional:
 | `AUTH_TRUST_EMAIL` | `false` | Link an existing user by email without `email_verified` |
 | `AUTH_BOOTSTRAP_FIRST_USER` | `true` | First user becomes admin when no admin email matches |
 | `AUTH_UPSTREAM_LOGOUT` | `false` | End the provider session too (needs `client_id`-based logout support) |
+| `AUTH_RATE_LIMIT_MAX` | `5` | Login attempts per IP and per email in the window (hortus mode) |
+| `AUTH_RATE_LIMIT_WINDOW` | `300` | Rate-limit window in seconds (hortus mode) |
 
 `make auth-health` checks `${AUTH_OIDC_ISSUER}/health` (or `${AUTH_API_URL}/health`
 in `hortus` mode) before `make dev-and-worker` starts. Set `AUTH_HEALTH_SKIP=1`
@@ -126,7 +128,10 @@ Trade-offs:
 - Sessions are signed cookies, not server-side sessions. Logout clears the
   cookie; it cannot revoke a stolen token before it expires. Rotate
   `AUTH_SECRET` to invalidate every session at once.
-- There is no rate limiting on `/api/auth/login` yet.
+- In `hortus` mode, `/api/auth/login` is rate-limited per IP and per email.
+  Redis is required: if it is unavailable, login fails closed with 503. Behind a
+  reverse proxy, make sure it sets `X-Forwarded-For` or `X-Real-IP`; otherwise all
+  attempts share the `unknown` bucket.
 - In `AUTH_MODE=hortus`, the password transits the DevCadence server. Keep
   `AUTH_API_URL` private, use HTTPS, and prefer OIDC when the provider supports
   it. Failed logins are not rate-limited either.
