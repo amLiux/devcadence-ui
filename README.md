@@ -200,42 +200,37 @@ scripts/            # Developer tooling (migration doctor)
 
 ## Deployment
 
-devdock is designed to be **cheap and easy to self-host**.
-
-### Docker Compose (recommended for self-hosting)
+Self-hosting on a small VPS is the primary path: one Compose project, Postgres,
+Redis, the Next.js app and the BullMQ worker. The full runbook lives in
+[docs/self-hosting.md](docs/self-hosting.md).
 
 ```bash
-docker compose up -d
-npm run build
-npm start
+cp .env.example .env && chmod 600 .env
+# edit .env: DATABASE_URL, REDIS_URL, NEXT_PUBLIC_APP_URL,
+# DEVDOCK_MASTER_KEY, AUTH_MODE, AUTH_SECRET
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml run --rm app npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-You will need:
+The guide covers:
 
-- A PostgreSQL database
-- A Redis instance
-- A server/VPS with Node.js 26+
-- A GitHub personal access token for GitHub integrations
-- SMTP credentials for email nodes (optional)
+- Minimum host and DNS/TLS with Caddy.
+- Required environment variables and secret generation.
+- First admin setup for OIDC, Hortus API mode or a single-user install.
+- Postgres/Redis persistence, nightly backups and a restore drill.
+- Upgrade and rollback order (migrations before the new app).
+- Security checklist: public ports, secret handling, rate limiting, backups.
 
-### Platform deployment
+Authentication details are in [AUTH.md](AUTH.md). "Bring your own IdP" is
+documented in the app at `/docs/byo-idp`.
 
-Because it is a standard Next.js app, devdock deploys anywhere Next.js runs:
+### Optional: managed platforms
 
-- **Vercel** — easiest for the frontend; use external PostgreSQL + Redis
-- **Railway / Render / Fly.io** — one-click Docker or Node.js deploys
-- **Hetzner / DigitalOcean / AWS Lightsail VPS** — full control, lowest cost
-
-### Environment variables for production
-
-```env
-DATABASE_URL="postgresql://user:pass@host:5432/devdock"
-REDIS_URL="redis://host:6379"
-AUTH_MODE="disabled"   # or "oidc"
-AUTH_SECRET="your-random-session-secret"
-GITHUB_TOKEN="your-github-pat"
-# Add connection secrets as needed
-```
+Railway, Render and Fly.io are fine for the web process, but the worker must run
+as a **separate service** from the same image. Vercel alone is not enough
+because BullMQ needs a long-running process. Managed Postgres/Redis still need a
+backup and restore plan.
 
 ---
 
