@@ -14,10 +14,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   missing: "Enter your email and password.",
   invalid: "Invalid email or password.",
   backend: "The authentication service is unavailable. Please try again.",
+  rate: "Too many sign-in attempts. Try again in a few minutes.",
+  unavailable: "Sign-in is temporarily unavailable. Try again in a moment.",
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ error?: string; next?: string; logged_out?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; logged_out?: string; retry?: string }>;
 }
 
 function safeNext(value: string | undefined): string {
@@ -36,6 +38,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   let providerHost = "your identity provider";
   let error = params.error ? (ERROR_MESSAGES[params.error] ?? ERROR_MESSAGES.auth) : null;
+
+  const retryAfter = Number(params.retry);
+  if (params.error === "rate" && Number.isFinite(retryAfter) && retryAfter > 0) {
+    error = `Too many sign-in attempts. Try again in ${retryAfter}s.`;
+  }
 
   if (mode === "oidc") {
     try {

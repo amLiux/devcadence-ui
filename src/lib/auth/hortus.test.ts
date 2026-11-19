@@ -18,6 +18,8 @@ const config: HortusConfig = {
   adminGroups: [],
   trustEmail: false,
   bootstrapFirstUser: true,
+  loginMaxAttempts: 5,
+  loginWindowSeconds: 300,
 };
 
 const user = { id: "u1", email: "User@Test.com", name: "Ada", last_name: "Lovelace" };
