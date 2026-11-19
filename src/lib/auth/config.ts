@@ -1,3 +1,16 @@
+/**
+ * Auth configuration resolver.
+ *
+ * Modes:
+ * - disabled: no auth, routes are public (default for existing installs).
+ * - oidc: redirect to a standards-compliant provider (SSO / BYO IdP).
+ * - hortus: devcadence-branded password form backed by the Hortus API.
+ *
+ * Settings are read at request time so tests and `make` targets can override
+ * process.env without rebuilding. Required values fail closed: enabling a mode
+ * without its settings raises AuthConfigError instead of silently disabling
+ * auth. That is deliberate: a typo must not turn into an open instance.
+ */
 export type AuthMode = "disabled" | "oidc" | "hortus";
 
 export interface SessionSettings {
@@ -33,6 +46,7 @@ export interface HortusConfig extends SessionSettings, RoleSettings, Provisionin
 
 export class AuthConfigError extends Error {}
 
+/** Read AUTH_MODE. Unknown or missing values are intentionally "disabled". */
 export function getAuthMode(): AuthMode {
   if (process.env.AUTH_MODE === "oidc") return "oidc";
   if (process.env.AUTH_MODE === "hortus") return "hortus";
@@ -43,6 +57,7 @@ export function isAuthEnabled(): boolean {
   return getAuthMode() !== "disabled";
 }
 
+/** Fail closed when a mode is enabled but a required setting is missing. */
 function required(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new AuthConfigError(`${name} is required for AUTH_MODE=${getAuthMode()}`);
@@ -75,6 +90,7 @@ function commonSettings(): SessionSettings & RoleSettings & ProvisioningSettings
   };
 }
 
+/** OIDC client settings. Throws AuthConfigError if the mode is not configured. */
 export function getAuthConfig(): AuthConfig {
   const common = commonSettings();
   return {
@@ -88,6 +104,7 @@ export function getAuthConfig(): AuthConfig {
   };
 }
 
+/** Hortus API BFF settings. Throws AuthConfigError when AUTH_API_URL is absent. */
 export function getHortusConfig(): HortusConfig {
   return {
     ...commonSettings(),
@@ -104,6 +121,10 @@ export function tryGetHortusConfig(): HortusConfig | null {
   return getAuthMode() === "hortus" ? getHortusConfig() : null;
 }
 
+/**
+ * Session-only settings for the proxy and cookie verification. Returns null
+ * when auth is disabled; it deliberately does not require OIDC/API fields.
+ */
 export function getSessionSettings(): SessionSettings | null {
   if (getAuthMode() === "oidc") return getAuthConfig();
   if (getAuthMode() === "hortus") return getHortusConfig();

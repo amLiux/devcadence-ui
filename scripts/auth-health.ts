@@ -1,4 +1,15 @@
 #!/usr/bin/env node
+/**
+ * Dev preflight for the auth provider.
+ *
+ * When AUTH_MODE is enabled, check the provider /health before starting Next or
+ * the worker. OIDC does not standardize /health, so a 404 falls back to the
+ * discovery document. A network error fails the dev start unless the operator
+ * sets AUTH_HEALTH_SKIP=1 (useful when working offline on unrelated features).
+ *
+ * The script loads .env.local on top of .env because the Make targets pass only
+ * .env through Node's --env-file flag.
+ */
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +30,10 @@ function normalizeBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, "");
 }
 
+/**
+ * Resolve which provider URL to check and the optional discovery fallback.
+ * Pure for tests: it never reads process.env directly.
+ */
 export function resolveAuthHealthTarget(env: Record<string, string | undefined>): AuthHealthTarget {
   const mode = (env.AUTH_MODE || "disabled").trim().toLowerCase();
   if (mode === "" || mode === "disabled") return { kind: "disabled" };
@@ -68,6 +83,7 @@ async function fetchStatus(url: string): Promise<{ ok: boolean; status: number; 
   return { ok: response.ok, status: response.status, ms: Date.now() - started };
 }
 
+/** Load .env.local when present, on top of the .env loaded by Node. */
 export function loadLocalEnv(path = ".env.local"): void {
   if (existsSync(path)) process.loadEnvFile(path);
 }
@@ -96,18 +112,14 @@ export async function main(): Promise<void> {
   try {
     const health = await fetchStatus(target.healthUrl);
     if (health.ok) {
-      console.log(
-        `✓ ${label} healthy at ${target.healthUrl} (${health.status}, ${health.ms}ms).`,
-      );
+      console.log(`✓ ${label} healthy at ${target.healthUrl} (${health.status}, ${health.ms}ms).`);
       return;
     }
 
     if (health.status === 404 && target.fallbackUrl) {
       const discovery = await fetchStatus(target.fallbackUrl);
       if (discovery.ok) {
-        console.warn(
-          `⚠ ${target.healthUrl} returned 404, but ${target.fallbackUrl} is reachable.`,
-        );
+        console.warn(`⚠ ${target.healthUrl} returned 404, but ${target.fallbackUrl} is reachable.`);
         return;
       }
     }

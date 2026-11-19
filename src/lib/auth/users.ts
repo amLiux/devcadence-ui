@@ -1,8 +1,22 @@
+/**
+ * Identity linking and just-in-time provisioning.
+ *
+ * Identity key is (issuer, subject), never email: an IdP can change or recycle
+ * an email address, while `sub` is stable. Email is only used to link an
+ * existing local user when the provider proves it (email_verified) or the
+ * operator opts into AUTH_TRUST_EMAIL. That is what prevents account takeover
+ * by registering someone else's address at another IdP.
+ *
+ * A first login creates User + UserIdentity in one transaction. The first user
+ * can become admin when AUTH_BOOTSTRAP_FIRST_USER is enabled and the table is
+ * empty; otherwise the role comes from the IdP mapping.
+ */
 import { prisma } from "@/lib/db/client";
 import type { ProvisioningSettings } from "./config";
 import type { ResolvedProfile } from "./claims";
 import type { Role } from "./session";
 
+/** Account exists under another identity, or is disabled. Safe to show. */
 export class AuthLinkError extends Error {}
 
 export interface AuthUser {
@@ -33,6 +47,17 @@ function toAuthUser(user: {
   return { ...user, role: user.role as Role };
 }
 
+/**
+ * Resolve the local user for a verified external identity.
+ *
+ * 1. Existing (issuer, subject) wins: refresh profile/role and last login.
+ * 2. Otherwise, link by email only if the email is verified/trusted or the
+ *    mapped role is admin. Unverified emails must not capture an account.
+ * 3. Otherwise, provision a new user + identity atomically.
+ *
+ * The role is refreshed from the IdP on every login. Local edits to User.role
+ * are intentionally overwritten.
+ */
 export async function upsertIdentityUser(input: UpsertInput): Promise<AuthUser> {
   const { issuer, subject, profile, config } = input;
   const existing = await prisma.userIdentity.findUnique({
@@ -93,17 +118,31 @@ export async function upsertIdentityUser(input: UpsertInput): Promise<AuthUser> 
   return toAuthUser(created);
 }
 
-function canLinkByEmail(profile: ResolvedProfile, config: ProvisioningSettings, role: Role): boolean {
+/**
+ * Linking by email is the only place where email matters. It is allowed for a
+ * verified/trusted email, or for an admin mapping (the operator explicitly
+ * granted that address admin access). Everyone else gets the link error.
+ */
+function canLinkByEmail(
+  profile: ResolvedProfile,
+  config: ProvisioningSettings,
+  role: Role,
+): boolean {
   if (role === "admin") return true;
   return profile.emailVerified || config.trustEmail;
 }
 
+/**
+ * Bootstrap escape hatch for a fresh instance: the very first viewer becomes
+ * admin so the operator is not locked out. Once any user exists this is a no-op.
+ */
 async function firstUserRole(role: Role, config: ProvisioningSettings): Promise<Role> {
   if (role !== "viewer" || !config.bootstrapFirstUser) return role;
   const count = await prisma.user.count();
   return count === 0 ? "admin" : role;
 }
 
+/** Load an active local user for an existing session. */
 export async function getActiveUser(userId: string): Promise<AuthUser | null> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || !user.isActive) return null;

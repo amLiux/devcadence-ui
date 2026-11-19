@@ -1,3 +1,9 @@
+/**
+ * Current session introspection.
+ *
+ * Returns the local user and role. The proxy only checks cookie integrity; this
+ * endpoint is the DB-backed view used by the UI and by tests.
+ */
 import { NextResponse } from "next/server";
 import { getAuthMode, isAuthEnabled } from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/current-user";

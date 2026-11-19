@@ -1,3 +1,11 @@
+/**
+ * DB-backed session lookup for server components and route handlers.
+ *
+ * The proxy only verifies the cookie signature; this is where the user is
+ * loaded and `sessionVersion` is checked, which is also the revocation hook.
+ * Returns null when auth is disabled, the cookie is invalid, or the user was
+ * deactivated.
+ */
 import { cookies } from "next/headers";
 import { getSessionSettings } from "./config";
 import { SESSION_COOKIE, readSessionToken } from "./session";

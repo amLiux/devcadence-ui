@@ -1,3 +1,16 @@
+/**
+ * OIDC callback.
+ *
+ * 1. Read the signed transaction cookie (state, nonce, PKCE verifier, returnTo).
+ * 2. Reject provider errors, missing/mismatched state, expired transactions.
+ * 3. Exchange the code server-side with the verifier and client secret.
+ * 4. Verify the ID token (signature, issuer, audience, expiry, nonce) and fetch
+ *    userinfo for permissions.
+ * 5. Link/provision the local user, create the session cookie, clear the
+ *    transaction cookie and redirect to returnTo.
+ *
+ * Errors are mapped to /login?error=... without leaking provider details.
+ */
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { extractProfile, resolveRole } from "@/lib/auth/claims";

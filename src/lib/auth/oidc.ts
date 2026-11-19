@@ -1,3 +1,18 @@
+/**
+ * OIDC relying-party primitives: discovery, authorization redirect, code
+ * exchange, ID-token verification and userinfo.
+ *
+ * Security model:
+ * - Discovery and JWKS are cached per process (not shared across workers). A
+ *   stale cache only costs one extra fetch, never a skipped verification.
+ * - ID tokens are verified by hand with node:crypto instead of a JWT library:
+ *   split the compact token, find the key by `kid`, verify RS256 over the raw
+ *   signing input, and only then trust the claims.
+ * - Only RS256 is accepted. `none`, HS256 and public-key confusion are rejected.
+ * - Endpoints must be HTTPS except localhost. A misconfigured issuer cannot
+ *   downgrade the token exchange or JWKS fetch to plaintext.
+ * - This module never persists tokens. Callers decide what to keep.
+ */
 import { createPublicKey, verify as verifySignature } from "node:crypto";
 import type { AuthConfig } from "./config";
 import { decodeUtf8, fromBase64Url } from "./encoding";
@@ -38,6 +53,8 @@ interface OidcCache {
   jwks: Map<string, CacheEntry<JsonWebKey[]>>;
 }
 
+// globalThis keeps the cache across dev hot reloads and per server process.
+// It is intentionally not shared between workers; a cold worker just refetches.
 const globalCache = globalThis as unknown as { __dcOidcCache?: OidcCache };
 const cache: OidcCache = (globalCache.__dcOidcCache ??= {
   discovery: new Map(),
@@ -46,14 +63,22 @@ const cache: OidcCache = (globalCache.__dcOidcCache ??= {
 
 const DISCOVERY_TTL_MS = 60 * 60 * 1000;
 const JWKS_TTL_MS = 5 * 60 * 1000;
+// Provider clocks and ours are never exactly equal. 60s is enough for normal
+// drift without accepting meaningfully expired tokens.
 const CLOCK_SKEW_SECONDS = 60;
 
+/** Any failure that is safe to surface to the caller (never contains secrets). */
 export class OidcError extends Error {}
 
 function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
 }
 
+/**
+ * Reject non-HTTPS OIDC endpoints, except loopback URLs used in local dev.
+ * This prevents a typo (or an attacker-controlled discovery document) from
+ * sending codes, client secrets or tokens over plain HTTP.
+ */
 export function assertSafeEndpoint(url: string): URL {
   const parsed = new URL(url);
   if (parsed.protocol === "https:") return parsed;
@@ -64,6 +89,7 @@ export function assertSafeEndpoint(url: string): URL {
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    // Never let Next/undici cache discovery, JWKS or token responses.
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
   });
@@ -73,6 +99,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+/**
+ * Fetch and cache the provider discovery document.
+ *
+ * The returned `issuer` must equal the configured issuer: discovery is trusted
+ * only when it describes the exact issuer we asked about. All advertised
+ * endpoints are validated before use.
+ */
 export async function getDiscovery(config: AuthConfig): Promise<OidcDiscovery> {
   const cached = cache.discovery.get(config.issuer);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
@@ -102,6 +135,13 @@ export async function getDiscovery(config: AuthConfig): Promise<OidcDiscovery> {
   return discovery;
 }
 
+/**
+ * Build the authorization-code redirect.
+ *
+ * `state` protects the callback from CSRF/login swapping, `nonce` binds the ID
+ * token to this login, and the S256 challenge proves the token exchange comes
+ * from the client that started the flow. All three are mandatory here.
+ */
 export function buildAuthorizeUrl(
   config: AuthConfig,
   discovery: OidcDiscovery,
@@ -119,6 +159,13 @@ export function buildAuthorizeUrl(
   return url.toString();
 }
 
+/**
+ * Exchange an authorization code for tokens using client_secret_basic.
+ *
+ * The verifier is sent here, not in the browser redirect, so a stolen code is
+ * useless without the transaction cookie. Client credentials are form-encoded
+ * inside Basic auth per RFC 6749 §2.3.1.
+ */
 export async function exchangeAuthorizationCode(
   config: AuthConfig,
   discovery: OidcDiscovery,
@@ -131,7 +178,9 @@ export async function exchangeAuthorizationCode(
     code_verifier: input.codeVerifier,
     client_id: config.clientId,
   });
-  const credentials = btoa(`${encodeURIComponent(config.clientId)}:${encodeURIComponent(config.clientSecret)}`);
+  const credentials = btoa(
+    `${encodeURIComponent(config.clientId)}:${encodeURIComponent(config.clientSecret)}`,
+  );
   return fetchJson(discovery.token_endpoint, {
     method: "POST",
     headers: {
@@ -143,6 +192,11 @@ export async function exchangeAuthorizationCode(
   });
 }
 
+/**
+ * Return the provider signing keys. `force` bypasses the cache so a key
+ * rotation with a new `kid` is picked up immediately instead of failing the
+ * login until the TTL expires.
+ */
 async function getSigningKeys(discovery: OidcDiscovery, force = false): Promise<JsonWebKey[]> {
   const cached = cache.jwks.get(discovery.jwks_uri);
   if (!force && cached && cached.expiresAt > Date.now()) return cached.value;
@@ -172,6 +226,13 @@ function audienceMatches(audience: string | string[], clientId: string): boolean
   return Array.isArray(audience) ? audience.includes(clientId) : audience === clientId;
 }
 
+/**
+ * Verify an ID token and return its claims.
+ *
+ * Order matters: verify the signature first, then validate claims. Never read
+ * a claim to decide which key to trust beyond the header `kid`. `expectedNonce`
+ * must be the value stored in the signed transaction for this login.
+ */
 export async function verifyIdToken(
   config: AuthConfig,
   discovery: OidcDiscovery,
@@ -189,6 +250,7 @@ export async function verifyIdToken(
   let keys = await getSigningKeys(discovery);
   let jwk = keys.find((key) => (key as { kid?: string }).kid === header.kid);
   if (!jwk) {
+    // Unknown kid usually means the provider rotated keys. Refresh once.
     keys = await getSigningKeys(discovery, true);
     jwk = keys.find((key) => (key as { kid?: string }).kid === header.kid);
   }
@@ -204,18 +266,26 @@ export async function verifyIdToken(
   if (!valid) throw new OidcError("Invalid ID token signature");
 
   const now = Math.floor(Date.now() / 1000);
-  if (claims.iss.replace(/\/$/, "") !== config.issuer) throw new OidcError("Invalid ID token issuer");
-  if (!audienceMatches(claims.aud, config.clientId)) throw new OidcError("Invalid ID token audience");
+  if (claims.iss.replace(/\/$/, "") !== config.issuer)
+    throw new OidcError("Invalid ID token issuer");
+  if (!audienceMatches(claims.aud, config.clientId))
+    throw new OidcError("Invalid ID token audience");
   if (!Number.isFinite(claims.exp) || claims.exp + CLOCK_SKEW_SECONDS < now) {
     throw new OidcError("ID token expired");
   }
   if (!claims.sub) throw new OidcError("ID token has no subject");
+  // Nonce replay protection: a token minted for another login is rejected.
   if (!claims.nonce || claims.nonce !== expectedNonce) {
     throw new OidcError("Invalid ID token nonce");
   }
   return claims;
 }
 
+/**
+ * Best-effort userinfo lookup. Some providers do not expose it, or restrict it
+ * by scope; a failure must not break login. Role mapping then falls back to ID
+ * token claims such as groups/email.
+ */
 export async function fetchUserInfo(
   discovery: OidcDiscovery,
   accessToken: string | undefined,

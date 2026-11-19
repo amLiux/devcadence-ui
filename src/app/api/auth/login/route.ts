@@ -1,10 +1,17 @@
+/**
+ * Auth entry point.
+ *
+ * GET  (oidc)   : create state/nonce/PKCE, store the signed transaction cookie,
+ *                 redirect to the provider.
+ * GET  (hortus) : the form lives at /login; this endpoint is not used.
+ * POST (hortus) : validate Origin, call Hortus server-side, create the session.
+ *
+ * Passwords are only ever read from the form and forwarded to Hortus; they are
+ * never logged, echoed or stored.
+ */
 import { NextResponse } from "next/server";
 import { resolveRole } from "@/lib/auth/claims";
-import {
-  getAuthConfig,
-  getAuthMode,
-  getHortusConfig,
-} from "@/lib/auth/config";
+import { getAuthConfig, getAuthMode, getHortusConfig } from "@/lib/auth/config";
 import { randomToken } from "@/lib/auth/encoding";
 import {
   AuthBackendError,

@@ -1,3 +1,11 @@
+/**
+ * Logout.
+ *
+ * Always clears the local session cookie. In oidc mode with
+ * AUTH_UPSTREAM_LOGOUT=true it also redirects through the provider's
+ * end_session_endpoint using client_id (no id_token_hint, whose lifetime is
+ * shorter than the session). In hortus mode logout is local only.
+ */
 import { NextResponse } from "next/server";
 import { getAuthConfig, getAuthMode } from "@/lib/auth/config";
 import { getDiscovery } from "@/lib/auth/oidc";

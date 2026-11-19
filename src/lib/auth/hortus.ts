@@ -1,7 +1,21 @@
+/**
+ * Password mode (AUTH_MODE=hortus): a BFF in front of the HortusClavis API.
+ *
+ * The browser posts credentials to devcadence; this module forwards them to
+ * Hortus over the server-to-server AUTH_API_URL, then calls /auth/verify to get
+ * the trusted user and service permissions. Passwords are never stored, logged
+ * or returned, and only live for the duration of this call.
+ *
+ * Why two calls: /auth/login returns a token, but devcadence does not share
+ * Hortus' JWT secret, so it cannot validate that token locally. /auth/verify is
+ * the authority. The token is never decoded or persisted here.
+ */
 import type { ResolvedProfile } from "./claims";
 import type { HortusConfig } from "./config";
 
+/** Wrong email/password. Safe to show as a generic login error. */
 export class InvalidCredentialsError extends Error {}
+/** Hortus is down, returned 5xx, or answered with an invalid payload. */
 export class AuthBackendError extends Error {}
 
 interface HortusUser {
@@ -26,11 +40,18 @@ export interface HortusIdentity {
 async function postJson(url: string, init: RequestInit): Promise<Response> {
   return fetch(url, {
     ...init,
+    // Auth responses must never be cached (tokens and user data).
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
   });
 }
 
+/**
+ * Authenticate against Hortus and return the verified identity.
+ *
+ * 401/403 becomes InvalidCredentialsError (the route maps it to a generic
+ * message). Any other non-2xx is a backend failure, not a bad password.
+ */
 export async function authenticateWithHortus(
   config: HortusConfig,
   email: string,
@@ -71,10 +92,16 @@ export async function authenticateWithHortus(
   return { user: verified.user, permissions: verified.permissions ?? {} };
 }
 
-export function profileFromHortus(
-  identity: HortusIdentity,
-  service: string,
-): ResolvedProfile {
+/**
+ * Convert a verified Hortus identity into the profile used by role mapping.
+ *
+ * `iam` permissions belong to Hortus super-admins; the service permissions are
+ * scoped to AUTH_API_SERVICE. Both are merged because a super-admin should be
+ * an admin in devcadence too, while a tenant user only gets its service actions.
+ * Email is marked verified because the password login just proved control of
+ * the account; this is not an IdP email claim.
+ */
+export function profileFromHortus(identity: HortusIdentity, service: string): ResolvedProfile {
   const { user, permissions } = identity;
   const scoped = [...(permissions.iam ?? []), ...(permissions[service] ?? [])];
   return {
