@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock, RefreshCw, KeyRound } from "lucide-react";
+import { Globe, Sparkles, Link2, Plug, GitBranch, Check, Code, GitFork, ArrowRightLeft, Lock, RefreshCw, KeyRound, Fingerprint } from "lucide-react";
 import { SectionCard } from "@/components/composed/section-card";
 import { useDocsProgress, type DocsPage } from "@/hooks/use-tutorial-progress";
 
@@ -91,6 +91,15 @@ const topics: { title: string; description: string; href: string; icon: React.Re
     page: "google-oauth",
   },
   {
+    title: "Bring Your Own IdP",
+    description: "Connect devcadence to HortusClavis, Entra ID, Keycloak or any OIDC provider.",
+    href: "/docs/byo-idp",
+    icon: <Fingerprint className="h-5 w-5" />,
+    tag: "OIDC",
+    tagColor: "text-emerald-500",
+    page: "byo-idp",
+  },
+  {
     title: "Security & Secrets",
     description: "How devdock encrypts connection secrets before they ever reach the database.",
     href: "/docs/security",
@@ -111,6 +120,7 @@ const iconColors: Record<string, string> = {
   "conditional-logic": "text-amber-500",
   "reusable-workflows": "text-emerald-500",
   "run-retries": "text-orange-500",
+  "byo-idp": "text-emerald-500",
   security: "text-emerald-500",
 };
 
@@ -122,7 +132,7 @@ export default function DocsPage() {
       <div>
         <h1 className="text-2xl font-bold">Documentation</h1>
         <p className="text-muted-foreground mt-1">
-          Learn DevDock by doing. Start with the tutorial, then explore the rest.
+          Learn devcadence by doing. Start with the tutorial, then explore the rest.
         </p>
       </div>
 
